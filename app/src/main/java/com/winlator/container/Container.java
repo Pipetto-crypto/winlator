@@ -342,10 +342,6 @@ public class Container {
     public File getDesktopDir() {
         return new File(rootDir, ".wine/drive_c/users/"+ImageFs.USER+"/Desktop/");
     }
-    
-    public File getSteamUserDesktopDir() {
-        return new File(rootDir, ".wine/drive_c/users/steamuser/Desktop/");
-    }
 
     public File getStartMenuDir() {
         return new File(rootDir, ".wine/drive_c/ProgramData/Microsoft/Windows/Start Menu/");
