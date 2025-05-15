@@ -107,12 +107,13 @@ public abstract class WineUtils {
 
         final AtomicReference<WineInfo> wineInfoRef = new AtomicReference<>();
         Callback<String> debugCallback = (line) -> {
-            Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?([0-9\\.]+)?", Pattern.CASE_INSENSITIVE);
+            Pattern pattern = Pattern.compile("^(wine|proton)\\-([0-9\\.]+)\\-?([0-9\\.]+)?", Pattern.CASE_INSENSITIVE);
             Matcher matcher = pattern.matcher(line);
             if (matcher.find()) {
+                String type = matcher.group(0);
                 String version = matcher.group(1);
                 String subversion = matcher.groupCount() >= 2 ? matcher.group(2) : null;
-                wineInfoRef.set(new WineInfo(version, subversion, arch, winePath));
+                wineInfoRef.set(new WineInfo(type, version, subversion, arch, winePath));
             }
         };
 

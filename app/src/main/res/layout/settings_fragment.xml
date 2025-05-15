@@ -587,14 +587,6 @@
                 android:layout_height="wrap_content">
 
                 <LinearLayout style="@style/FieldSet">
-                    <CheckBox
-                        android:id="@+id/CBUseGlibc"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="@string/use_glibc" />
-
-                    <View style="@style/FieldSeparator" />
-
                     <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"

@@ -112,17 +112,6 @@ public class Container {
         this.containerManager = containerManager;
     }
 
-    private boolean isBionic = false;
-
-    public boolean isBionic() {
-        return isBionic;
-    }
-
-    public void setBionic(boolean bionic) {
-        this.isBionic = bionic;
-    }
-
-
     public ContainerManager getManager() {
         return containerManager;
     }
@@ -412,7 +401,6 @@ public class Container {
             JSONObject data = new JSONObject();
             data.put("id", id);
             data.put("name", name);
-            data.put("isBionic", isBionic);
             data.put("screenSize", screenSize);
             data.put("envVars", envVars);
             data.put("cpuList", cpuList);
@@ -458,9 +446,6 @@ public class Container {
             switch (key) {
                 case "name" :
                     setName(data.getString(key));
-                    break;
-                case "isBionic":
-                    setBionic(data.getBoolean(key));
                     break;
                 case "screenSize" :
                     setScreenSize(data.getString(key));

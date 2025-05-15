@@ -249,8 +249,6 @@
     <string name="as_axis">Is Axis</string>
     <string name="both">Both</string>
     <string name="trigger_type">Trigger Type</string>
-    <string name="use_glibc">Use native Glibc</string>
-    <string name="use_bionic">Use native Bionic</string>
     <string name="experimental">Experimental</string>
     <string name="glibc_exp_edition">Glibc Experimental Edition</string>
     <string name="enabled_async">Enable Async</string>
@@ -467,8 +465,6 @@
     <string name="save">Save</string>
     <string name="installing_winetricks">Installing dependencies with winetricks...</string>
     <string name="use_xr">Use OpenXR integration</string>
-    <string name="bionic_not_supported">Winetricks is not yet available for Bionic Containers</string>
-    <string name="switching_turnip">Switching to a Bionic compatible Turnip Driver...</string>
 
 
 

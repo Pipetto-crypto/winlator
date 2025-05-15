@@ -28,16 +28,14 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
     private static final String TAG = "GraphicsDriverConfigDialog"; // Tag for logging
 
     private Spinner sVersion;
-    private boolean isBionic;
     private String selectedVersion;
 
     public interface OnGraphicsDriverVersionSelectedListener {
         void onGraphicsDriverVersionSelected(String version);
     }
   
-    public GraphicsDriverConfigDialog(View anchor, String initialVersion, String graphicsDriver, boolean isBionic, OnGraphicsDriverVersionSelectedListener listener) {
+    public GraphicsDriverConfigDialog(View anchor, String initialVersion, String graphicsDriver, OnGraphicsDriverVersionSelectedListener listener) {
         super(anchor.getContext(), R.layout.graphics_driver_config_dialog);
-        this.isBionic = isBionic;
         initializeDialog(anchor, initialVersion, graphicsDriver, null, listener);
     }
 
@@ -154,16 +152,9 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         turnipVersions.addAll(Arrays.asList(turnipDefaultVersions));
         wrapperVersions.addAll(Arrays.asList(wrapperDefaultVersions));
 
-        if (isBionic) {
-            turnipVersions.subList(0, turnipVersions.size() - 1).clear();
-        }
-        else {
-            turnipVersions.remove(turnipVersions.size() - 1);
-        }
-
         // Add installed versions from ContentsManager
         List<ContentProfile> profiles = contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_TURNIP);
-        if (profiles != null && !isBionic) {
+        if (profiles != null) {
             for (ContentProfile profile : profiles) {
                 String profileName = ContentsManager.getEntryName(profile);
                 if (profileName != null && !turnipVersions.contains(profileName)) {
@@ -239,10 +230,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         }
 
         if (graphicsDriver.contains("turnip")) {
-            if (isBionic)
-                AppUtils.setSpinnerSelectionFromValue(spinner, DefaultVersion.TURNIP_BIONIC);
-            else
-                AppUtils.setSpinnerSelectionFromValue(spinner, DefaultVersion.TURNIP_GLIBC);
+            AppUtils.setSpinnerSelectionFromValue(spinner, DefaultVersion.TURNIP);
         }
         else
             AppUtils.setSpinnerSelectionFromValue(spinner, DefaultVersion.WRAPPER);

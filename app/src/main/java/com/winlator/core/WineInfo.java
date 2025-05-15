@@ -13,21 +13,24 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 public class WineInfo implements Parcelable {
-    public static final WineInfo MAIN_WINE_VERSION = new WineInfo("9.2", "x86_64");
-    private static final Pattern pattern = Pattern.compile("^wine\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64)$");
+    public static final WineInfo MAIN_WINE_VERSION = new WineInfo("proton","9.0", "arm64ec");
+    private static final Pattern pattern = Pattern.compile("^(wine|proton)\\-([0-9\\.]+)\\-?([0-9\\.]+)?\\-(x86|x86_64|arm64ec)$");
     public final String version;
+    public final String type;
     public final String subversion;
     public final String path;
     private String arch;
 
-    public WineInfo(String version, String arch) {
+    public WineInfo(String type, String version, String arch) {
+        this.type = type;
         this.version = version;
         this.subversion = null;
         this.arch = arch;
         this.path = null;
     }
 
-    public WineInfo(String version, String subversion, String arch, String path) {
+    public WineInfo(String type, String version, String subversion, String arch, String path) {
+        this.type = type;
         this.version = version;
         this.subversion = subversion != null && !subversion.isEmpty() ? subversion : null;
         this.arch = arch;
@@ -35,6 +38,7 @@ public class WineInfo implements Parcelable {
     }
 
     private WineInfo(Parcel in) {
+        type = in.readString();
         version = in.readString();
         subversion = in.readString();
         arch = in.readString();
@@ -50,7 +54,7 @@ public class WineInfo implements Parcelable {
     }
 
     public boolean isWin64() {
-        return arch.equals("x86_64");
+        return arch.equals("x86_64") || arch.equals("arm64ec");
     }
 
     public String getExecutable(Context context, boolean wow64Mode) {
@@ -68,7 +72,10 @@ public class WineInfo implements Parcelable {
     }
 
     public String identifier() {
-        return "wine-"+fullVersion()+"-"+(this == MAIN_WINE_VERSION ? "custom" : arch);
+        if (type.equals("proton"))
+            return "proton-"+fullVersion()+"-"+(this == MAIN_WINE_VERSION ? "custom" : arch);
+        else
+            return "wine-"+fullVersion()+"-"+(this == MAIN_WINE_VERSION ? "custom" : arch);
     }
 
     public String fullVersion() {
@@ -78,7 +85,10 @@ public class WineInfo implements Parcelable {
     @NonNull
     @Override
     public String toString() {
-        return "Wine "+fullVersion()+(this == MAIN_WINE_VERSION ? " (Custom)" : "");
+        if (type.equals("proton"))
+            return "Proton "+fullVersion()+(this == MAIN_WINE_VERSION ? " (Custom)" : "");
+        else
+            return "Wine "+fullVersion()+(this == MAIN_WINE_VERSION ? " (Custom)" : "");
     }
 
     @Override
@@ -98,6 +108,7 @@ public class WineInfo implements Parcelable {
 
     @Override
     public void writeToParcel(Parcel dest, int flags) {
+        dest.writeString(type);
         dest.writeString(version);
         dest.writeString(subversion);
         dest.writeString(arch);
@@ -111,7 +122,7 @@ public class WineInfo implements Parcelable {
         if (matcher.find()) {
             File installedWineDir = ImageFs.find(context).getInstalledWineDir();
             String path = (new File(installedWineDir, identifier)).getPath();
-            return new WineInfo(matcher.group(1), matcher.group(2), matcher.group(3), path);
+            return new WineInfo(matcher.group(0), matcher.group(1), matcher.group(2), matcher.group(3), path);
         }
         else return MAIN_WINE_VERSION;
     }

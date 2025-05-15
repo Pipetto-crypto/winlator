@@ -95,10 +95,6 @@ public class ContainerDetailFragment extends Fragment {
     private String turnipGraphicsDriverVersion = "";
     private String wrapperGraphicsDriverVersion = "";
 
-    private boolean isBionic;
-
-    private String tempGraphicsDriverVersion; // Temporary storage for the graphics driver version
-
     private static boolean isDarkMode;
 
     private ImageFs imageFs;
@@ -502,75 +498,14 @@ public class ContainerDetailFragment extends Fragment {
         
         FEXCoreManager.loadFEXCoreSpinners(context, container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
 
-        final Switch swBionicContainer = view.findViewById(R.id.SWBionicContainer);
+        String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
+        List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
+        sGraphicsItemsList.remove("VirGL");
+        sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
+        AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
 
-        if (isEditMode()) {
-            swBionicContainer.setChecked(container.isBionic());
-            swBionicContainer.setEnabled(false); // Disable toggle in edit mode
-        }
-
-        FrameLayout fexcoreFL = view.findViewById(R.id.fexcoreFrame);
-        LinearLayout emulatorLL = view.findViewById(R.id.LLEmulator);
-        
-        if (!swBionicContainer.isChecked()) {
-            // Remove wrapper from graphics driver entries.
-            isBionic = false;
-            String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
-            List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
-            sGraphicsItemsList.remove("Wrapper");
-            sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
-            AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
-            fexcoreFL.setVisibility(View.GONE);
-            emulatorLL.setVisibility(View.GONE);
-        }
-        else {
-            isBionic = true;
-            String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
-            List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
-            sGraphicsItemsList.remove("VirGL");
-            sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
-            AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
-            fexcoreFL.setVisibility(View.VISIBLE);
-            emulatorLL.setVisibility(View.VISIBLE);
-        }
-
-        swBionicContainer.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked) {
-                // Disable Wine version
-                sWineVersion.setEnabled(false);
-                sWineVersion.setSelection(0);
-                    
-                // Enable fexcore section
-                fexcoreFL.setVisibility(View.VISIBLE);
-                emulatorLL.setVisibility(View.VISIBLE);
-
-                // Readd wrapper to graphics driver entries and remove virgl
-                String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
-                List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
-                sGraphicsItemsList.remove("VirGL");
-                sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
-                AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
-                isBionic = true;
-            } else {
-                // Enable Wine version
-                sWineVersion.setEnabled(true);
-
-                    
-                // Disable fexcore section
-                fexcoreFL.setVisibility(View.GONE);
-                emulatorLL.setVisibility(View.GONE);
-                    
-                // Remove wrapper from graphics driver entries
-                String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
-                List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
-                sGraphicsItemsList.remove("Wrapper");
-                sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
-                AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
-                isBionic = false;
-            }
-        });
-
-
+        sWineVersion.setEnabled(false);
+        sWineVersion.setSelection(0);
 
         final Spinner sRCFile = view.findViewById(R.id.SRCFile);
         final int[] rcfileIds = {0};
@@ -616,16 +551,10 @@ public class ContainerDetailFragment extends Fragment {
             try {
                 // Capture and set container properties based on UI inputs
                 String name = etName.getText().toString();
-                Boolean isBionic = swBionicContainer.isChecked();
                 String screenSize = getScreenSize(view);
                 String envVars = envVarsView.getEnvVars();
                 String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-                if (isBionic) {
-                    String turnipGraphicsDriverVersion = (this.turnipGraphicsDriverVersion != "") ? this.turnipGraphicsDriverVersion : DefaultVersion.TURNIP_BIONIC;
-                } else {
-                    String turnipGraphicsDriverVersion = (this.turnipGraphicsDriverVersion != "") ? this.turnipGraphicsDriverVersion : DefaultVersion.TURNIP_GLIBC;
-                }
-
+                String turnipGraphicsDriverVersion = (this.turnipGraphicsDriverVersion != "") ? this.turnipGraphicsDriverVersion : DefaultVersion.TURNIP;
                 String wrapperGraphicsDriverVersion = (this.wrapperGraphicsDriverVersion != "") ? this.wrapperGraphicsDriverVersion : DefaultVersion.WRAPPER;
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
                 String dxwrapperConfig = vDXWrapperConfig.getTag().toString();
@@ -702,11 +631,9 @@ public class ContainerDetailFragment extends Fragment {
                     container.setLC_ALL(lc_all);
                     container.setPrimaryController(primaryController);
                     container.setControllerMapping(controllerMapping);
-                    container.setBionic(isBionic);
                     container.saveData();
                     saveWineRegistryKeys(view);
-                    if (isBionic)    
-                        FEXCoreManager.saveFEXCoreSpinners(container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
+                    FEXCoreManager.saveFEXCoreSpinners(container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
                     getActivity().onBackPressed();
                 } else {
                     // Create new container with specified properties
@@ -743,7 +670,6 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("lc_all", lc_all);
                     data.put("primaryController", primaryController);
                     data.put("controllerMapping", controllerMapping);
-                    data.put("isBionic", isBionic);
 
                     preloaderDialog.show(R.string.creating_container);
 
@@ -751,21 +677,14 @@ public class ContainerDetailFragment extends Fragment {
                     File imageFsRoot = new File(context.getFilesDir(), "imagefs");
                     imageFs = ImageFs.find(imageFsRoot);
 
-                    if (isBionic) {
-                        switchWineSymlinkToBionic(imageFs);  // e.g. /opt/wine -> /opt/wine.bionic
-                    } else {
-                        switchWineSymlinkToGlibc(imageFs);   // e.g. /opt/wine -> /opt/wine.glibc
-                    }
 
                     manager.createContainerAsync(data, (container) -> {
                         if (container != null) {
                             this.container = container;
-                            container.setBionic(isBionic);
                             container.setTurnipGraphicsDriverVersion(turnipGraphicsDriverVersion);
                             container.setWrapperGraphicsDriverVersion(wrapperGraphicsDriverVersion);
                             saveWineRegistryKeys(view);
-                            if (isBionic)    
-                                FEXCoreManager.saveFEXCoreSpinners(container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
+                            FEXCoreManager.saveFEXCoreSpinners(container, sFEXCoreTSOPreset, sFEXCoreMultiBlock, sFEXCoreX87ReducedPrecision);
                         }
                         preloaderDialog.close();
                         getActivity().onBackPressed();
@@ -777,23 +696,6 @@ public class ContainerDetailFragment extends Fragment {
         });
         return view;
     }
-
-    private void switchWineSymlinkToBionic(ImageFs imageFs) {
-        File link = new File(imageFs.getRootDir(), "opt/wine");
-        File bionicDir = new File(imageFs.getRootDir(), "opt/wine.bionic");
-        FileUtils.delete(link);
-        FileUtils.symlink(bionicDir.getName(), link.getAbsolutePath());
-        Log.d("ContainerDetailFragment", "Switched /opt/wine → /opt/wine.bionic");
-    }
-
-    private void switchWineSymlinkToGlibc(ImageFs imageFs) {
-        File link = new File(imageFs.getRootDir(), "opt/wine");
-        File glibcDir = new File(imageFs.getRootDir(), "opt/wine.glibc");
-        FileUtils.delete(link);
-        FileUtils.symlink(glibcDir.getName(), link.getAbsolutePath());
-        Log.d("ContainerDetailFragment", "Switched /opt/wine → /opt/wine.glibc");
-    }
-
 
     private void saveWineRegistryKeys(View view) {
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
@@ -977,19 +879,13 @@ public class ContainerDetailFragment extends Fragment {
 
     private void showGraphicsDriverConfigDialog(View anchor, String graphicsDriver) {
         String graphicsDriverVersion;
-        if (graphicsDriver.contains("turnip")) {
-            if (isBionic) {
-                graphicsDriverVersion = (turnipGraphicsDriverVersion != "") ? turnipGraphicsDriverVersion : DefaultVersion.TURNIP_BIONIC;
-            }
-            else {
-                graphicsDriverVersion = (turnipGraphicsDriverVersion != "") ? turnipGraphicsDriverVersion : DefaultVersion.TURNIP_GLIBC;
-            }
-        }
+        if (graphicsDriver.contains("turnip"))
+            graphicsDriverVersion = (turnipGraphicsDriverVersion != "") ? turnipGraphicsDriverVersion : DefaultVersion.TURNIP;
         else
             graphicsDriverVersion = (wrapperGraphicsDriverVersion != "") ? wrapperGraphicsDriverVersion : DefaultVersion.WRAPPER;
              
         // Create a new GraphicsDriverConfigDialog
-        new GraphicsDriverConfigDialog(anchor, graphicsDriverVersion, graphicsDriver, isBionic,  (version) -> {
+        new GraphicsDriverConfigDialog(anchor, graphicsDriverVersion, graphicsDriver,  (version) -> {
             // Update the fragment-level variable with the selected version
             if (graphicsDriver.contains("turnip"))    
                 turnipGraphicsDriverVersion = version;

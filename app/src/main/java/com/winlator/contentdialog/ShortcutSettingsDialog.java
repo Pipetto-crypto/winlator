@@ -310,26 +310,11 @@ public class ShortcutSettingsDialog extends ContentDialog {
             popupMenu.show();
         });
 
-        FrameLayout fexcoreFL = findViewById(R.id.fexcoreFrame);
-        LinearLayout emulatorLL = findViewById(R.id.LLEmulator);
-        
-        // Handle bionic and glibc switching logic
-        if (!shortcut.container.isBionic()) {
-            String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
-            List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
-            sGraphicsItemsList.remove("Wrapper");
-            sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
-            AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
-            fexcoreFL.setVisibility(View.GONE);
-            emulatorLL.setVisibility(View.GONE);
-        }
-        else {
-            String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
-            List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
-            sGraphicsItemsList.remove("VirGL");
-            sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
-            AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
-        }
+        String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
+        List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
+        sGraphicsItemsList.remove("VirGL");
+        sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
+        AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
 
         setOnConfirmCallback(() -> {
             String name = etName.getText().toString().trim();
@@ -567,7 +552,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
             graphicsDriverVersion = shortcut.getExtra("turnipGraphicsDriverVersion", shortcut.container.getTurnipGraphicsDriverVersion());
         else
             graphicsDriverVersion = shortcut.getExtra("wrapperGraphicsDriverVersion", shortcut.container.getWrapperGraphicsDriverVersion());
-        new GraphicsDriverConfigDialog(anchor, graphicsDriverVersion, graphicsDriver, shortcut.container.isBionic(), (version) -> {
+        new GraphicsDriverConfigDialog(anchor, graphicsDriverVersion, graphicsDriver, (version) -> {
             // Update the shortcut's graphics driver version with the selected version from the dialog.
             if (graphicsDriver.contains("turnip"))     
                 shortcut.putExtra("turnipGraphicsDriverVersion", version);

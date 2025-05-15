@@ -306,7 +306,7 @@ public class ShortcutsFragment extends Fragment {
                     writer.write("Platform Type: Custom\n");
                     writer.write("Name: Windows (or Winlator, whatever you prefer)\n");
                     writer.write("Short name: windows\n");
-                    writer.write("Player app: Select Winlator.glibcmod (or whichever fork you are using that has adopted this code)\n");
+                    writer.write("Player app: Select Winlator.CMOD (or whichever fork you are using that has adopted this code)\n");
                     writer.write("ROMs folder: Use Android FilePicker to select the Downloads\\Winlator\\Frontend directory\n");
                     writer.write("Expand Advanced:\n");
                     writer.write("File handling: Default\n");

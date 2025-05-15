@@ -627,20 +627,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Check if a profile is defined by the shortcut
         String controlsProfile = shortcut != null ? shortcut.getExtra("controlsProfile", "") : "";
-        
-       if (container != null && container.isBionic()) {
-           switchUsrSymlinkToBionic();
-       } 
-       else {
-           switchUsrSymlinkToGlibc();
-        }
-       
-        if (container.isBionic()) {
-            switchWineSymlinkToBionic(imageFs);
-        } 
-        else {
-            switchWineSymlinkToGlibc(imageFs);
-        }
 
         Runnable runnable = () -> {
             setupUI();
@@ -657,7 +643,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 //                    container.setGraphicsDriverVersion(originalContainerDriverVersion);
 //                    container.saveData();
                     changeWineAudioDriver();
-                    if (container != null && container.isBionic()) {
+                    if (container != null) {
                         if (emulator.toLowerCase().equals("fexcore"))
                             envVars.put("HODLL", "libwow64fex.dll");
                         else
@@ -685,47 +671,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             configChangedCallback = runnable;
         } else
               runnable.run();
-    }
-
-    private void switchUsrSymlinkToBionic() {
-        File rootDir = imageFs.getRootDir();
-        File usrLink = new File(rootDir, "usr");
-        File usrBionic = new File(rootDir, "usr.bionic");
-
-        // 1) Remove the existing 'usr' symlink or folder
-        FileUtils.delete(usrLink);
-
-        // 2) Symlink /usr -> usr.bionic
-        FileUtils.symlink("usr.bionic", usrLink.getAbsolutePath());
-        Log.d("XServerDisplayActivity", "Switched /usr → /usr.bionic (Bionic mode).");
-    }
-
-    private void switchUsrSymlinkToGlibc() {
-        File rootDir = imageFs.getRootDir();
-        File usrLink = new File(rootDir, "usr");
-        File usrGlibc = new File(rootDir, "usr.glibc");
-
-        FileUtils.delete(usrLink);
-
-        // Symlink /usr -> usr.glibc
-        FileUtils.symlink("usr.glibc", usrLink.getAbsolutePath());
-        Log.d("XServerDisplayActivity", "Switched /usr → /usr.glibc (Glibc mode).");
-    }
-
-    private void switchWineSymlinkToBionic(ImageFs imageFs) {
-        File link = new File(imageFs.getRootDir(), "opt/wine");
-        File bionicDir = new File(imageFs.getRootDir(), "opt/wine.bionic");
-        FileUtils.delete(link);
-        FileUtils.symlink(bionicDir.getName(), link.getAbsolutePath());
-        Log.d("ContainerDetailFragment", "Switched /opt/wine → /opt/wine.bionic");
-    }
-
-    private void switchWineSymlinkToGlibc(ImageFs imageFs) {
-        File link = new File(imageFs.getRootDir(), "opt/wine");
-        File glibcDir = new File(imageFs.getRootDir(), "opt/wine.glibc");
-        FileUtils.delete(link);
-        FileUtils.symlink(glibcDir.getName(), link.getAbsolutePath());
-        Log.d("ContainerDetailFragment", "Switched /opt/wine → /opt/wine.glibc");
     }
 
     // Method to parse container_id from .desktop file
@@ -906,7 +851,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void exit() {
-        boolean once;
         if (midiHandler != null) midiHandler.stop();
         // Unregister sensor listener to avoid memory leaks
         if (sensorManager != null) sensorManager.unregisterListener(gyroListener);
@@ -964,8 +908,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
     }
 
-
-
     @SuppressLint("SourceLockedOrientationActivity")
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -975,10 +917,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 AppUtils.showKeyboard(this);
                 drawerLayout.closeDrawers();
                 break;
-//            case R.id.main_menu_gamepad_configurator: // New case for gamepad configurator
-//                showGamepadConfiguratorDialog();
-//                drawerLayout.closeDrawers();
-//                break;
             case R.id.main_menu_input_controls:
                 showInputControlsDialog();
                 drawerLayout.closeDrawers();
@@ -988,10 +926,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 drawerLayout.closeDrawers();
                 touchpadView.toggleFullscreen();
                 break;
-//            case R.id.main_menu_toggle_orientation:
-//                // Handle orientation toggle
-//                drawerLayout.closeDrawers();
-//                break;
             case R.id.main_menu_pip_mode:
                 enterPictureInPictureMode();
                 drawerLayout.closeDrawers();
@@ -1044,7 +978,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 screenEffectDialog.show();
                 drawerLayout.closeDrawers();
                 break;
-
             case R.id.main_menu_logs:
                 debugDialog.show();
                 drawerLayout.closeDrawers();
@@ -1054,100 +987,84 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 break;
             case R.id.main_menu_terminal:  // New case for TerminalActivity
                 openTerminal();
-//                runWinetricksAfterSetup(container, contentsManager);
                 return true;
             case R.id.main_menu_winetricks:
-                if (!container.isBionic()) {
-                    if (winetricksFloatingView == null) {
-                        FrameLayout frameLayout = findViewById(R.id.FLXServerDisplay);
+                if (winetricksFloatingView == null) {
+                    FrameLayout frameLayout = findViewById(R.id.FLXServerDisplay);
+                    winetricksFloatingView = new WinetricksFloatingView(this);
+                    winetricksFloatingView.setWinetricksListener(new WinetricksFloatingView.WinetricksListener() {
+                        @Override
+                        public void onWinetricksStableClick(String verb, TextView outputView) {
+                            if (!verb.isEmpty()) {
+                                runWinetricksWithVerb(container, contentsManager, verb, outputView); // Use container here
+                            } else {
+                                Toast.makeText(XServerDisplayActivity.this, "Please enter a Winetricks verb", Toast.LENGTH_SHORT).show();
+                            }
+                        }
 
-                        winetricksFloatingView = new WinetricksFloatingView(this);
-                        winetricksFloatingView.setWinetricksListener(new WinetricksFloatingView.WinetricksListener() {
-                            @Override
-                            public void onWinetricksStableClick(String verb, TextView outputView) {
-                                if (!verb.isEmpty()) {
-                                    runWinetricksWithVerb(container, contentsManager, verb, outputView); // Use container here
+                        @Override
+                        public void onWinetricksLatestClick(String verb, TextView outputView) {
+                            if (!verb.isEmpty()) {
+                                runWinetricksLatestWithVerb(container, contentsManager, verb, outputView); // Use container here
+                            } else {
+                                Toast.makeText(XServerDisplayActivity.this, "Please enter a Winetricks verb", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+
+                        @Override
+                        public void onOpenWinetricksFolder(TextView outputView) {
+                            runWinetricksFolder(container, contentsManager, outputView); // Use container here
+                        }
+
+                        @Override
+                        public void onToggleTransparency(View floatingView) {
+                            if (floatingView.getAlpha() < 1.0f) {
+                                floatingView.setAlpha(1.0f);
+                            } else {
+                                floatingView.setAlpha(0.5f);
+                            }
+                        }
+
+                        @Override
+                        public void onRestartWineserverClick(TextView outputView) {
+                            // NEW
+                            try {
+                                environment.setWinetricksRunning(true);
+                                // Determine whether to use Glibc or Bionic launcher based on preference
+                                if (bionicLauncher != null) {
+                                    bionicLauncher.restartWineServer();
                                 } else {
-                                    Toast.makeText(XServerDisplayActivity.this, "Please enter a Winetricks verb", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-
-                            @Override
-                            public void onWinetricksLatestClick(String verb, TextView outputView) {
-                                if (!verb.isEmpty()) {
-                                    runWinetricksLatestWithVerb(container, contentsManager, verb, outputView); // Use container here
-                                } else {
-                                    Toast.makeText(XServerDisplayActivity.this, "Please enter a Winetricks verb", Toast.LENGTH_SHORT).show();
-                                }
-                            }
-
-                            @Override
-                            public void onOpenWinetricksFolder(TextView outputView) {
-                                runWinetricksFolder(container, contentsManager, outputView); // Use container here
-                            }
-
-                            @Override
-                            public void onToggleTransparency(View floatingView) {
-                                if (floatingView.getAlpha() < 1.0f) {
-                                    floatingView.setAlpha(1.0f);
-                                } else {
-                                    floatingView.setAlpha(0.5f);
-                                }
-                            }
-
-                            @Override
-                            public void onRestartWineserverClick(TextView outputView) {
-                                // NEW
-                                try {
-                                    environment.setWinetricksRunning(true);
-
-                                    // Determine whether to use Glibc or Bionic launcher based on preference
-                                    if (glibcLauncher != null) {
-                                        glibcLauncher.restartWineServer();
-                                    } else if (bionicLauncher != null) {
-                                        bionicLauncher.restartWineServer();
-                                    } else {
-                                        runOnUiThread(() -> {
-                                            outputView.append("No valid launcher found; cannot restart Wineserver.\n");
-                                        });
-                                        return; // Exit the method early if no valid launcher is found
-                                    }
-
-                                    // If the environment needs frequent re-initialization
-                                    setupXEnvironment();
-
-                                    // Confirm to the user in logs
                                     runOnUiThread(() -> {
-                                        outputView.append("Wineserver restarted.\n");
+                                        outputView.append("No valid launcher found; cannot restart Wineserver.\n");
                                     });
-
-                                } catch (Exception e) {
-                                    runOnUiThread(() -> outputView.append("Error restarting wineserver: " + e.getMessage() + "\n"));
+                                    return; // Exit the method early if no valid launcher is found
                                 }
 
-                                environment.setWinetricksRunning(false);
+                                // If the environment needs frequent re-initialization
+                                setupXEnvironment();
+
+                                // Confirm to the user in logs
+                                runOnUiThread(() -> {
+                                    outputView.append("Wineserver restarted.\n");
+                                });
+
+                            } catch (Exception e) {
+                                runOnUiThread(() -> outputView.append("Error restarting wineserver: " + e.getMessage() + "\n"));
                             }
 
-                        });
+                            environment.setWinetricksRunning(false);
+                        }
 
-                        frameLayout.addView(winetricksFloatingView);
-                    } else {
-                        winetricksFloatingView.setVisibility(View.VISIBLE);
-                    }
-                    drawerLayout.closeDrawers();
-
-                    return true;
+                    });
+                    frameLayout.addView(winetricksFloatingView);
                 } else {
-                    // Explicitly run Toast on the UI thread
-                    runOnUiThread(() ->
-                            Toast.makeText(this, R.string.bionic_not_supported, Toast.LENGTH_SHORT).show()
-                    );
+                    winetricksFloatingView.setVisibility(View.VISIBLE);
                 }
+                drawerLayout.closeDrawers();
                 return true;
             case R.id.main_menu_exit:
                 exit();
                 break;
-
         }
         return true;
     }
@@ -1275,36 +1192,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         String rootPath = imageFs.getRootDir().getPath();
         FileUtils.clear(imageFs.getTmpDir());
 
-        // Decide if we should use glibc or bionic launcher
-        boolean usrGlibc = preferences.getBoolean("use_glibc", true);
-
-        // Determine if the container is bionic
-        boolean isBionic = container != null && container.isBionic();
 
         // Create the appropriate launcher based on the container type
         GuestProgramLauncherComponent guestProgramLauncherComponent;
 
-
-
-        if (isBionic) {
-            // Create Bionic-based launcher
-            bionicLauncher = new BionicProgramLauncherComponent(
-                    contentsManager,
-                    contentsManager.getProfileByEntryName(container.getWineVersion()),
-                    shortcut
-            );
-            guestProgramLauncherComponent = bionicLauncher;
-            glibcLauncher = null; // We're not using glibc in this case
-        } else {
-            // Create Glibc-based launcher
-            glibcLauncher = new GlibcProgramLauncherComponent(
-                    contentsManager,
-                    contentsManager.getProfileByEntryName(container.getWineVersion()),
-                    shortcut
-            );
-            guestProgramLauncherComponent = glibcLauncher;
-            bionicLauncher = null; // We're not using bionic in this case
-        }
+        bionicLauncher = new BionicProgramLauncherComponent(
+                contentsManager,
+                contentsManager.getProfileByEntryName(container.getWineVersion()),
+                shortcut
+        );
+        guestProgramLauncherComponent = bionicLauncher;
+        glibcLauncher = null; // We're not using glibc in this case
 
         // Additional container checks and environment configuration
         if (container != null) {
@@ -1374,7 +1272,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                         UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)
                 )
         );
-
 
 
         environment.addComponent(new NetworkInfoUpdateComponent());
@@ -2239,18 +2136,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                selectedDriverVersion = currentWrapperVersion;
         }
 
-        if (container.isBionic() && graphicsDriver.equals("turnip") && !selectedDriverVersion.equals(DefaultVersion.TURNIP_BIONIC)) {
+        if (graphicsDriver.equals("turnip") && !selectedDriverVersion.equals(DefaultVersion.TURNIP)) {
             // Ensure Toast is run on the UI thread
-            selectedDriverVersion = DefaultVersion.TURNIP_BIONIC;
-        }
-        else if (!container.isBionic() && graphicsDriver.equals("turnip") && !selectedDriverVersion.equals(DefaultVersion.TURNIP_GLIBC)) {
-            selectedDriverVersion = DefaultVersion.TURNIP_GLIBC;
+            selectedDriverVersion = DefaultVersion.TURNIP;
         }
 
         // Adjust cacheId based on the graphics driver and version
         if (graphicsDriver.equals("turnip")) {
             cacheId += "-" + selectedDriverVersion;  // Append version if using Turnip driver
-            cacheId += "-" + DefaultVersion.ZINK;    // Append Zink version for Turnip driver
         } else if (graphicsDriver.equals("virgl")) {
             cacheId += "-" + DefaultVersion.VIRGL;   // Append version for VirGL driver
         } else if (graphicsDriver.equals("wrapper")) {
@@ -2259,8 +2152,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         Log.d("GraphicsDriverExtraction", "Cache ID: " + cacheId);
-
-
 
         boolean changed = !cacheId.equals(container.getExtra("graphicsDriver"));
 
@@ -2281,7 +2172,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             container.putExtra("graphicsDriver", cacheId);
             container.saveData();
         }
-
 
 
         if (graphicsDriver.equals("turnip")) {
@@ -2320,9 +2210,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             boolean extractionSucceeded = false;
             if (changed) {
                 // Use selectedDriverVersion instead of DefaultVersion.TURNIP
-                extractionSucceeded = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/turnip-" + selectedDriverVersion + ".tzst", rootDir) &&
-                        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink-" + DefaultVersion.ZINK + ".tzst", rootDir);
-
+                extractionSucceeded = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/turnip-" + selectedDriverVersion + ".tzst", rootDir);
                 if (extractionSucceeded) {
                     Log.d("GraphicsDriverExtraction", "Extraction from .tzst files succeeded.");
                 } else {
@@ -2336,10 +2224,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 String normalizedVersion = selectedDriverVersion.replaceFirst("Turnip-", "");
                 File contentsDir = new File(getFilesDir(), "contents");
                 File turnipDir = new File(contentsDir, "Turnip/" + normalizedVersion + "/turnip");
-                File zinkDir = new File(contentsDir, "Turnip/" + normalizedVersion + "/zink");
 
                 Log.d("GraphicsDriverExtraction", "Checking for Turnip directory: " + turnipDir.getAbsolutePath());
-                Log.d("GraphicsDriverExtraction", "Checking for Zink directory: " + zinkDir.getAbsolutePath());
 
                 if (turnipDir.exists() && turnipDir.isDirectory()) {
                     Log.d("GraphicsDriverExtraction", "Driver directory found in contents: " + turnipDir.getAbsolutePath());
@@ -2367,9 +2253,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                         }
                     }
 
-                    if (zinkDir.exists() && zinkDir.isDirectory()) {
-                        FileUtils.copy(zinkDir, libDir); // Copy contents of 'zink' folder if exists
-                    }
                     Log.d("GraphicsDriverExtraction", "Driver successfully installed from contents manager: " + selectedDriverVersion);
                     contentsManager.markGraphicsDriverInstalled(selectedDriverVersion); // Mark as installed
                 } else {
@@ -2448,78 +2331,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
         }
     }
-
-
-
-
-    private String createCacheIdForDriver(String driver) {
-        if (driver.equals("turnip")) {
-            if (container.isBionic())
-                return driver + "-" + DefaultVersion.TURNIP_BIONIC + "-" + DefaultVersion.ZINK;
-            else
-                return driver + "-" + DefaultVersion.TURNIP_GLIBC + "-" + DefaultVersion.ZINK;
-        } else if (driver.equals("virgl")) {
-            return driver + "-" + DefaultVersion.VIRGL;
-        }
-        return driver;
-    }
-
-    private void clearOldDriverFiles() {
-        FileUtils.delete(new File(imageFs.getLibDir(), "libvulkan_freedreno.so"));
-        FileUtils.delete(new File(imageFs.getLibDir(), "libGL.so.1.7.0.so"));
-        FileUtils.delete(new File(imageFs.getLibDir(), "libvulkan_wrapper.so"));
-    }
-
-    private void configureTurnipDriver() {
-        if (dxwrapper.equals("dxvk")) {
-            DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-        } else if (dxwrapper.equals("vkd3d")) {
-            VKD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-        }
-
-        envVars.put("GALLIUM_DRIVER", "zink");
-        envVars.put("TU_OVERRIDE_HEAP_SIZE", "4096");
-        if (!envVars.has("MESA_VK_WSI_PRESENT_MODE")) envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
-        envVars.put("vblank_mode", "0");
-
-        if (!GPUInformation.isAdreno6xx()) {
-            EnvVars userEnvVars = new EnvVars(container.getEnvVars());
-            String tuDebug = userEnvVars.get("TU_DEBUG");
-            if (!tuDebug.contains("sysmem")) {
-                userEnvVars.put("TU_DEBUG", (!tuDebug.isEmpty() ? tuDebug + "," : "") + "sysmem");
-            }
-            container.setEnvVars(userEnvVars.toString());
-        }
-
-        boolean useDRI3 = preferences.getBoolean("use_dri3", true);
-        if (!useDRI3) {
-            envVars.put("MESA_VK_WSI_PRESENT_MODE", "immediate");
-            envVars.put("MESA_VK_WSI_DEBUG", "sw");
-        }
-    }
-
-    private void extractTurnipDriverFiles(File rootDir) {
-        if (container.isBionic())
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/turnip-" + DefaultVersion.TURNIP_BIONIC + ".tzst", rootDir);
-        else
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/turnip-" + DefaultVersion.TURNIP_GLIBC + ".tzst", rootDir);
-
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink-" + DefaultVersion.ZINK + ".tzst", rootDir);
-    }
-
-    private void configureVirGLDriver() {
-        envVars.put("GALLIUM_DRIVER", "virpipe");
-        envVars.put("VIRGL_NO_READBACK", "true");
-        envVars.put("VIRGL_SERVER_PATH", UnixSocketConfig.VIRGL_SERVER_PATH);
-        envVars.put("MESA_EXTENSION_OVERRIDE", "-GL_EXT_vertex_array_bgra");
-        envVars.put("MESA_GL_VERSION_OVERRIDE", "3.1");
-        envVars.put("vblank_mode", "0");
-    }
-
-    private void extractVirGLDriverFiles(File rootDir) {
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/virgl-" + DefaultVersion.VIRGL + ".tzst", rootDir);
-    }
-
 
     private void showTouchpadHelpDialog() {
         ContentDialog dialog = new ContentDialog(this, R.layout.touchpad_help_dialog);
@@ -2697,7 +2508,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         File userRegFile = new File(rootDir, ImageFs.WINEPREFIX + "/user.reg");
         final String dllOverridesKey = "Software\\Wine\\DllOverrides";
 
-        if (container.isBionic() && (graphicsDriver.contains("turnip") || graphicsDriver.contains("wrapper")) && changed) {
+        if ((graphicsDriver.contains("turnip") || graphicsDriver.contains("wrapper")) && changed) {
             try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
                 for (String name : dlls) registryEditor.setStringValue(dllOverridesKey, name, "native, builtin");
             }
@@ -2842,14 +2653,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         File system32dlls = null;
         File syswow64dlls = null;
 
-        if (container.isBionic()) {
-            system32dlls = new File(rootDir, "opt/wine.bionic/lib/wine/aarch64-windows");
-            syswow64dlls = new File(rootDir, "opt/wine.bionic/lib/wine/i386-windows");
-        }
-        else {
-            system32dlls = new File(rootDir, "opt/wine.glibc/lib/wine/x86_64-windows");
-            syswow64dlls = new File(rootDir, "opt/wine.glibc/lib/wine/i386-windows");
-        }
+        system32dlls = new File(rootDir, "opt/wine/lib/wine/aarch64-windows");
+        syswow64dlls = new File(rootDir, "opt/wine/lib/wine/i386-windows");
 
         int filesCopied = 0;
 

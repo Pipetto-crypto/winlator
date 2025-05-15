@@ -50,16 +50,8 @@ public class TerminalActivity extends AppCompatActivity {
         // Initialize ContentsManager
         ContentsManager contentsManager = new ContentsManager(this);
 
-        // Load preference to determine whether to use Glibc or Bionic
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
-        boolean useGlibc = preferences.getBoolean("use_glibc", true);
-
         // Choose the appropriate launcher based on preference
-        if (useGlibc) {
-            launcher = new GlibcProgramLauncherComponent(contentsManager, null, null);
-        } else {
-            launcher = new BionicProgramLauncherComponent(contentsManager, null, null);
-        }
+        launcher = new BionicProgramLauncherComponent(contentsManager, null, null);
 
         // Add the launcher to XEnvironment
         xEnvironment.addComponent(launcher);

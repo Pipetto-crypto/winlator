@@ -400,10 +400,6 @@ public class SettingsFragment extends Fragment {
         }
         btHelpTriggerMode.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_trigger_mode));
 
-        final CheckBox cbUseGlibc = view.findViewById(R.id.CBUseGlibc);
-        cbUseGlibc.setChecked(preferences.getBoolean("use_glibc", true));
-        cbUseGlibc.setEnabled(false);
-
         final CheckBox cbEnableFileProvider = view.findViewById(R.id.CBEnableFileProvider);
         final View btHelpFileProvider = view.findViewById(R.id.BTHelpFileProvider);
 
@@ -450,7 +446,6 @@ public class SettingsFragment extends Fragment {
             editor.putBoolean("enable_wine_debug", cbEnableWineDebug.isChecked());
             editor.putBoolean("enable_box86_64_logs", cbEnableBox86_64Logs.isChecked());
             editor.putInt("trigger_type", triggerRbIds.indexOf(rgTriggerType.getCheckedRadioButtonId()));
-            editor.putBoolean("use_glibc", cbUseGlibc.isChecked());
             editor.putBoolean("cursor_lock", cbCursorLock.isChecked()); // Save cursor lock state
             editor.putBoolean("xinput_toggle", cbXinputToggle.isChecked()); // Save xinput toggle state
             editor.putBoolean("touchscreen_toggle", cbXTouchscreenToggle.isChecked()); // Save touchscreen toggle state

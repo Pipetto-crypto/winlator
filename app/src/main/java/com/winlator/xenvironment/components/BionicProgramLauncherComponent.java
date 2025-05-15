@@ -190,9 +190,18 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("HOME", imageFs.home_path);
         envVars.put("USER", ImageFs.USER);
         envVars.put("TMPDIR", rootDir.getPath() + "/usr/tmp");
+        envVars.put("XDG_DATA_DIRS", rootDir.getPath() + "/usr/share");
+        envVars.put("LD_LIBRARY_PATH", rootDir.getPath() + "/usr/lib" + ":" + "/system/lib64");
+        envVars.put("XDG_CONFIG_DIRS", rootDir.getPath() + "/usr/etc/xdg");
+        envVars.put("GST_PLUGIN_PATH", rootDir.getPath() + "/usr/lib/gstreamer-1.0");
+        envVars.put("FONTCONFIG_PATH", rootDir.getPath() + "/usr/etc/fonts");
+        envVars.put("VK_LAYER_PATH", imageFs.getRootDir() + "/usr/share/vulkan/implicit_layer.d");
+        envVars.put("WINE_NO_DUPLICATE_EXPLORER", "1");
+        envVars.put("PREFIX", rootDir.getPath() + "/usr");
         envVars.put("DISPLAY", ":0");
         envVars.put("WINE_DISABLE_FULLSCREEN_HACK", "1");
         envVars.put("ENABLE_UTIL_LAYER", "1");
+
 
         String winePath = wineProfile == null ? imageFs.getWinePath() + "/bin"
                 : ContentsManager.getSourceFile(context, wineProfile, wineProfile.wineBinPath).getAbsolutePath();

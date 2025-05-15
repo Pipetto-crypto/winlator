@@ -65,10 +65,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRAM = view.findViewById(R.id.TVRAM);
         totalRAM = getTotalRAM();
         tvContainer = view.findViewById(R.id.TVContainer);
-        if (container.isBionic())
-            tvContainer.setText("Bionic");
-        else
-            tvContainer.setText("Glibc");
+        tvContainer.setText("Bionic");
         addView(view);
     }
 
@@ -139,12 +136,10 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     public void setRenderer(String renderer) {
         this.renderer = renderer;
-        tvRenderer.setText(renderer);
     }
 
     public void setGpuName (String gpuName) {
         this.gpuName = gpuName;
-        tvGPU.setText(gpuName);
     }
 
     public void update() {
@@ -163,8 +158,14 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void run() {
         if (getVisibility() == GONE) setVisibility(View.VISIBLE);
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
-        if (renderer == null) tvRenderer.setText("OpenGL");
-        if (gpuName == null) tvGPU.setText(GPUInformation.getRenderer());
+        if (renderer != null)
+            tvRenderer.setText(renderer);
+        else
+            tvRenderer.setText("OpenGL");
+        if (gpuName != null)
+            tvGPU.setText(gpuName);
+        else
+            tvGPU.setText(GPUInformation.getRenderer());
         tvRAM.setText(getAvailableRAM() + " GB Used / " + totalRAM + " Total");
     }
 }

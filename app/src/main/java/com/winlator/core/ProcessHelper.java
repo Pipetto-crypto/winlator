@@ -30,22 +30,22 @@ public abstract class ProcessHelper {
 
     public static void suspendProcess(int pid) {
         Process.sendSignal(pid, SIGSTOP);
-        Log.d("GlibcDebug", "Process suspended with pid: " + pid);
+        Log.d("ProcessHelper", "Process suspended with pid: " + pid);
     }
 
     public static void resumeProcess(int pid) {
         Process.sendSignal(pid, SIGCONT);
-        Log.d("GlibcDebug", "Process resumed with pid: " + pid);
+        Log.d("ProcessHelper", "Process resumed with pid: " + pid);
     }
 
     public static void terminateProcess(int pid) {
         Process.sendSignal(pid, SIGTERM);
-        Log.d("GlibcDebug", "Process terminated with pid: " + pid);
+        Log.d("ProcessHelper", "Process terminated with pid: " + pid);
     }
 
     public static void killProcess(int pid) {
         Process.sendSignal(pid, SIGKILL);
-        Log.d("GlibcDebug", "Process killed with pid: " + pid);
+        Log.d("ProcessHelper", "Process killed with pid: " + pid);
     }
 
     public static void terminateAllWineProcesses() {
@@ -67,37 +67,36 @@ public abstract class ProcessHelper {
     }
 
     public static int exec(String command, String[] envp, File workingDir, Callback<Integer> terminationCallback) {
-        Log.d("GlibcDebug", "env: " + Arrays.toString(envp) + "\ncmd: " + command);
+        Log.d("ProcessHelper", "env: " + Arrays.toString(envp) + "\ncmd: " + command);
 
         // Store env vars for future use
         EnvironmentManager.setEnvVars(envp);
 
         int pid = -1;
         try {
-            Log.d("GlibcDebug", "Splitting command: " + command);
+            Log.d("ProcessHelper", "Splitting command: " + command);
             String[] splitCommand = splitCommand(command);
-            Log.d("GlibcDebug", "Split command result: " + Arrays.toString(splitCommand));
+            Log.d("ProcessHelper", "Split command result: " + Arrays.toString(splitCommand));
 
-            Log.d("GlibcDebug", "Starting process...");
+            Log.d("ProcessHelper", "Starting process...");
             java.lang.Process process = Runtime.getRuntime().exec(splitCommand, envp, workingDir);
 
             // Accessing hidden field
-            Log.d("GlibcDebug", "Accessing hidden field to get PID");
+            Log.d("ProcessHelper", "Accessing hidden field to get PID");
             Field pidField = process.getClass().getDeclaredField("pid");
             pidField.setAccessible(true);
             pid = pidField.getInt(process);
             pidField.setAccessible(false);
-            Log.d("GlibcDebug", "Process started with pid: " + pid);
+            Log.d("ProcessHelper", "Process started with pid: " + pid);
 
             if (!debugCallbacks.isEmpty()) {
                 createDebugThread(process.getInputStream());
                 createDebugThread(process.getErrorStream());
             }
 
-            if (terminationCallback != null) createWaitForThread(process, terminationCallback);
         }
         catch (Exception e) {
-            Log.e("GlibcDebug", "Error executing command: " + command, e);
+            Log.e("ProcessHelper", "Error executing command: " + command, e);
         }
         return pid;
     }
@@ -116,19 +115,7 @@ public abstract class ProcessHelper {
                 }
             }
             catch (IOException e) {
-                Log.e("GlibcDebug", "Error in debug thread", e);
-            }
-        });
-    }
-
-    private static void createWaitForThread(java.lang.Process process, final Callback<Integer> terminationCallback) {
-        Executors.newSingleThreadExecutor().execute(() -> {
-            try {
-                int status = process.waitFor();
-                terminationCallback.call(status);
-            }
-            catch (InterruptedException e) {
-                Log.e("GlibcDebug", "Error waiting for process termination", e);
+                Log.e("ProcessHelper", "Error in debug thread", e);
             }
         });
     }
@@ -136,21 +123,21 @@ public abstract class ProcessHelper {
     public static void removeAllDebugCallbacks() {
         synchronized (debugCallbacks) {
             debugCallbacks.clear();
-            Log.d("GlibcDebug", "All debug callbacks removed");
+            Log.d("ProcessHelper", "All debug callbacks removed");
         }
     }
 
     public static void addDebugCallback(Callback<String> callback) {
         synchronized (debugCallbacks) {
             if (!debugCallbacks.contains(callback)) debugCallbacks.add(callback);
-            Log.d("GlibcDebug", "Added debug callback: " + callback.toString());
+            Log.d("ProcessHelper", "Added debug callback: " + callback.toString());
         }
     }
 
     public static void removeDebugCallback(Callback<String> callback) {
         synchronized (debugCallbacks) {
             debugCallbacks.remove(callback);
-            Log.d("GlibcDebug", "Removed debug callback: " + callback.toString());
+            Log.d("ProcessHelper", "Removed debug callback: " + callback.toString());
         }
     }
 
