@@ -40,10 +40,8 @@ public class FrameRating extends FrameLayout implements Runnable {
     private String totalRAM = null;
     private final TextView tvFPS;
     private final TextView tvRenderer;
-    private final TextView tvCPU;
     private final TextView tvGPU;
     private final TextView tvRAM;
-    private final TextView tvContainer;
 
     public FrameRating(Context context, Container container) {
         this(context, container, null);
@@ -59,53 +57,10 @@ public class FrameRating extends FrameLayout implements Runnable {
         View view = LayoutInflater.from(context).inflate(R.layout.frame_rating, this, false);
         tvFPS = view.findViewById(R.id.TVFPS);
         tvRenderer = view.findViewById(R.id.TVRenderer);
-        tvCPU = view.findViewById(R.id.TVCPU);
-        tvCPU.setText(getSOCName(context));
         tvGPU = view.findViewById(R.id.TVGPU);
         tvRAM = view.findViewById(R.id.TVRAM);
         totalRAM = getTotalRAM();
-        tvContainer = view.findViewById(R.id.TVContainer);
-        tvContainer.setText("Bionic");
         addView(view);
-    }
-
-    private String getBoardName() {
-        String boardName = "";
-        try {
-            boardName = (String)Class.forName("android.os.SystemProperties").getMethod("get", String.class).invoke(null, "ro.board.platform");
-        }
-        catch (Exception e) {
-            Log.d("FrameRating", "Couldn't query board name, setting to generic board");
-            boardName = "generic";
-        }
-        return boardName;
-    }
-
-    private String getSOCName(Context context) {
-        String socName = "";
-        InputStream is = null;
-
-        try {
-            is = context.getAssets().open("cpu_database.json");
-            if (is != null) {
-                BufferedReader br = new BufferedReader(new InputStreamReader(is));
-                String line;
-                StringBuilder sb = new StringBuilder();
-                while ((line = br.readLine()) != null) {
-                    sb.append(line);
-                }
-                String jsonString = new String(sb.toString());
-                JSONObject jobj = new JSONObject(jsonString);
-                JSONObject board = (JSONObject)jobj.get(getBoardName());
-                socName = board.getString("SoC");
-            }
-        }
-        catch (IOException | JSONException e) {
-            Log.d("FrameRating", "Couldn't query SoC, defaulting to generic SoC");
-            socName = "Generic Android AARCH64 CPU";
-        }
-        
-        return socName;
     }
     
     private String getTotalRAM() {
