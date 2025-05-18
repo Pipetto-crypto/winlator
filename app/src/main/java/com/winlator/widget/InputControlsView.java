@@ -36,6 +36,7 @@ import com.winlator.inputcontrols.ExternalController;
 import com.winlator.inputcontrols.ExternalControllerBinding;
 import com.winlator.inputcontrols.GamepadState;
 import com.winlator.math.Mathf;
+import com.winlator.winhandler.MouseEventFlags;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.Pointer;
 import com.winlator.xserver.XServer;
@@ -47,6 +48,7 @@ import java.util.TimerTask;
 
 public class InputControlsView extends View {
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
+    private static final byte MOUSE_WHEEL_DELTA = 120;
     private boolean editMode = false;
     private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
     private final Path path = new Path();
@@ -407,14 +409,18 @@ public class InputControlsView extends View {
 //    }
 
     private void createMouseMoveTimer() {
+        WinHandler winHandler = xServer.getWinHandler();
         if (mouseMoveTimer == null && profile != null) {
             final float cursorSpeed = profile.getCursorSpeed();
             mouseMoveTimer = new Timer();
             mouseMoveTimer.schedule(new TimerTask() {
                 @Override
                 public void run() {
-                    if (mouseMoveOffset.x != 0 || mouseMoveOffset.y != 0) { // Only move if there's an offset
-                        xServer.injectPointerMoveDelta(
+                    if (mouseMoveOffset.x != 0 || mouseMoveOffset.y != 0) {// Only move if there's an offsete if there's an offset
+                        if (xServer.isRelativeMouseMovement() || xServer.isForceMouseControl())
+                            winHandler.mouseEvent(MouseEventFlags.MOVE, (int) (mouseMoveOffset.x * cursorSpeed * 10), (int) (mouseMoveOffset.y * cursorSpeed * 10), 0);
+                        else
+                            xServer.injectPointerMoveDelta(
                                 (int) (mouseMoveOffset.x * cursorSpeed * 10),
                                 (int) (mouseMoveOffset.y * cursorSpeed * 10)
                         );
@@ -695,8 +701,8 @@ public class InputControlsView extends View {
     }
 
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {
+        WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (binding.isGamepad()) {
-            WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
             GamepadState state = profile.getGamepadState();
 
             int buttonIdx = binding.ordinal() - Binding.GAMEPAD_BUTTON_A.ordinal();
@@ -744,13 +750,22 @@ public class InputControlsView extends View {
                 Pointer.Button pointerButton = binding.getPointerButton();
                 if (isActionDown) {
                     if (pointerButton != null) {
-                        xServer.injectPointerButtonPress(pointerButton);
+                        if (xServer.isRelativeMouseMovement() || xServer.isForceMouseControl()) {
+                            int wheelDelta = pointerButton == Pointer.Button.BUTTON_SCROLL_UP ? MOUSE_WHEEL_DELTA : (pointerButton == Pointer.Button.BUTTON_SCROLL_DOWN ? -MOUSE_WHEEL_DELTA : 0);
+                            winHandler.mouseEvent(MouseEventFlags.getFlagFor(pointerButton, true), 0, 0, wheelDelta);
+                        } else {
+                            xServer.injectPointerButtonPress(pointerButton);
+                        }
                     }
                     else xServer.injectKeyPress(binding.keycode);
                 }
                 else {
                     if (pointerButton != null) {
-                        xServer.injectPointerButtonRelease(pointerButton);
+                        if (xServer.isRelativeMouseMovement() || xServer.isForceMouseControl()) {
+                            winHandler.mouseEvent(MouseEventFlags.getFlagFor(pointerButton, false), 0, 0, 0);
+                        } else {
+                            xServer.injectPointerButtonRelease(pointerButton);
+                        }
                     }
                     else xServer.injectKeyRelease(binding.keycode);
                 }
