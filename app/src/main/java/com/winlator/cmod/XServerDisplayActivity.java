@@ -2112,7 +2112,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             selectedDriverVersion = currentWrapperVersion;
         }
 
-        adrenoToolsDriverId = (selectedDriverVersion.contains("System")) ? "" : selectedDriverVersion;
+        adrenoToolsDriverId = (selectedDriverVersion.contains("System")) ? "System" : selectedDriverVersion;
         Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
 
         File rootDir = imageFs.getRootDir();
@@ -2135,15 +2135,19 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         envVars.put("GALLIUM_DRIVER", "zink");
         envVars.put("LIBGL_KOPPER_DISABLE", "true");
 
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
-        if (adrenoToolsDriverId != "") {
+        if (firstTimeBoot) {
+            Log.d("XServerDisplayActivity", "First time container boot, re-extracting wrapper");
+            extractZinkDlls();
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
+        }
+
+        if (adrenoToolsDriverId != "System") {
             AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
             adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
         }
         String blacklistedExtensions = container.getBlacklistedExtensions();
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
 
-        extractZinkDlls();
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             String videoMemorySize = registryEditor.getStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", String.valueOf(GPUInformation.getMemorySize()));
             envVars.put("UTIL_LAYER_VMEM_MAX_SIZE", videoMemorySize);
