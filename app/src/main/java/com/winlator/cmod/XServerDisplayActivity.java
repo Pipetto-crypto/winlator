@@ -2137,8 +2137,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (firstTimeBoot) {
             Log.d("XServerDisplayActivity", "First time container boot, re-extracting wrapper");
-            extractZinkDlls();
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_libs" + ".tzst", rootDir);
         }
 
         if (adrenoToolsDriverId != "System") {
@@ -2332,19 +2332,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             preloaderDialog.closeOnUiThread();
             AppUtils.restartApplication(this, R.id.main_menu_settings);
         }));
-    }
-    
-    private void extractZinkDlls() {
-        final String[] dlls = {"opengl32"};
-        File rootDir = imageFs.getRootDir();
-        File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
-        File userRegFile = new File(rootDir, ImageFs.WINEPREFIX + "/user.reg");
-        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
-
-        try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
-            for (String name : dlls) registryEditor.setStringValue(dllOverridesKey, name, "native, builtin");
-        }
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls.tzst", windowsDir, onExtractFileListener);
     }
 
     private static final String TAG = "DXWrapperExtraction";
