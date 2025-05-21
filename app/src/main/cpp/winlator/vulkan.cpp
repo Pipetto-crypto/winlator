@@ -61,7 +61,7 @@ std::vector<VkPhysicalDevice> get_physical_devices(VkInstance instance) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_winlator_core_GPUInformation_getVersion(JNIEnv *env, jclass obj) {
+Java_com_winlator_cmod_core_GPUInformation_getVersion(JNIEnv *env, jclass obj) {
     VkPhysicalDeviceProperties props = {};
     char *driverVersion;
     VkInstance instance;
@@ -85,7 +85,7 @@ Java_com_winlator_core_GPUInformation_getVersion(JNIEnv *env, jclass obj) {
 }
 
 extern "C" JNIEXPORT jstring JNICALL
-Java_com_winlator_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj) {
+Java_com_winlator_cmod_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj) {
     VkPhysicalDeviceProperties props = {};
     char *renderer;
     VkInstance instance;
@@ -105,7 +105,7 @@ Java_com_winlator_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj) {
 }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_winlator_core_GPUInformation_getMemorySize(JNIEnv *env, jclass obj) {
+Java_com_winlator_cmod_core_GPUInformation_getMemorySize(JNIEnv *env, jclass obj) {
     VkPhysicalDeviceMemoryProperties props = {};
     long memorySize;
     VkInstance instance;
@@ -124,7 +124,7 @@ Java_com_winlator_core_GPUInformation_getMemorySize(JNIEnv *env, jclass obj) {
 }
 
 extern "C" JNIEXPORT jobjectArray JNICALL
-Java_com_winlator_core_GPUInformation_enumerateExtensions(JNIEnv *env, jclass obj) {
+Java_com_winlator_cmod_core_GPUInformation_enumerateExtensions(JNIEnv *env, jclass obj) {
     jobjectArray extensions;
     VkInstance instance;
     uint32_t extensionCount;

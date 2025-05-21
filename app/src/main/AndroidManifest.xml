@@ -38,7 +38,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="Winlator.glibcmod"
+        android:label="Winlator CMOD"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme"
@@ -52,7 +52,7 @@
 
         <!-- Main activity -->
         <activity
-            android:name="com.winlator.MainActivity"
+            android:name="com.winlator.cmod.MainActivity"
             android:theme="@style/AppTheme.Dark"
             android:screenOrientation="sensor"
             android:exported="true"
@@ -64,17 +64,17 @@
         </activity>
 
         <activity
-            android:name="com.winlator.BigPictureActivity"
+            android:name="com.winlator.cmod.BigPictureActivity"
             android:theme="@style/Theme.AppCompat"
             android:exported="false" />
 
         <activity
-            android:name="com.winlator.TerminalActivity"
+            android:name="com.winlator.cmod.TerminalActivity"
             android:theme="@style/Theme.AppCompat"
             android:exported="false" />
 
         <activity
-            android:name="com.winlator.XServerDisplayActivity"
+            android:name="com.winlator.cmod.XServerDisplayActivity"
             android:theme="@style/AppThemeFullscreen"
             android:launchMode="singleTask"
             android:supportsPictureInPicture="true"
@@ -83,7 +83,7 @@
             android:exported="true" />
 
         <activity
-            android:name="com.winlator.XrActivity"
+            android:name="com.winlator.cmod.XrActivity"
             android:theme="@style/AppThemeFullscreen"
             android:launchMode="singleTask"
             android:resizeableActivity="false"
@@ -99,19 +99,19 @@
         </activity>
 
         <activity
-            android:name="com.winlator.ControlsEditorActivity"
+            android:name="com.winlator.cmod.ControlsEditorActivity"
             android:theme="@style/AppThemeFullscreen"
             android:screenOrientation="sensorLandscape"
             android:exported="false" />
 
         <activity
-            android:name="com.winlator.ExternalControllerBindingsActivity"
+            android:name="com.winlator.cmod.ExternalControllerBindingsActivity"
             android:theme="@style/AppTheme"
             android:screenOrientation="sensor"
             android:exported="false" />
 
         <activity
-            android:name="com.winlator.saves.CustomFilePickerActivity"
+            android:name=".saves.CustomFilePickerActivity"
             android:theme="@style/AppTheme"
             android:screenOrientation="sensor"
             android:exported="false" />
@@ -138,7 +138,7 @@
         <!-- Provider for Winlator’s DocumentProvider or similar usage -->
         <provider
             android:name=".core.WinlatorFilesProvider"
-            android:authorities="com.winlator.core.WinlatorFilesProvider"
+            android:authorities="com.winlator.cmod.core.WinlatorFilesProvider"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">

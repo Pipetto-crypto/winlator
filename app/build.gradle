@@ -21,18 +21,18 @@ plugins {
 tasks.register("prepareKotlinBuildScriptModel"){}
 
 android {
-    namespace 'com.winlator'
+    namespace 'com.winlator.cmod'
     // Keep compileSdk from your current config. If you want to match Termux-X11, you could set to 34.
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.winlator"
+        applicationId "com.winlator.cmod"
         minSdkVersion 26
         // We’re preserving Winlator’s request to keep targetSdkVersion at 28
         targetSdkVersion 28
 
         versionCode 20
-        versionName "7.1.4x-glibc-cmod-v12-alpha"
+        versionName "7.1.4x-cmod"
 
         // External native build from Winlator
         externalNativeBuild {

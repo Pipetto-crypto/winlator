@@ -368,7 +368,7 @@
             android:orientation="vertical"
             android:visibility="gone">
 
-            <com.winlator.widget.EnvVarsView
+            <com.winlator.cmod.widget.EnvVarsView
                 android:id="@+id/EnvVarsView"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
