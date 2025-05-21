@@ -108,7 +108,6 @@ import com.winlator.cmod.xenvironment.components.GuestProgramLauncherComponent;
 import com.winlator.cmod.xenvironment.components.NetworkInfoUpdateComponent;
 import com.winlator.cmod.xenvironment.components.PulseAudioComponent;
 import com.winlator.cmod.xenvironment.components.SysVSharedMemoryComponent;
-import com.winlator.cmod.xenvironment.components.VirGLRendererComponent;
 import com.winlator.cmod.xenvironment.components.XServerComponent;
 import com.winlator.cmod.xserver.Pointer;
 import com.winlator.cmod.xserver.Property;
@@ -191,11 +190,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private Handler handler;
     private Runnable savePlaytimeRunnable;
     private static final long SAVE_INTERVAL_MS = 1000;
-
-//    private boolean overrideGraphicsDriver = false;
-
-    private String currentTurnipVersion;
-    private String originalContainerDriverVersion;
 
     private Handler  timeoutHandler = new Handler(Looper.getMainLooper());
     private Runnable hideControlsRunnable;
@@ -1295,16 +1289,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             );
         }
 
-        // Graphics driver logic
-        if (graphicsDriver.equals("virgl")) {
-            environment.addComponent(
-                    new VirGLRendererComponent(
-                            xServer,
-                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.VIRGL_SERVER_PATH)
-                    )
-            );
-        }
-
         // RC (box86_64rc) file handling
         RCManager manager = new RCManager(this);
         manager.loadRCFiles();
@@ -2117,216 +2101,58 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 //    }
 
     private void extractGraphicsDriverFiles() {
-        String cacheId = graphicsDriver;
         String adrenoToolsDriverId = "";
-        String selectedDriverVersion = "";
-        String currentTurnipVersion = container.getTurnipGraphicsDriverVersion();
-        String currentWrapperVersion = container.getWrapperGraphicsDriverVersion();
+        String selectedDriverVersion;
 
-        if (graphicsDriver.contains("turnip"))
-            selectedDriverVersion = currentTurnipVersion; // Fetch the selected version
-        else if (graphicsDriver.contains("wrapper"))
-            selectedDriverVersion = currentWrapperVersion;
+        String currentWrapperVersion = container.getWrapperGraphicsDriverVersion();
+        selectedDriverVersion = currentWrapperVersion;
 
         if (shortcut != null) {
-            currentTurnipVersion = shortcut.getExtra("turnipGraphicsDriverVersion", container.getTurnipGraphicsDriverVersion());
             currentWrapperVersion = shortcut.getExtra("wrapperGraphicsDriverVersion", container.getWrapperGraphicsDriverVersion());
-           if (graphicsDriver.equals("turnip"))
-               selectedDriverVersion = currentTurnipVersion; // Fetch the selected version
-           else
-               selectedDriverVersion = currentWrapperVersion;
+            selectedDriverVersion = currentWrapperVersion;
         }
 
-        if (graphicsDriver.equals("turnip") && !selectedDriverVersion.equals(DefaultVersion.TURNIP)) {
-            // Ensure Toast is run on the UI thread
-            selectedDriverVersion = DefaultVersion.TURNIP;
-        }
+        adrenoToolsDriverId = (selectedDriverVersion.contains("System")) ? "" : selectedDriverVersion;
+        Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
 
-        // Adjust cacheId based on the graphics driver and version
-        if (graphicsDriver.equals("turnip")) {
-            cacheId += "-" + selectedDriverVersion;  // Append version if using Turnip driver
-        } else if (graphicsDriver.equals("virgl")) {
-            cacheId += "-" + DefaultVersion.VIRGL;   // Append version for VirGL driver
-        } else if (graphicsDriver.equals("wrapper")) {
-            adrenoToolsDriverId = (selectedDriverVersion.contains("System")) ? "" : selectedDriverVersion;
-            Log.d("GraphicsDriverExtraction", "Adrenotools DriverID: " + adrenoToolsDriverId);
-        }
-
-        Log.d("GraphicsDriverExtraction", "Cache ID: " + cacheId);
-
-        boolean changed = !cacheId.equals(container.getExtra("graphicsDriver"));
-
-        // If launching without a shortcut (container-only launch), always extract to reset to the container's default
-        if (shortcut == null) {
-            changed = true;  // Force extraction when no shortcut is present to ensure correct driver is used
-        }
-
-        File rootDir = imageFs.getRootDir(); // Target the root directory of imagefs
+        File rootDir = imageFs.getRootDir();
         File userRegFile = new File(rootDir, ImageFs.WINEPREFIX + "/user.reg");
-        final String dllOverridesKey = "Software\\Wine\\DllOverrides";
 
-
-        if (changed) {
-            FileUtils.delete(new File(imageFs.getLibDir(), "libvulkan_freedreno.so"));
-            FileUtils.delete(new File(imageFs.getLibDir(), "libGL.so.1.7.0"));
-            FileUtils.delete(new File(imageFs.getLibDir(), "libvulkan_wrapper.so"));
-            container.putExtra("graphicsDriver", cacheId);
-            container.saveData();
+        if (dxwrapper.equals("dxvk")) {
+            DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
+        } else if (dxwrapper.equals("vkd3d")) {
+            VKD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
         }
 
+        if (!envVars.has("MESA_VK_WSI_PRESENT_MODE")) envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
 
-        if (graphicsDriver.equals("turnip")) {
-            if (dxwrapper.equals("dxvk")) {
-                DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-            } else if (dxwrapper.equals("vkd3d")) {
-                VKD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-            }
-
-            envVars.put("GALLIUM_DRIVER", "zink");
-            envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/freedreno_icd.aarch64.json");
-            envVars.put("TU_OVERRIDE_HEAP_SIZE", "4096");
-            if (!envVars.has("MESA_VK_WSI_PRESENT_MODE")) envVars.put("MESA_VK_WSI_PRESENT_MODE", "mailbox");
-            envVars.put("vblank_mode", "0");
-
-            
-            
-            if (!GPUInformation.isAdreno6xx()) {
-                EnvVars userEnvVars = new EnvVars(container.getEnvVars());
-                String tuDebug = userEnvVars.get("TU_DEBUG");
-                if (!tuDebug.contains("sysmem"))
-                    userEnvVars.put("TU_DEBUG", (!tuDebug.isEmpty() ? tuDebug + "," : "") + "sysmem");
-                container.setEnvVars(userEnvVars.toString());
-            }
-
-            Log.d("superTest", "made it this far");
-
-            boolean useDRI3 = preferences.getBoolean("use_dri3", true);
-            if (!useDRI3) {
-                envVars.put("MESA_VK_WSI_PRESENT_MODE", "immediate");
-                envVars.put("MESA_VK_WSI_DEBUG", "sw");
-            }
-
-
-
-            boolean extractionSucceeded = false;
-            if (changed) {
-                // Use selectedDriverVersion instead of DefaultVersion.TURNIP
-                extractionSucceeded = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/turnip-" + selectedDriverVersion + ".tzst", rootDir);
-                if (extractionSucceeded) {
-                    Log.d("GraphicsDriverExtraction", "Extraction from .tzst files succeeded.");
-                } else {
-                    Log.e("GraphicsDriverExtraction", "Extraction from .tzst files failed, will attempt to use the contents directory.");
-                }
-            }
-
-
-            if (!extractionSucceeded) {
-                // Parse version string for the actual version number, removing "Turnip-"
-                String normalizedVersion = selectedDriverVersion.replaceFirst("Turnip-", "");
-                File contentsDir = new File(getFilesDir(), "contents");
-                File turnipDir = new File(contentsDir, "Turnip/" + normalizedVersion + "/turnip");
-
-                Log.d("GraphicsDriverExtraction", "Checking for Turnip directory: " + turnipDir.getAbsolutePath());
-
-                if (turnipDir.exists() && turnipDir.isDirectory()) {
-                    Log.d("GraphicsDriverExtraction", "Driver directory found in contents: " + turnipDir.getAbsolutePath());
-                    File libDir = new File(rootDir, "lib");
-                    libDir.mkdirs(); // Ensure the target directory exists
-
-                    File icdTargetDir = new File(rootDir, "usr/share/vulkan/icd.d"); // Define the target directory for the JSON file
-                    icdTargetDir.mkdirs(); // Ensure the target directory exists
-
-                    // Use FileUtils.copy to handle file and directory copying
-                    for (File file : turnipDir.listFiles()) {
-                        if (file.isFile()) {
-                            if (file.getName().equals("freedreno_icd.aarch64.json")) {
-                                File targetFile = new File(icdTargetDir, file.getName());
-                                FileUtils.copy(file, targetFile);
-                                Log.d("GraphicsDriverExtraction", "Moved " + file.getName() + " to " + icdTargetDir.getAbsolutePath());
-                            } else if (file.getName().equals("libvulkan_freedreno.so")) { // Correctly handle libvulkan_freedreno.so
-                                File targetFile = new File(libDir, file.getName());
-                                FileUtils.copy(file, targetFile);
-                                Log.d("GraphicsDriverExtraction", "Moved " + file.getName() + " to " + libDir.getAbsolutePath());
-                            }
-                        } else if (file.isDirectory()) {
-                            File targetDir = new File(libDir, file.getName());
-                            FileUtils.copy(file, targetDir);
-                        }
-                    }
-
-                    Log.d("GraphicsDriverExtraction", "Driver successfully installed from contents manager: " + selectedDriverVersion);
-                    contentsManager.markGraphicsDriverInstalled(selectedDriverVersion); // Mark as installed
-                } else {
-                    Log.d("GraphicsDriverExtraction", "Driver directory not found in contents: " + turnipDir.getAbsolutePath());
-                }
-            }
-        } else if (graphicsDriver.equals("virgl")) {
-            envVars.put("GALLIUM_DRIVER", "virpipe");
-            envVars.put("VIRGL_NO_READBACK", "true");
-            envVars.put("VIRGL_SERVER_PATH", rootDir.getPath() + UnixSocketConfig.VIRGL_SERVER_PATH);
-            envVars.put("MESA_EXTENSION_OVERRIDE", "-GL_EXT_vertex_array_bgra");
-            envVars.put("MESA_GL_VERSION_OVERRIDE", "3.1");
-            envVars.put("vblank_mode", "0");
-            if (changed)
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/virgl-" + DefaultVersion.VIRGL + ".tzst", rootDir);
-        } else if (graphicsDriver.equals("wrapper")) {
-            if (dxwrapper.equals("dxvk")) {
-                DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-            } else if (dxwrapper.equals("vkd3d")) {
-                VKD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-            }
-            envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
-            envVars.put("GALLIUM_DRIVER", "zink");
-            envVars.put("LIBGL_KOPPER_DISABLE", "true");
-            if (changed)
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
-            if (adrenoToolsDriverId != "") {
-                AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
-                adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
-            }
-            String blacklistedExtensions = container.getBlacklistedExtensions();
-            envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
+        boolean useDRI3 = preferences.getBoolean("use_dri3", true);
+        if (!useDRI3) {
+            envVars.put("MESA_VK_WSI_DEBUG", "sw");
         }
-        extractZinkDlls(changed);
+
+        envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir() + "/vulkan/icd.d/wrapper_icd.aarch64.json");
+        envVars.put("GALLIUM_DRIVER", "zink");
+        envVars.put("LIBGL_KOPPER_DISABLE", "true");
+
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/wrapper" + ".tzst", rootDir);
+        if (adrenoToolsDriverId != "") {
+            AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(this);
+            adrenotoolsManager.setDriverById(envVars, imageFs, adrenoToolsDriverId);
+        }
+        String blacklistedExtensions = container.getBlacklistedExtensions();
+        envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
+
+        extractZinkDlls();
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             String videoMemorySize = registryEditor.getStringValue("Software\\Wine\\Direct3D", "VideoMemorySize", String.valueOf(GPUInformation.getMemorySize()));
             envVars.put("UTIL_LAYER_VMEM_MAX_SIZE", videoMemorySize);
         }
     }
 
-    private void copyDirectory(File sourceDir, File destinationDir) throws IOException {
-        if (!destinationDir.exists()) {
-            destinationDir.mkdirs();
-        }
-
-        File[] files = sourceDir.listFiles();
-        if (files != null) {
-            for (File file : files) {
-                File destFile = new File(destinationDir, file.getName());
-                if (file.isDirectory()) {
-                    copyDirectory(file, destFile);
-                } else {
-                    copyFile(file, destFile);
-                }
-            }
-        }
-    }
-
     private void copyFile(File sourceFile, File destFile) throws IOException {
         try (InputStream inputStream = new FileInputStream(sourceFile);
              OutputStream outputStream = new FileOutputStream(destFile)) {
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = inputStream.read(buffer)) > 0) {
-                outputStream.write(buffer, 0, length);
-            }
-        }
-    }
-
-
-
-    private void copyAssetToFile(InputStream inputStream, File destinationFile) throws IOException {
-        try (OutputStream outputStream = new FileOutputStream(destinationFile)) {
             byte[] buffer = new byte[1024];
             int length;
             while ((length = inputStream.read(buffer)) > 0) {
@@ -2504,19 +2330,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }));
     }
     
-    private void extractZinkDlls(boolean changed) {
+    private void extractZinkDlls() {
         final String[] dlls = {"opengl32"};
         File rootDir = imageFs.getRootDir();
         File windowsDir = new File(rootDir, ImageFs.WINEPREFIX + "/drive_c/windows");
         File userRegFile = new File(rootDir, ImageFs.WINEPREFIX + "/user.reg");
         final String dllOverridesKey = "Software\\Wine\\DllOverrides";
 
-        if ((graphicsDriver.contains("turnip") || graphicsDriver.contains("wrapper")) && changed) {
-            try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
-                for (String name : dlls) registryEditor.setStringValue(dllOverridesKey, name, "native, builtin");
-            }
-            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls.tzst", windowsDir, onExtractFileListener);
+        try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
+            for (String name : dlls) registryEditor.setStringValue(dllOverridesKey, name, "native, builtin");
         }
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls.tzst", windowsDir, onExtractFileListener);
     }
 
     private static final String TAG = "DXWrapperExtraction";

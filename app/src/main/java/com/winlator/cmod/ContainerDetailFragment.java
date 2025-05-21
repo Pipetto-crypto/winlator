@@ -91,7 +91,6 @@ public class ContainerDetailFragment extends Fragment {
     private JSONArray gpuCards;
     private Callback<String> openDirectoryCallback;
 
-    private String turnipGraphicsDriverVersion = "";
     private String wrapperGraphicsDriverVersion = "";
     private String blacklistedExtensions = "";
 
@@ -354,7 +353,6 @@ public class ContainerDetailFragment extends Fragment {
         // Set container name and graphics driver version based on mode
         if (isEditMode()) {
             etName.setText(container.getName());
-            turnipGraphicsDriverVersion = container.getTurnipGraphicsDriverVersion();
             wrapperGraphicsDriverVersion = container.getWrapperGraphicsDriverVersion();
             blacklistedExtensions = container.getBlacklistedExtensions();
         } else {
@@ -501,7 +499,6 @@ public class ContainerDetailFragment extends Fragment {
 
         String selectedDriver = sGraphicsDriver.getSelectedItem().toString();
         List<String> sGraphicsItemsList = new ArrayList<>(Arrays.asList(context.getResources().getStringArray(R.array.graphics_driver_entries)));
-        sGraphicsItemsList.remove("VirGL");
         sGraphicsDriver.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, sGraphicsItemsList));
         AppUtils.setSpinnerSelectionFromValue(sGraphicsDriver, selectedDriver);
 
@@ -555,7 +552,6 @@ public class ContainerDetailFragment extends Fragment {
                 String screenSize = getScreenSize(view);
                 String envVars = envVarsView.getEnvVars();
                 String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-                String turnipGraphicsDriverVersion = (this.turnipGraphicsDriverVersion != "") ? this.turnipGraphicsDriverVersion : DefaultVersion.TURNIP;
                 String wrapperGraphicsDriverVersion = (this.wrapperGraphicsDriverVersion != "") ? this.wrapperGraphicsDriverVersion : DefaultVersion.WRAPPER;
                 String dxwrapper = StringUtils.parseIdentifier(sDXWrapper.getSelectedItem());
                 String dxwrapperConfig = vDXWrapperConfig.getTag().toString();
@@ -612,7 +608,6 @@ public class ContainerDetailFragment extends Fragment {
                     container.setCPUList(cpuList);
                     container.setCPUListWoW64(cpuListWoW64);
                     container.setGraphicsDriver(graphicsDriver);
-                    container.setTurnipGraphicsDriverVersion(turnipGraphicsDriverVersion);
                     container.setWrapperGraphicsDriverVersion(wrapperGraphicsDriverVersion);
                     container.setDXWrapper(dxwrapper);
                     container.setDXWrapperConfig(dxwrapperConfig);
@@ -647,12 +642,7 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("cpuList", cpuList);
                     data.put("cpuListWoW64", cpuListWoW64);
                     data.put("graphicsDriver", graphicsDriver);
-                    
-                    if (graphicsDriver.contains("turnip"))    
-                        data.put("turnipGraphicsDriverVersion", getTurnipGraphicsDriverVersion());
-                    else if (graphicsDriver.contains("wrapper"))   
-                        data.put("wrapperGraphicsDriverVersion", getWrapperGraphicsDriverVersion());
-                        
+                    data.put("wrapperGraphicsDriverVersion", getWrapperGraphicsDriverVersion());
                     data.put("dxwrapper", dxwrapper);
                     data.put("dxwrapperConfig", dxwrapperConfig);
                     data.put("audioDriver", audioDriver);
@@ -685,7 +675,6 @@ public class ContainerDetailFragment extends Fragment {
                     manager.createContainerAsync(data, (container) -> {
                         if (container != null) {
                             this.container = container;
-                            container.setTurnipGraphicsDriverVersion(turnipGraphicsDriverVersion);
                             container.setWrapperGraphicsDriverVersion(wrapperGraphicsDriverVersion);
                             container.setBlacklistedExtensions(blacklistedExtensions);
                             saveWineRegistryKeys(view);
@@ -883,21 +872,13 @@ public class ContainerDetailFragment extends Fragment {
     }
 
     private void showGraphicsDriverConfigDialog(View anchor, String graphicsDriver) {
-        String graphicsDriverVersion;
-        if (graphicsDriver.contains("turnip"))
-            graphicsDriverVersion = (turnipGraphicsDriverVersion != "") ? turnipGraphicsDriverVersion : DefaultVersion.TURNIP;
-        else
-            graphicsDriverVersion = (wrapperGraphicsDriverVersion != "") ? wrapperGraphicsDriverVersion : DefaultVersion.WRAPPER;
-
+        String graphicsDriverVersion = (wrapperGraphicsDriverVersion != "") ? wrapperGraphicsDriverVersion : DefaultVersion.WRAPPER;
         String blacklistedExtensions = this.blacklistedExtensions;
              
         // Create a new GraphicsDriverConfigDialog
         new GraphicsDriverConfigDialog(anchor, graphicsDriverVersion, blacklistedExtensions, graphicsDriver,  (version, blExtensions) -> {
             // Update the fragment-level variable with the selected version
-            if (graphicsDriver.contains("turnip"))    
-                turnipGraphicsDriverVersion = version;
-            else 
-                wrapperGraphicsDriverVersion = version;
+            this.wrapperGraphicsDriverVersion = version;
             this.blacklistedExtensions = blExtensions;
             Log.d("ContainerDetailFragment", "Selected graphics driver version: " + version);
             Log.d("ContainerDetailFragment", "Selected blacklisted extensions: " + blExtensions);
@@ -913,31 +894,19 @@ public class ContainerDetailFragment extends Fragment {
 
         Runnable update = () -> {
             String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
-            boolean isTurnip = graphicsDriver.equals("turnip");
-            boolean isWrapper = graphicsDriver.equals("wrapper");
 
             // Update the DXWrapper spinner
             ArrayList<String> items = new ArrayList<>();
             for (String value : context.getResources().getStringArray(R.array.dxwrapper_entries)) {
-                if (isTurnip || isWrapper || (!value.equals("DXVK") && !value.equals("VKD3D"))) {
-                    items.add(value);
-                }
+                items.add(value);
             }
             sDXWrapper.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, items.toArray(new String[0])));
             AppUtils.setSpinnerSelectionFromIdentifier(sDXWrapper, selectedDXWrapper);
 
-            // Update the gear icon for the graphics driver
-            if (isTurnip || isWrapper) {
-                vGraphicsDriverConfig.setOnClickListener((v) -> {
-
-                        showGraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver);
-
-                });
-                vGraphicsDriverConfig.setVisibility(View.VISIBLE);
-            }
-            else {
-                vGraphicsDriverConfig.setVisibility(View.GONE);  // VirGL doesn't allow version selection
-            }
+            vGraphicsDriverConfig.setOnClickListener((v) -> {
+                showGraphicsDriverConfigDialog(vGraphicsDriverConfig, graphicsDriver);
+            });
+            vGraphicsDriverConfig.setVisibility(View.VISIBLE);
         };
 
         sGraphicsDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -1182,26 +1151,6 @@ public class ContainerDetailFragment extends Fragment {
             wineVersions.add(ContentsManager.getEntryName(profile));
         sWineVersion.setAdapter(new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wineVersions));
         if (isEditMode()) AppUtils.setSpinnerSelectionFromValue(sWineVersion, container.getWineVersion());
-    }
-
-//    public static void updateGraphicsDriverSpinner(Context context, ContentsManager contentsManager, Spinner sGraphicsDriver) {
-//        if (contentsManager == null) {
-//            Log.e("ContainerDetailFragment", "ContentsManager is null, cannot update graphics driver spinner.");
-//            return;
-//        }
-//
-//        List<ContentProfile> profiles = contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_TURNIP);
-//        if (profiles == null) {
-//            Log.e("ContainerDetailFragment", "No profiles found for Turnip in ContentsManager.");
-//        } else {
-//            Log.d("ContainerDetailFragment", "Found " + profiles.size() + " Turnip profiles.");
-//        }
-//
-//        // Rest of the method...
-//    }
-    
-    public String getTurnipGraphicsDriverVersion() {
-        return turnipGraphicsDriverVersion;
     }
     
     public String getWrapperGraphicsDriverVersion() {

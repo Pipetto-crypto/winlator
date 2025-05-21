@@ -198,27 +198,12 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
 //    }
 
     private void populateGraphicsDriverVersions(Context context, ContentsManager contentsManager, @Nullable String initialVersion, @Nullable String blExtensions, String graphicsDriver) {
-        List<String> turnipVersions = new ArrayList<>();
         List<String> wrapperVersions = new ArrayList<>();
         ArrayList<String> availableExtensions = new ArrayList<>();
 
-        // Load the default versions from arrays.xml
-        String[] turnipDefaultVersions = context.getResources().getStringArray(R.array.turnip_graphics_driver_version_entries);
         String[] wrapperDefaultVersions = context.getResources().getStringArray(R.array.wrapper_graphics_driver_version_entries);
 
-        turnipVersions.addAll(Arrays.asList(turnipDefaultVersions));
         wrapperVersions.addAll(Arrays.asList(wrapperDefaultVersions));
-
-        // Add installed versions from ContentsManager
-        List<ContentProfile> profiles = contentsManager.getProfiles(ContentProfile.ContentType.CONTENT_TYPE_TURNIP);
-        if (profiles != null) {
-            for (ContentProfile profile : profiles) {
-                String profileName = ContentsManager.getEntryName(profile);
-                if (profileName != null && !turnipVersions.contains(profileName)) {
-                    turnipVersions.add(profileName);
-                }
-            }
-        }
         
         // Add installed versions from AdrenotoolsManager
         AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(context);
@@ -233,7 +218,6 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         }
 
         // Set the adapter and select the initial version
-        ArrayAdapter<String> turnipAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, turnipVersions);
         ArrayAdapter<String> wrapperAdapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, wrapperVersions);
         ExtensionAdapter extensionsAdapter = new ExtensionAdapter(context, availableExtensions);
 
@@ -246,10 +230,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
             }
         }
         
-        if (graphicsDriver.contains("turnip"))
-            sVersion.setAdapter(turnipAdapter);
-        else
-            sVersion.setAdapter(wrapperAdapter);
+        sVersion.setAdapter(wrapperAdapter);
 
         sAvailableExtensions.setAdapter(extensionsAdapter);
         
@@ -265,12 +246,6 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         Log.d(TAG, "Spinner selected value: " + sVersion.getSelectedItem());
     }
 
-
-
-    public String getSelectedVersion() {
-        return selectedVersion;
-    }
-
     private void setSpinnerSelectionWithFallback(Spinner spinner, String version, String graphicsDriver) {
         // First, attempt to find an exact match (case-insensitive)
         for (int i = 0; i < spinner.getCount(); i++) {
@@ -281,47 +256,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
             }
         }
 
-        // If no exact match is found, try to match based on base version
-        if (version != null && version.startsWith("Turnip")) {
-            String baseVersion = extractBaseVersionFromTurnip(version);
-            int lastTurnipIndex = -1;
-
-            for (int i = 0; i < spinner.getCount(); i++) {
-                String item = spinner.getItemAtPosition(i).toString();
-                // Check if the item is a Turnip version and matches the base version
-                if (item.startsWith("Turnip") && item.contains(baseVersion)) {
-                    spinner.setSelection(i);
-                    return;
-                }
-                // Save the index of the last Turnip version with the matching base version
-                if (item.equalsIgnoreCase(baseVersion)) {
-                    lastTurnipIndex = i;
-                }
-            }
-
-            // If no Turnip version matches, fall back to the last index of a base version match
-            if (lastTurnipIndex != -1) {
-                spinner.setSelection(lastTurnipIndex);
-                return;
-            }
-        }
-
-        if (graphicsDriver.contains("turnip")) {
-            AppUtils.setSpinnerSelectionFromValue(spinner, DefaultVersion.TURNIP);
-        }
-        else
-            AppUtils.setSpinnerSelectionFromValue(spinner, DefaultVersion.WRAPPER);
+        AppUtils.setSpinnerSelectionFromValue(spinner, DefaultVersion.WRAPPER);
     }
-
-    // Helper method to extract the base version from the Turnip string
-    private String extractBaseVersionFromTurnip(String version) {
-        // Assumes the format "Turnip-X.Y.Z-anything" and extracts "X.Y.Z"
-        String[] parts = version.split("-");
-        if (parts.length > 1) {
-            return parts[1]; // This should give us "X.Y.Z"
-        }
-        return version; // Fallback to the original version string
-    }
-
 
 }

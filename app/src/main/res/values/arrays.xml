@@ -19,12 +19,7 @@
         <item>1920x1080 (16:9)</item>
     </string-array>
     <string-array name="graphics_driver_entries">
-        <item>Turnip</item>
-        <item>VirGL</item>
         <item>Wrapper</item>
-    </string-array>
-    <string-array name="turnip_graphics_driver_version_entries">
-        <item>25.0.0</item>
     </string-array>
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>

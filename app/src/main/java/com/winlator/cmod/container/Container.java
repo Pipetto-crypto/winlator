@@ -26,8 +26,8 @@ public class Container {
     }
     public static final String DEFAULT_ENV_VARS = "ZINK_DESCRIPTORS=lazy ZINK_DEBUG=compact MESA_SHADER_CACHE_DISABLE=false MESA_SHADER_CACHE_MAX_SIZE=512MB mesa_glthread=true WINEESYNC=1 MESA_VK_WSI_PRESENT_MODE=mailbox TU_DEBUG=noconform,sysmem DXVK_HUD=devinfo,fps,frametimes,gpuload,version,api MANGOHUD=0 MANGOHUD_CONFIG=engine_version,gpu_stats=0";
     public static final String DEFAULT_SCREEN_SIZE = "1280x720";
-    public static final String DEFAULT_GRAPHICS_DRIVER = XrActivity.isSupported() ? "wrapper" : "turnip";
-    public static final String DEFAULT_AUDIO_DRIVER = XrActivity.isSupported() ? "pulseaudio" : "alsa";
+    public static final String DEFAULT_GRAPHICS_DRIVER = "wrapper";
+    public static final String DEFAULT_AUDIO_DRIVER = "alsa";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
     public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=0,directshow=0,directplay=0,xaudio=0,vcrun2010=1,windowsmediafoundation=0";
@@ -67,22 +67,11 @@ public class Container {
     private String controllerMapping = new String(new char[XrControllerMapping.values().length]);
     private String blacklistedExtensions;
 
-    private String turnipGraphicsDriverVersion = "24.3.0"; // Default version or fallback
     private String wrapperGraphicsDriverVersion = "System";
 
     private String emulator;
 
     private ContainerManager containerManager;
-
-
-    public String getTurnipGraphicsDriverVersion() {
-        return turnipGraphicsDriverVersion;
-    }
-
-    public void setTurnipGraphicsDriverVersion(String graphicsDriverVersion) {
-        Log.d("Container", "Setting graphicsDriverVersion: " + graphicsDriverVersion);
-        this.turnipGraphicsDriverVersion = graphicsDriverVersion;
-    }
     
     public String getWrapperGraphicsDriverVersion() {
         return wrapperGraphicsDriverVersion;
@@ -411,8 +400,6 @@ public class Container {
             data.put("cpuList", cpuList);
             data.put("cpuListWoW64", cpuListWoW64);
             data.put("graphicsDriver", graphicsDriver);
-            Log.d("Container", "Saving graphicsDriverVersions: " + turnipGraphicsDriverVersion + " " + wrapperGraphicsDriverVersion);
-            data.put("turnipGraphicsDriverVersion", turnipGraphicsDriverVersion); // Ensure this is added
             data.put("wrapperGraphicsDriverVersion", wrapperGraphicsDriverVersion);
             data.put("emulator", emulator);
             data.put("dxwrapper", dxwrapper);
@@ -467,9 +454,6 @@ public class Container {
                     break;
                 case "graphicsDriver" :
                     setGraphicsDriver(data.getString(key));
-                    break;
-                case "turnipGraphicsDriverVersion":
-                    setTurnipGraphicsDriverVersion(data.getString(key));
                     break;
                 case "wrapperGraphicsDriverVersion":
                     setWrapperGraphicsDriverVersion(data.getString(key));
@@ -566,11 +550,11 @@ public class Container {
 
             if (data.has("graphicsDriver")) {
                 String graphicsDriver = data.getString("graphicsDriver");
-                if (graphicsDriver.equals("turnip-zink")) {
-                    data.put("graphicsDriver", "turnip");
+                if (graphicsDriver.equals("turnip-zink") || graphicsDriver.equals("turnip")) {
+                    data.put("graphicsDriver", "wrapper");
                 }
                 else if (graphicsDriver.equals("llvmpipe")) {
-                    data.put("graphicsDriver", "virgl");
+                    data.put("graphicsDriver", "wrapper");
                 }
             }
 

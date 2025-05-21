@@ -173,7 +173,7 @@
                         android:id="@+id/TVGraphicsDriverVersionLabel"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Turnip Driver Version:"
+                        android:text="Driver Version:"
                         android:textStyle="bold"
                         android:textColor="@android:color/white" />
                     <TextView

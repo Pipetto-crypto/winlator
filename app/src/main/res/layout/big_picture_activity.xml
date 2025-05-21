@@ -146,7 +146,7 @@
         android:id="@+id/TVGraphicsDriverVersion"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="Turnip Driver Version:"
+        android:text="Driver Version:"
         android:textAppearance="?android:attr/textAppearanceSmall"
         android:textColor="@android:color/white"
         android:visibility="gone" />

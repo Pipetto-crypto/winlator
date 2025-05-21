@@ -21,7 +21,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/SGraphicsDriverVersion"
-            android:entries="@array/turnip_graphics_driver_version_entries"
             android:spinnerMode="dialog"/>
         <TextView
             android:layout_width="wrap_content"
@@ -35,7 +34,6 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:id="@+id/SGraphicsDriverAvailableExtensions"
-            android:entries="@array/turnip_graphics_driver_version_entries"
             android:spinnerMode="dialog"/>
     </LinearLayout>
 </ScrollView>

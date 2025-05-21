@@ -25,9 +25,6 @@ import java.util.Map;
 public class ContentsManager {
     public static final String PROFILE_NAME = "profile.json";
     public static final String REMOTE_PROFILES = "contents.json";
-    public static final String[] TURNIP_TRUST_FILES = {"${libdir}/libvulkan_freedreno.so", "${libdir}/libvulkan.so.1",
-            "${sharedir}/vulkan/icd.d/freedreno_icd.aarch64.json", "${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
-    public static final String[] VIRGL_TRUST_FILES = {"${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
     public static final String[] DXVK_TRUST_FILES = {"${system32}/d3d8.dll", "${system32}/d3d9.dll", "${system32}/d3d10.dll", "${system32}/d3d10_1.dll",
             "${system32}/d3d10core.dll", "${system32}/d3d11.dll", "${system32}/dxgi.dll", "${syswow64}/d3d8.dll", "${syswow64}/d3d9.dll", "${syswow64}/d3d10.dll",
             "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
@@ -53,8 +50,6 @@ public class ContentsManager {
     public enum ContentDirName {
         CONTENT_MAIN_DIR_NAME("contents"),
         CONTENT_WINE_DIR_NAME("wine"),
-        CONTENT_TURNIP_DIR_NAME("turnip"),
-        CONTENT_VIRGL_DIR_NAME("virgl"),
         CONTENT_DXVK_DIR_NAME("dxvk"),
         CONTENT_VKD3D_DIR_NAME("vkd3d"),
         CONTENT_BOX64_DIR_NAME("box64");
@@ -83,33 +78,10 @@ public class ContentsManager {
         this.preferences = context.getSharedPreferences("contents_manager_prefs", Context.MODE_PRIVATE);
     }
 
-    // Method to check if the graphics driver is installed
-    public boolean isGraphicsDriverInstalled() {
-        List<ContentProfile> profiles = profilesMap.get(ContentProfile.ContentType.CONTENT_TYPE_TURNIP);
-        if (profiles != null && !profiles.isEmpty()) {
-            Log.d("ContentsManager", "A turnip driver is installed.");
-            return true;
-        }
-
-        Log.d("ContentsManager", "No turnip driver is installed.");
-        return false;
-    }
-
-
     // Method to mark the graphics driver as installed
     public void setGraphicsDriverInstalled(String driverVersion, boolean installed) {
         preferences.edit().putBoolean("graphics_driver_installed_" + driverVersion, installed).apply();
     }
-
-    // Call this method after the content installation is successful
-    public void markGraphicsDriverInstalled(String driverVersion) {
-        // Normalize the version string by stripping out the "Turnip-" prefix if it exists
-        if (driverVersion.startsWith("Turnip-")) {
-            driverVersion = driverVersion.replace("Turnip-", "");
-        }
-        setGraphicsDriverInstalled(driverVersion, true);
-    }
-
 
     public interface OnInstallFinishedCallback {
         void onFailed(InstallFailedReason reason, Exception e);
@@ -369,8 +341,6 @@ public class ContentsManager {
                 trustedFilesMap.put(type, pathList);
 
                 String[] paths = switch (type) {
-                    case CONTENT_TYPE_TURNIP -> TURNIP_TRUST_FILES;
-                    case CONTENT_TYPE_VIRGL -> VIRGL_TRUST_FILES;
                     case CONTENT_TYPE_DXVK -> DXVK_TRUST_FILES;
                     case CONTENT_TYPE_VKD3D -> VKD3D_TRUST_FILES;
                     case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;
