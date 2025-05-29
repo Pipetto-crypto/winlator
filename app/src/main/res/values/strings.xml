@@ -588,6 +588,8 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="install_drivers_warning">Be warned that because of limitations of current PC emulators, Qualcomm Drivers may not work on chipsets below 8 Gen2 without getting patched.</string>
     <string name="enable_vulkan_api_dump">Enable dumping of Vulkan api calls to file.</string>
     <string name="dll_emulator">32bit Emulator</string>
+    <string name="open_with_android_browser">Open Android Browser in Wine</string>
+    <string name="share_android_clipboard">Share Android Clipboard with Wine</string>
 
 
 </resources>

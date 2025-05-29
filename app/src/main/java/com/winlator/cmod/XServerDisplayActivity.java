@@ -4,6 +4,9 @@ import static com.winlator.cmod.core.AppUtils.showToast;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.ClipData;
+import android.content.ClipboardManager;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -13,6 +16,7 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.FileObserver;
 import android.os.Handler;
@@ -72,6 +76,7 @@ import com.winlator.cmod.core.TarCompressorUtils;
 import com.winlator.cmod.core.Win32AppWorkarounds;
 import com.winlator.cmod.core.WineInfo;
 import com.winlator.cmod.core.WineRegistryEditor;
+import com.winlator.cmod.core.WineRequestHandler;
 import com.winlator.cmod.core.WineStartMenuCreator;
 import com.winlator.cmod.core.WineThemeManager;
 import com.winlator.cmod.core.WineUtils;
@@ -121,6 +126,8 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.DataInputStream;
+import java.io.DataOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
@@ -130,6 +137,9 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.lang.reflect.Field;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -164,6 +174,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private SharedPreferences preferences;
     private OnExtractFileListener onExtractFileListener;
     private WinHandler winHandler;
+    private WineRequestHandler wineRequestHandler;
     private float globalCursorSpeed = 1.0f;
     private MagnifierView magnifierView;
     private DebugDialog debugDialog;
@@ -283,12 +294,16 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         // Check for Dark Mode
         isDarkMode = preferences.getBoolean("dark_mode", false);
 
+        boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
+        boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
+
         // Initialize the WinHandler after context is set up
         winHandler = new WinHandler(this);
         winHandler.initializeController();
         controller = winHandler.getCurrentController();
 
-
+        if (isOpenWithAndroidBrowser || isShareAndroidClipboard)
+            wineRequestHandler = new WineRequestHandler(this);
 
         if (controller != null) {
             int triggerType = preferences.getInt("trigger_type", ExternalController.TRIGGER_IS_AXIS); // Default to TRIGGER_IS_AXIS
@@ -645,6 +660,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                             envVars.put("HODLL", "libwow64fex.dll");
                         else
                             envVars.put("HODLL", "box64cpu.dll");
+                        if (isOpenWithAndroidBrowser)
+                            envVars.put("WINE_OPEN_WITH_ANDROID_BROWSER", "1");
+                        if (isShareAndroidClipboard) {
+                            envVars.put("WINE_FROM_ANDROID_CLIPBOARD", "1");
+                            envVars.put("WINE_TO_ANDROID_CLIPBOARD", "1");
+                        }
                     }
 //                    runWinetricksAfterSetup();
                     // Run winetricks before setting up the X environment
@@ -854,6 +875,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         if (environment != null) environment.stopEnvironmentComponents();
         if (preloaderDialog != null && preloaderDialog.isShowing()) preloaderDialog.close();
         if (winHandler != null) winHandler.stop();
+        if (wineRequestHandler != null) wineRequestHandler.stop();
         /* Gracefully terminate all running wine processes */
         ProcessHelper.terminateAllWineProcesses();
         /* Wait until all processes have gracefully terminated, forcefully killing them only after a certain amount of time */
@@ -1327,6 +1349,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Start the WinHandler
         winHandler.start();
+
+        if (wineRequestHandler != null) wineRequestHandler.start();
 
         // Clear envVars if needed
         // envVars.clear();

@@ -70,6 +70,7 @@ import com.winlator.cmod.xenvironment.ImageFsInstaller;
 
 import org.json.JSONArray;
 import org.json.JSONException;
+import org.tukaani.xz.check.Check;
 
 import java.io.File;
 import java.io.IOException;
@@ -405,6 +406,12 @@ public class SettingsFragment extends Fragment {
         cbEnableFileProvider.setOnClickListener(v -> AppUtils.showToast(context, R.string.take_effect_next_startup));
         btHelpFileProvider.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_file_provider));
 
+        final CheckBox cbOpenInBrowser = view.findViewById(R.id.CBOpenWithAndroidBrowser);
+        cbOpenInBrowser.setChecked(preferences.getBoolean("open_with_android_browser", false));
+
+        final CheckBox cbShareClipboard = view.findViewById(R.id.CBShareAndroidClipboard);
+        cbShareClipboard.setChecked(preferences.getBoolean("share_android_clipboard", false));
+
         loadInstalledWineList(view);
 
         view.findViewById(R.id.BTSelectWineFile).setOnClickListener((v) -> {
@@ -449,6 +456,9 @@ public class SettingsFragment extends Fragment {
             editor.putBoolean("touchscreen_toggle", cbXTouchscreenToggle.isChecked()); // Save touchscreen toggle state
             editor.putBoolean("force_mouse_control_enabled", cbForceMouseControl.isChecked());
             editor.putBoolean("enable_file_provider", cbEnableFileProvider.isChecked());
+            editor.putBoolean("open_with_android_browser", cbOpenInBrowser.isChecked());
+            editor.putBoolean("share_android_clipboard", cbShareClipboard.isChecked());
+
 
             // Save gyro settings
             editor.putBoolean("gyro_enabled", cbGyroEnabled.isChecked());

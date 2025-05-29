@@ -260,27 +260,31 @@
 
 
             <!-- Big Picture Mode -->
+
             <FrameLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
+
                 <LinearLayout style="@style/FieldSet">
+
+                    <!-- SteamGridDB API Key Section -->
                     <CheckBox
                         android:id="@+id/CBEnableBigPictureMode"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
                         android:text="Enable Big Picture Mode on App Launch" />
 
-                    <!-- SteamGridDB API Key Section -->
                     <FrameLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content">
 
                         <LinearLayout style="@style/FieldSet">
+
                             <LinearLayout
                                 android:layout_width="match_parent"
                                 android:layout_height="wrap_content"
-                                android:orientation="horizontal"
-                                android:gravity="center_vertical">
+                                android:gravity="center_vertical"
+                                android:orientation="horizontal">
 
                                 <CheckBox
                                     android:id="@+id/CBEnableCustomApiKey"
@@ -311,6 +315,7 @@
                     </FrameLayout>
 
                 </LinearLayout>
+
                 <TextView
                     android:id="@+id/TVBigPictureMode"
                     style="@style/FieldSetLabel"
@@ -603,6 +608,25 @@
                             android:id="@+id/BTHelpFileProvider"
                             android:layout_gravity="center"
                             style="@style/HelpButton" />
+                    </LinearLayout>
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical" >
+
+                        <CheckBox
+                            android:id="@+id/CBOpenWithAndroidBrowser"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="left|center"
+                            android:text="@string/open_with_android_browser" />
+
+                        <CheckBox
+                            android:id="@+id/CBShareAndroidClipboard"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="left|center"
+                            android:text="@string/share_android_clipboard" />
                     </LinearLayout>
                 </LinearLayout>
 
