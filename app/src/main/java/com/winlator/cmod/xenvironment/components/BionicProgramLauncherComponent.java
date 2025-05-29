@@ -192,7 +192,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("ENABLE_UTIL_LAYER", "1");
         envVars.put("GST_PLUGIN_FEATURE_RANK", "ximagesink:3000");
         envVars.put("WINE_DO_NOT_UPDATE_IF_TABLE", "1");
-        envVars.put("ALSA_CONFIG_PATH", rootDir.getPath() + "/usr/share/alsa/alsa.conf");
+        envVars.put("ALSA_CONFIG_PATH", rootDir.getPath() + "/usr/share/alsa/alsa.conf" + ":" + rootDir.getPath() + "/usr/etc/alsa/conf.d/android_aserver.conf");
         envVars.put("ALSA_PLUGIN_DIR", rootDir.getPath() + "/usr/lib/alsa-lib");
         envVars.put("OPENSSL_CONF", rootDir.getPath() + "/usr/etc/tls/openssl.cnf");
         envVars.put("SSL_CERT_FILE", rootDir.getPath() + "/usr/etc/tls/cert.pem");
