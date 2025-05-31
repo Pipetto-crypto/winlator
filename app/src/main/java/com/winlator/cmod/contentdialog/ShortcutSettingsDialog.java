@@ -480,6 +480,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         Spinner sDXWrapper = view.findViewById(R.id.SDXWrapper);
         Spinner sDDrawrapper = view.findViewById(R.id.SDDrawrapper);
         Spinner sAudioDriver = view.findViewById(R.id.SAudioDriver);
+        Spinner sEmulatorSpinner = view.findViewById(R.id.SEmulator);
         Spinner sBox86Preset = view.findViewById(R.id.SBox86Preset);
         Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Spinner sControlsProfile = view.findViewById(R.id.SControlsProfile);
@@ -497,6 +498,7 @@ public class ShortcutSettingsDialog extends ContentDialog {
         sDXWrapper.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sDDrawrapper.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sAudioDriver.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        sEmulatorSpinner.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sBox86Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sBox64Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
         sControlsProfile.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
