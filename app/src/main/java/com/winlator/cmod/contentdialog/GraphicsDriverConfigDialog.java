@@ -1,6 +1,7 @@
 package com.winlator.cmod.contentdialog;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.View;
 import android.view.ViewGroup;
@@ -11,6 +12,7 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
+import androidx.preference.PreferenceManager;
 
 import com.winlator.cmod.R;
 import com.winlator.cmod.contents.AdrenotoolsManager;
@@ -62,10 +64,13 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         }
 
         private View initDropDownView(int position, View convertView, ViewGroup parent) {
+            SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+            boolean isDarkMode = sp.getBoolean("dark_mode", false);
             if (convertView == null) {
                 convertView = getLayoutInflater().inflate(R.layout.checkbox_spinner, parent, false);
             }
             CheckBox cb = convertView.findViewById(R.id.checkbox);
+            cb.setTextAppearance(isDarkMode ? R.style.CheckBox_Dark : R.style.CheckBox);
             cb.setText(extensions.get(position));
             cb.setOnCheckedChangeListener(null);
             cb.setChecked(extensionsState.getOrDefault(extensions.get(position), true));
