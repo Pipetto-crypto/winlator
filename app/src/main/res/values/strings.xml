@@ -214,6 +214,30 @@
         <b>0</b> : Use regular safe barriers<br />
         <b>1</b> : Use weak barriers for mild performance boost<br />
         <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
+    <string name="box86_64_env_var_help__dynarec_aligned_atomics"><![CDATA[
+        Generate aligned atomics only (only available on Arm64 for now).<br /><br />
+        <b>0</b> : Generate unaligned atomics handling code.<br />
+        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
+    <string name="box86_64_env_var_help__dynarec_df"><![CDATA[
+        Enable or disable the use of deferred flags.<br /><br />
+        <b>0</b> : Disable the use of deferred flags.<br />
+        <b>1</b> : Enable the use of deferred flags.]]></string>
+    <string name="box86_64_env_var_help__dynarec_dirty"><![CDATA[
+        Allow continue running a block that is unprotected and potentially dirty.<br /><br />
+        <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
+        <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
+        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
+    <string name="box86_64_env_var_help__dynarec_nativeflags"><![CDATA[
+        Enable or disable the use of native flags.<br /><br />
+        <b>0</b> : Do not use native flags.<br />
+        <b>1</b> : Use native flags when possible.]]></string>
+    <string name="box86_64_env_var_help__dynarec_pause"><![CDATA[
+        Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
+        <b>0</b> : Ignore x86 PAUSE instruction.<br />
+        <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
+        <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
+        <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
+    ]]></string>
     <string name="box86_64_env_var_help__avx"><![CDATA[
         AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
         <b>0</b> : Disable AVX extension<br />
