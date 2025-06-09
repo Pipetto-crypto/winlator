@@ -2428,19 +2428,21 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         Log.d("XServerDisplayActivity", "Deleting glide dlls before extraction");
         for (String glideDLL : glideDlls) {
-            FileUtils.delete(new File(glideDLL));
+            FileUtils.delete(new File(windowsDir + "/syswow64/" + glideDLL));
         }
 
-        Log.d("XserverDisplayActivity", "Restoring original dlls before extraction");
-        restoreOriginalDllFiles(dlls);
-
-        if (!ddrawrapper.contains("wined3d")) {
+        if (dxwrapper.contains("wined3d")) {
+            Log.d("XserverDisplayActivity", "Restoring original dlls for WineD3D");
+            restoreOriginalDllFiles(dlls);
+        }
+        else {
             Log.d("XServerDisplayActivity", "Extracting ddrawrapper " + ddrawrapper);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/" + ddrawrapper + ".tzst", windowsDir, onExtractFileListener);
-            if (!dxwrapper.contains("dgvoodoo"))  {
-                Log.d("XServerDisplayActivity", "Extracting nglide wrapper");
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir, onExtractFileListener);
-            }
+        }
+
+        if (!dxwrapper.contains("dgvoodoo"))  {
+            Log.d("XServerDisplayActivity", "Extracting nglide wrapper");
+            TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "ddrawrapper/nglide.tzst", windowsDir, onExtractFileListener);
         }
     }
 
