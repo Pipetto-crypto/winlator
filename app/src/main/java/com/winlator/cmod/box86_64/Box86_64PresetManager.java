@@ -33,7 +33,7 @@ public abstract class Box86_64PresetManager {
             if (ucPrefix.equals("BOX64")) {
                 envVars.put("BOX64_AVX", "0");
                 envVars.put("BOX64_UNITYPLAYER", "1");
-                envVars.put("BOX64_MMAP32", "1");
+                envVars.put("BOX64_MMAP32", "0");
             }
         }
         else if (id.equals(Box86_64Preset.COMPATIBILITY)) {
@@ -49,7 +49,7 @@ public abstract class Box86_64PresetManager {
             if (ucPrefix.equals("BOX64")) {
                 envVars.put("BOX64_AVX", "0");
                 envVars.put("BOX64_UNITYPLAYER", "1");
-                envVars.put("BOX64_MMAP32", "1");
+                envVars.put("BOX64_MMAP32", "0");
             }
         }
         else if (id.equals(Box86_64Preset.INTERMEDIATE)) {
@@ -60,12 +60,12 @@ public abstract class Box86_64PresetManager {
             envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "1");
             envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "0");
             envVars.put(ucPrefix+"_DYNAREC_FORWARD", "128");
-            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "0");
+            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "1");
             envVars.put(ucPrefix+"_DYNAREC_WAIT", "1");
             if (ucPrefix.equals("BOX64")) {
                 envVars.put("BOX64_AVX", "0");
                 envVars.put("BOX64_UNITYPLAYER", "0");
-                envVars.put("BOX64_MMAP32", "1");
+                envVars.put("BOX64_MMAP32", "0");
             }
         }
         else if (id.equals(Box86_64Preset.PERFORMANCE)) {
@@ -76,12 +76,12 @@ public abstract class Box86_64PresetManager {
             envVars.put(ucPrefix+"_DYNAREC_BIGBLOCK", "3");
             envVars.put(ucPrefix+"_DYNAREC_STRONGMEM", "0");
             envVars.put(ucPrefix+"_DYNAREC_FORWARD", "512");
-            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "'0");
+            envVars.put(ucPrefix+"_DYNAREC_CALLRET", "1");
             envVars.put(ucPrefix+"_DYNAREC_WAIT", "1");
             if (ucPrefix.equals("BOX64")) {
                 envVars.put("BOX64_AVX", "0");
                 envVars.put("BOX64_UNITYPLAYER", "0");
-                envVars.put("BOX64_MMAP32", "1");
+                envVars.put("BOX64_MMAP32", "0");
 
             }
         }
