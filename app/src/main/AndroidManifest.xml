@@ -120,14 +120,14 @@
             android:name=".ShortcutBroadcastReceiver"
             android:exported="true">
             <intent-filter>
-                <action android:name="com.winlator.SHORTCUT_ADDED" />
+                <action android:name="com.winlator.cmod.SHORTCUT_ADDED" />
             </intent-filter>
         </receiver>
 
         <!-- FileProvider for sharing files -->
         <provider
             android:name="androidx.core.content.FileProvider"
-            android:authorities="com.winlator.tileprovider"
+            android:authorities="com.winlator.cmod.tileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data
