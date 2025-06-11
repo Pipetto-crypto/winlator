@@ -2,6 +2,7 @@ package com.winlator.cmod.xenvironment.components;
 
 import android.content.Context;
 import android.content.SharedPreferences;
+import android.os.Build;
 import android.os.Handler;
 import android.os.Looper;
 import android.os.Process;
@@ -279,7 +280,15 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             else
                 ld_preload = ld_preload + ":" + imageFs.getLibDir().getPath() + "/libandroid-sysvshm.so";
         }
-            
+
+        String manufacturer = Build.MANUFACTURER;
+
+        Log.d("BionicProgramLauncherComponent", "Applying per manufacturer fixes for manufacturer " + manufacturer.toLowerCase());
+
+        /* Temp workaround for Samsung devices */
+        if (manufacturer.toLowerCase().contains("samsung"))
+            ld_preload = ld_preload + ":" + "/system/lib64/libEGL.so";
+
         this.envVars.put("LD_PRELOAD", ld_preload);
         
         // Merge any additional environment variables from external sources
