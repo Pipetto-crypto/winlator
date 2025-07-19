@@ -28,6 +28,12 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assembleDebug
 
+    - name: Attach release in action
+      uses: actions/upload-artifact@v4
+      with:
+       name: Winlator Bionic apk
+       path: ./app/build/outputs/apk/debug/app-debug.apk
+
     - name: "Get Short SHA"
       run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
