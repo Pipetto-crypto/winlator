@@ -484,3 +484,4 @@ public class ShortcutsFragment extends Fragment {
             }
         } catch (Exception e) {}
     }
+}
