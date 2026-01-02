@@ -255,4 +255,5 @@ public class Shortcut {
         catch (IOException e) { throw new RuntimeException(e); }
         return exe;
     }
+}
   
