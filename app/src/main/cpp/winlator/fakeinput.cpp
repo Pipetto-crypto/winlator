@@ -23,6 +23,7 @@
 #include <sys/stat.h>
 #include <sys/inotify.h>
 #include <sys/syscall.h>
+#include <sys/sysmacros.h>
 #include <linux/input.h>
 
 #define EXPORT __attribute__((visibility("default"))) extern "C"
@@ -35,6 +36,7 @@ volatile sig_atomic_t stop_flag = 0;
 static int (*my_open)(const char *, int, ...) = nullptr;
 static int (*my_openat)(int, const char *, int, ...) = nullptr;
 static int (*my_stat)(const char *, struct stat *) = nullptr;
+static int (*my_fstat)(int fd, struct stat *buf) = nullptr;
 static int (*my_scandir)(const char *, struct dirent***, int(*)(const struct dirent *), int(*)(const struct dirent**, const struct dirent**));
 static int (*my_inotify_add_watch)(int, const char *, uint32_t);
 static int (*my_close)(int);
@@ -73,7 +75,7 @@ void setup_signal_handler() {
 __attribute__((constructor))
 static void library_init() {
 	if (!hook_dir)
-		hook_dir = getenv("FAKE_EVDEV_DIR") ? getenv("FAKE_EVDEV_DIR") : "/data/data/com.winlator.cmod/files/imagefs/dev/input";
+		hook_dir = getenv("FAKE_EVDEV_DIR") ? getenv("FAKE_EVDEV_DIR") : "/data/data/com.termux/files/home/fake-input";
 
 	Logger::init();
 }
@@ -135,7 +137,7 @@ EXPORT int open(const char *pathname, int flags, ...) {
 	    fd = my_open(pathname, flags);
 
 	if (isFromInput) {
-		Logger::log("Adding controller fd %d event %s\n", fd, get_event(pathname));
+		Logger::log("Adding controller, fd %d event %s\n", fd, get_event(pathname));
 		controller_map[fd] = strdup(get_event(pathname));
     }
 	    
@@ -179,7 +181,7 @@ EXPORT int openat(int dirfd, const char *pathname, int flags, ...) {
         fd = my_openat(dirfd, pathname, flags);
 
     if (isFromInput) {
-        Logger::log("Adding controller fd %d event %s\n", fd, get_event(pathname));
+        Logger::log("Adding controller, fd %d event %s\n", fd, get_event(pathname));
         controller_map[fd] = strdup(get_event(pathname));
     }
 
@@ -190,17 +192,42 @@ EXPORT int stat(const char *pathname, struct stat *statbuf) {
 	if (!my_stat)
 		*(void **)&my_stat = dlsym(RTLD_NEXT, "stat");
 
+     const char *event = nullptr;
+     int event_number = -1;
+
 	if (pathname) {
 		if (strstr(pathname, "/dev/input/event")) {
 		    pathname = from_real_to_fake_path(pathname);
+		    event = get_event(pathname);
+		    event_number = get_event_number(event);
 		}
 		else if (!strcmp(pathname, "/dev/input")) {                                    
 		    pathname = hook_dir;             
 		}
 	}
 
-	return my_stat(pathname, statbuf);
+	int ret = my_stat(pathname, statbuf);
+    
+    if (event && event_number >= 0) {
+		statbuf->st_rdev = makedev(1, event_number);
+	}
+
+	return ret;
 }
+
+EXPORT int fstat(int fd, struct stat *buf) {
+	if (!my_fstat)
+    	*(void **)&my_fstat = dlsym(RTLD_NEXT, "fstat");
+
+    int ret = my_fstat(fd, buf);
+
+    auto controller = controller_map.find(fd);
+    if (controller != controller_map.end()) {
+    	buf->st_rdev = makedev(1, get_event_number(controller->second));
+    }
+
+    return ret;
+  }
 
 EXPORT int scandir(const char *dirp, struct dirent ***namelist, int(*filter)(const struct dirent *), int(*compar)(const struct dirent **, const struct dirent **)) {
 	if (!my_scandir)
@@ -272,7 +299,7 @@ EXPORT int ioctl(int fd, int op, ...) {
     	
     	asprintf(&name, "Generic HID Gamepad %d", event_number);
     	
-    	memcpy(argp, name, strlen(name) + 1);
+    	strcpy((char *)argp, name);
     	return 0;
     }
     else if (type == 0x45 && number == 0x9) {
@@ -389,7 +416,7 @@ EXPORT int close(int fd) {
 
 	auto controller = controller_map.find(fd);
 	if (controller != controller_map.end()) {
-	    Logger::log("Erasing controller fd %d event %s\n", controller->first, controller->second);
+	    Logger::log("Removing controller, fd %d event %s\n", controller->first, controller->second);
 	    free((void *)controller->second);
 		controller_map.erase(fd);
 	}

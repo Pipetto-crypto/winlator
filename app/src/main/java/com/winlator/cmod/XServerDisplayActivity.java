@@ -957,13 +957,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
     }
 
-    private void extractInputDLLs() {
-        String inputAsset = "input_dlls.tzst";
-        File wineFolder = new File(imageFs.getWinePath() + "/lib/wine/");
-        boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, inputAsset, wineFolder);
-        if (!success)
-            Log.d("XServerDisplayActivity", "Failed to extract input dlls");
-    }
+    // private void extractInputDLLs() {
+    //     String inputAsset = "input_dlls.tzst";
+    //     File wineFolder = new File(imageFs.getWinePath() + "/lib/wine/");
+    //     boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, inputAsset, wineFolder);
+    //     if (!success)
+    //         Log.d("XServerDisplayActivity", "Failed to extract input dlls");
+    // }
 
     private void setupWineSystemFiles() {
         String appVersion = String.valueOf(AppUtils.getVersionCode(this));
@@ -1019,9 +1019,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             container.putExtra("startupSelection", startupSelection);
             containerDataChanged = true;
         }
-        
-        extractInputDLLs();
-
         if (containerDataChanged) container.saveData();
     }
 

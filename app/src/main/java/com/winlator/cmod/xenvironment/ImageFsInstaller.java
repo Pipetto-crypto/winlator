@@ -89,6 +89,7 @@ public abstract class ImageFsInstaller {
                 installWineFromAssets(activity);
                 installDriversFromAssets(activity);
                 imageFs.createImgVersionFile(LATEST_VERSION);
+                FileUtils.symlink("libSDL2-2.0.so", new File(imageFs.getLibDir(), "libSDL2-2.0.so.0").getAbsolutePath());
                 resetContainerImgVersions(activity);
             }
             else AppUtils.showToast(activity, R.string.unable_to_install_system_files);
