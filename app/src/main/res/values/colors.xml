@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="window_background_color">#fafafa</color>
+    <color name="window_background_color">#121212</color>
     
     <color name="colorPrimary">#00A902</color> 
     <color name="colorPrimaryDark">#007A01</color>
@@ -146,4 +146,5 @@
     <color name="switch_thumb_normal_material_light">#fff1f1f1</color>
     <color name="tooltip_background_dark">#e6616161</color>
     <color name="tooltip_background_light">#e6ffffff</color>
+
 </resources>
