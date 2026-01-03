@@ -13,9 +13,6 @@ import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.content.res.Configuration;
-import android.hardware.Sensor;
-import android.hardware.SensorEvent;
-import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
@@ -184,7 +181,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     // Inside the XServerDisplayActivity class
     private SensorManager sensorManager;
-    private Sensor gyroSensor;
     private ExternalController controller;
 
     // Playtime stats tracking
@@ -223,24 +219,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             configChangedCallback = null;
         }
     }
-
-
-    private final SensorEventListener gyroListener = new SensorEventListener() {
-        @Override
-        public void onSensorChanged(SensorEvent event) {
-            if (event.sensor.getType() == Sensor.TYPE_GYROSCOPE) {
-                float gyroX = event.values[0]; // Rotation around the X-axis
-                float gyroY = event.values[1]; // Rotation around the Y-axis
-
-                winHandler.updateGyroData(gyroX, gyroY); // Send gyro data to WinHandler
-            }
-        }
-
-        @Override
-        public void onAccuracyChanged(Sensor sensor, int accuracy) {
-            // No action needed
-        }
-    };
 
 
     @Override
@@ -284,14 +262,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Initialize SensorManager
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
-        gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
-
-        boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
-
-        if (gyroEnabled) {
-            // Register the sensor event listener
-            sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
-        }
 
 
 
@@ -714,12 +684,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     public void onResume() {
         super.onResume();
-        boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
-
-        if (gyroEnabled) {
-            // Re-register the sensor listener when the activity is resumed
-            sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
-        }
 
         if (environment != null) {
             xServerView.onResume();
@@ -733,12 +697,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     public void onPause() {
         super.onPause();
-        boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
-
-        if (gyroEnabled) {
-            // Unregister the sensor listener when the activity is paused
-            sensorManager.unregisterListener(gyroListener);
-        }
 
         // Check if we are entering Picture-in-Picture mode
         if (!isInPictureInPictureMode()) {
@@ -795,7 +753,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 handler.removeCallbacks(savePlaytimeRunnable);
                 if (midiHandler != null) midiHandler.stop();
                 // Unregister sensor listener to avoid memory leaks
-                if (sensorManager != null) sensorManager.unregisterListener(gyroListener);
                 if (environment != null) environment.stopEnvironmentComponents();
                 if (preloaderDialog != null && preloaderDialog.isShowing()) preloaderDialog.closeOnUiThread();
                 if (winHandler != null) winHandler.stop();

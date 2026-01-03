@@ -15,7 +15,6 @@ import com.winlator.cmod.inputcontrols.ControlsProfile;
 import com.winlator.cmod.inputcontrols.ExternalController;
 import com.winlator.cmod.inputcontrols.FakeInputWriter;
 import com.winlator.cmod.inputcontrols.GamepadState;
-import com.winlator.cmod.math.Mathf;
 import com.winlator.cmod.xserver.XServer;
 
 import java.io.IOException;
@@ -59,106 +58,8 @@ public class WinHandler {
     private byte triggerType;
     private FakeInputWriter fakeInputWriter;
 
-    private boolean xinputDisabled; // Used for exclusive mouse controllegacy
+    private boolean xinputDisabled;
     private boolean xinputDisabledInitialized = false;
-
-    // Gyro related variables
-    private float gyroX = 0;
-    private float gyroY = 0;
-    // Add fields for sensitivity, smoothing, and inversion
-    private float gyroSensitivityX = 0.35f;
-    private float gyroSensitivityY = 0.25f;
-    private float smoothingFactor = 0.45f; // For exponential smoothing
-    private boolean invertGyroX = true;
-    private boolean invertGyroY = false;
-    private float gyroDeadzone = 0.01f;
-
-    // Implement exponential smoothing
-    private float smoothGyroX = 0;
-    private float smoothGyroY = 0;
-
-    private boolean processGyroWithLeftTrigger = false;
-
-    private int gyroTriggerButton;
-    private boolean isGyroActive = false;
-    private boolean isToggleMode;
-
-    public void setGyroSensitivityX(float sensitivity) {
-        this.gyroSensitivityX = sensitivity;
-    }
-
-    public void setGyroSensitivityY(float sensitivity) {
-        this.gyroSensitivityY = sensitivity;
-    }
-
-    public void setSmoothingFactor(float factor) {
-        this.smoothingFactor = factor;
-    }
-
-    public void setInvertGyroX(boolean invert) {
-        this.invertGyroX = invert;
-    }
-
-    public void setInvertGyroY(boolean invert) {
-        this.invertGyroY = invert;
-    }
-
-    public void setGyroDeadzone(float deadzone) {
-        this.gyroDeadzone = deadzone;
-    }
-
-    private boolean isLeftTriggerPressed() {
-        return currentController != null && currentController.state.triggerL > 0.5f; // Assuming 0.5f is the threshold
-                                                                                     // for pressed
-    }
-
-    public void updateGyroData(float rawGyroX, float rawGyroY) {
-        // Check if gyro is enabled before processing the data
-        if (!preferences.getBoolean("gyro_enabled", false)) {
-            return; // Exit if the gyro is disabled
-        }
-
-        boolean shouldProcessGyro = true;
-
-        // Check if processing gyro data only when the left trigger is held
-        if (processGyroWithLeftTrigger) {
-            shouldProcessGyro = isLeftTriggerPressed();
-        }
-
-        if (isGyroActive) {
-            // Apply deadzone
-            if (Math.abs(rawGyroX) < gyroDeadzone)
-                rawGyroX = 0;
-            if (Math.abs(rawGyroY) < gyroDeadzone)
-                rawGyroY = 0;
-
-            // Apply inversion
-            if (invertGyroX)
-                rawGyroX = -rawGyroX;
-            if (invertGyroY)
-                rawGyroY = -rawGyroY;
-
-            // Further reduce sensitivity by lowering the multiplier
-            float sensitivityMultiplier = 0.25f; // Reduce the sensitivity even more
-            rawGyroX *= gyroSensitivityX * sensitivityMultiplier;
-            rawGyroY *= gyroSensitivityY * sensitivityMultiplier;
-
-            // Apply smoothing
-            smoothGyroX = smoothGyroX * smoothingFactor + rawGyroX * (1 - smoothingFactor);
-            smoothGyroY = smoothGyroY * smoothingFactor + rawGyroY * (1 - smoothingFactor);
-
-            // Clamp the result to reduce the overall range of movement
-            smoothGyroX = Mathf.clamp(smoothGyroX, -0.25f, 0.25f); // Reduce clamping range for less movement
-            smoothGyroY = Mathf.clamp(smoothGyroY, -0.25f, 0.25f);
-
-            // Update the gyro data
-            this.gyroX = smoothGyroX;
-            this.gyroY = smoothGyroY;
-
-            // Send the updated gamepad state
-            sendGamepadState();
-        }
-    }
 
     public WinHandler(XServerDisplayActivity activity) {
         this.activity = activity;
@@ -381,20 +282,11 @@ public class WinHandler {
 
                 preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
 
-                gyroTriggerButton = preferences.getInt("gyro_trigger_button", KeyEvent.KEYCODE_BUTTON_L1);
-                isToggleMode = preferences.getInt("gyro_mode", 0) == 1;
                 triggerType = (byte) preferences.getInt("trigger_type", TRIGGER_IS_AXIS);
                 refreshControllerMappings();
                 if (!xinputDisabledInitialized) {
                     xinputDisabled = preferences.getBoolean("xinput_toggle", false);
                 }
-                setGyroSensitivityX(preferences.getFloat("gyro_x_sensitivity", 1.0f));
-                setGyroSensitivityY(preferences.getFloat("gyro_y_sensitivity", 1.0f));
-                setSmoothingFactor(preferences.getFloat("gyro_smoothing", 0.9f));
-                setInvertGyroX(preferences.getBoolean("invert_gyro_x", false));
-                setInvertGyroY(preferences.getBoolean("invert_gyro_y", false));
-                setGyroDeadzone(preferences.getFloat("gyro_deadzone", 0.05f));
-                processGyroWithLeftTrigger = preferences.getBoolean("process_gyro_with_left_trigger", false);
                 synchronized (actions) {
                     actions.notify();
                 }
@@ -487,8 +379,6 @@ public class WinHandler {
             return;
 
         final GamepadState state = useVirtualGamepad ? profile.getGamepadState() : currentController.state;
-        state.thumbRX = Mathf.clamp(state.thumbRX + gyroX, -1.0f, 1.0f);
-        state.thumbRY = Mathf.clamp(state.thumbRY + gyroY, -1.0f, 1.0f);
 
         // Write to FakeInput - winebus/SDL will read evdev for both DInput and XInput
         if (fakeInputWriter != null) {
@@ -540,67 +430,12 @@ public class WinHandler {
             handled = currentController.updateStateFromMotionEvent(event);
             if (handled)
                 sendGamepadState();
-
-            // Check if gyroTriggerButton is L2 or R2, and process accordingly
-            if (gyroTriggerButton == KeyEvent.KEYCODE_BUTTON_L2 || gyroTriggerButton == KeyEvent.KEYCODE_BUTTON_R2) {
-                float triggerValue = 0f;
-                if (gyroTriggerButton == KeyEvent.KEYCODE_BUTTON_L2) {
-                    triggerValue = event.getAxisValue(MotionEvent.AXIS_LTRIGGER);
-                } else if (gyroTriggerButton == KeyEvent.KEYCODE_BUTTON_R2) {
-                    triggerValue = event.getAxisValue(MotionEvent.AXIS_RTRIGGER);
-                }
-
-                boolean isPressed = triggerValue > 0.5f; // Adjust threshold as needed
-
-                if (isPressed) {
-                    if (!isGyroActive) {
-                        if (isToggleMode) {
-                            isGyroActive = !isGyroActive;
-                        } else {
-                            isGyroActive = true;
-                        }
-                    }
-                } else {
-                    if (isGyroActive && !isToggleMode) {
-                        isGyroActive = false;
-                    }
-                }
-            }
-
-            // Handle L3 and R3 if necessary
-            if (gyroTriggerButton == KeyEvent.KEYCODE_BUTTON_THUMBL
-                    || gyroTriggerButton == KeyEvent.KEYCODE_BUTTON_THUMBR) {
-                // Implement detection for L3 and R3 presses via MotionEvent if they don't
-                // generate KeyEvents
-                // You may need to check specific axes or custom input methods here
-            }
         }
         return handled;
     }
 
     public boolean onKeyEvent(KeyEvent event) {
         boolean handled = false;
-
-        if (event.getKeyCode() == gyroTriggerButton) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                if (isToggleMode) {
-                    isGyroActive = !isGyroActive;
-                } else {
-                    isGyroActive = true;
-                }
-            } else if (event.getAction() == KeyEvent.ACTION_UP && !isToggleMode) {
-                isGyroActive = false;
-
-                // Reset the analog stick to center when the gyro activator is released
-                if (currentController != null) {
-                    currentController.state.thumbRX = 0.0f; // Reset X axis
-                    currentController.state.thumbRY = 0.0f; // Reset Y axis
-                }
-
-                // Immediately send the updated gamepad state
-                sendGamepadState();
-            }
-        }
 
         if (currentController != null && currentController.getDeviceId() == event.getDeviceId()
                 && event.getRepeatCount() == 0) {
