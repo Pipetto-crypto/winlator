@@ -78,14 +78,7 @@
 
 
 
-        <Button
-            style="@style/ButtonNeutral"
-            android:id="@+id/BTConfigureAnalogSticks"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="Configure Analog Sticks"
-            android:layout_gravity="center_horizontal"
-            android:layout_marginTop="16dp" />
+
 
         <View
             style="@style/HorizontalLine"

@@ -56,7 +56,6 @@ import com.winlator.cmod.fexcore.FEXCorePreset;
 import com.winlator.cmod.fexcore.FEXCorePresetManager;
 import com.winlator.cmod.inputcontrols.ControlElement;
 import com.winlator.cmod.inputcontrols.ExternalController;
-import com.winlator.cmod.inputcontrols.PreferenceKeys;
 import com.winlator.cmod.midi.MidiManager;
 import com.winlator.cmod.widget.InputControlsView;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
