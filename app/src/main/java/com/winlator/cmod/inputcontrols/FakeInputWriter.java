@@ -58,6 +58,7 @@ public class FakeInputWriter {
     private FileChannel channel;
     private final ByteBuffer buffer;
     private boolean isOpen = false;
+    private volatile boolean destroyed = false;
 
     private final boolean[] prevButtonStates = new boolean[12];
     private int prevThumbLX, prevThumbLY, prevThumbRX, prevThumbRY;
@@ -65,13 +66,15 @@ public class FakeInputWriter {
     private int prevHatX, prevHatY;
     private boolean hasChanges = false;
 
-    public FakeInputWriter(String fakeInputPath) {
-        this.eventFile = new File(fakeInputPath, "event0");
+    public FakeInputWriter(String fakeInputPath, int slot) {
+        this.eventFile = new File(fakeInputPath, "event" + slot);
         this.buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
         this.buffer.order(ByteOrder.LITTLE_ENDIAN);
     }
 
     public synchronized boolean open() {
+        if (destroyed)
+            return false;
         if (isOpen)
             return true;
 
@@ -109,6 +112,15 @@ public class FakeInputWriter {
             raf = null;
         }
         isOpen = false;
+    }
+
+    public synchronized void destroy() {
+        destroyed = true;
+        close();
+        if (eventFile != null && eventFile.exists()) {
+            boolean deleted = eventFile.delete();
+            Log.i(TAG, "Deleted fake input: " + eventFile.getAbsolutePath() + " (" + deleted + ")");
+        }
     }
 
     private void writeEvent(short type, short code, int value) {

@@ -1,7 +1,5 @@
 package com.winlator.cmod.winhandler;
 
-import static com.winlator.cmod.inputcontrols.ExternalController.TRIGGER_IS_AXIS;
-
 import android.content.SharedPreferences;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -17,6 +15,11 @@ import com.winlator.cmod.inputcontrols.FakeInputWriter;
 import com.winlator.cmod.inputcontrols.GamepadState;
 import com.winlator.cmod.xserver.XServer;
 
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.hardware.input.InputManager;
+import android.os.Handler;
+
 import java.io.IOException;
 import java.net.DatagramPacket;
 import java.net.DatagramSocket;
@@ -26,7 +29,13 @@ import java.net.UnknownHostException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.Iterator;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
@@ -49,20 +58,47 @@ public class WinHandler {
     private boolean initReceived = false;
     private boolean running = false;
     private OnGetProcessInfoListener onGetProcessInfoListener;
-    private ExternalController currentController;
+    private final Map<Integer, ExternalController> controllers = new HashMap<>(); // map deviceId -> controller
+                                                                                  // implementation
     private InetAddress localhost;
     private byte inputType = DEFAULT_INPUT_TYPE;
     private final XServerDisplayActivity activity;
     private final List<Integer> gamepadClients = new CopyOnWriteArrayList<>();
     private SharedPreferences preferences;
-    private byte triggerType;
-    private FakeInputWriter fakeInputWriter;
+
+    // Multi-controller support
+    private static final int MAX_CONTROLLERS = 4;
+    private static final int OSC_DEVICE_ID = -1;
+    private FakeInputWriter[] writers = new FakeInputWriter[MAX_CONTROLLERS];
+    private Map<Integer, Integer> deviceToSlot = new HashMap<>();
+    private Set<Integer> usedSlots = new HashSet<>();
+    private String fakeInputBasePath;
 
     private boolean xinputDisabled;
     private boolean xinputDisabledInitialized = false;
 
+    private final InputManager inputManager;
+    private final InputManager.InputDeviceListener inputDeviceListener;
+
     public WinHandler(XServerDisplayActivity activity) {
         this.activity = activity;
+        this.inputManager = (InputManager) activity.getSystemService(Context.INPUT_SERVICE);
+        this.inputDeviceListener = new InputManager.InputDeviceListener() {
+            @Override
+            public void onInputDeviceAdded(int deviceId) {
+            }
+
+            @Override
+            public void onInputDeviceRemoved(int deviceId) {
+                releaseSlot(deviceId);
+            }
+
+            @Override
+            public void onInputDeviceChanged(int deviceId) {
+            }
+        };
+        inputManager.registerInputDeviceListener(inputDeviceListener, null);
+
         preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
     }
 
@@ -282,8 +318,6 @@ public class WinHandler {
 
                 preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
 
-                triggerType = (byte) preferences.getInt("trigger_type", TRIGGER_IS_AXIS);
-                refreshControllerMappings();
                 if (!xinputDisabledInitialized) {
                     xinputDisabled = preferences.getBoolean("xinput_toggle", false);
                 }
@@ -319,8 +353,9 @@ public class WinHandler {
                 break;
             }
             case RequestCodes.RELEASE_GAMEPAD: {
-                currentController = null;
-                break;
+                // currentController = null; // No longer needed
+                // Maybe clear all controllers or reset mapping?
+                // For now, doing nothing is safest as mapping is sticky.
             }
             case RequestCodes.CURSOR_POS_FEEDBACK: {
                 short x = receiveData.getShort();
@@ -372,17 +407,65 @@ public class WinHandler {
 
     public void sendGamepadState() {
         final ControlsProfile profile = activity.getInputControlsView().getProfile();
-        final boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
-        final boolean enabled = currentController != null || useVirtualGamepad;
+        final boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad() && activity.getInputControlsView().isShowTouchscreenControls();
 
-        if (!enabled)
+        // Handle virtual gamepad (on-screen controls)
+        if (useVirtualGamepad) {
+            int slot = assignSlot(OSC_DEVICE_ID);
+            if (slot >= 0 && writers[slot] != null) {
+                writers[slot].writeGamepadState(profile.getGamepadState());
+            }
+        } else {
+            releaseSlot(OSC_DEVICE_ID);
+        }
+
+        // Handle physical controller (Refactored)
+    }
+
+    public void sendGamepadState(ExternalController controller) {
+        if (controller == null)
             return;
+        int slot = assignSlot(controller.getDeviceId());
+        if (slot >= 0 && writers[slot] != null) {
+            writers[slot].writeGamepadState(controller.state);
+        }
+    }
 
-        final GamepadState state = useVirtualGamepad ? profile.getGamepadState() : currentController.state;
+    /**
+     * Assign a slot to a device using FCFS. Sticky slots - disconnect keeps
+     * reservation.
+     */
+    private int assignSlot(int deviceId) {
+        Integer existing = deviceToSlot.get(deviceId);
+        if (existing != null)
+            return existing;
 
-        // Write to FakeInput - winebus/SDL will read evdev for both DInput and XInput
-        if (fakeInputWriter != null) {
-            fakeInputWriter.writeGamepadState(state);
+        for (int slot = 0; slot < MAX_CONTROLLERS; slot++) {
+            if (!usedSlots.contains(slot)) {
+                usedSlots.add(slot);
+                deviceToSlot.put(deviceId, slot);
+                if (fakeInputBasePath != null && writers[slot] == null) {
+                    writers[slot] = new FakeInputWriter(fakeInputBasePath, slot);
+                    writers[slot].open();
+                    Log.d("WinHandler", "Assigned device " + deviceId + " to slot " + slot);
+                }
+                return slot;
+            }
+        }
+        Log.w("WinHandler", "No slots available for device " + deviceId);
+        return -1;
+    }
+
+    private void releaseSlot(int deviceId) {
+        Integer slot = deviceToSlot.remove(deviceId);
+        if (slot != null) {
+            if (writers[slot] != null) {
+                writers[slot].destroy();
+                writers[slot] = null;
+            }
+            usedSlots.remove(slot);
+            controllers.remove(deviceId);
+            Log.d("WinHandler", "Device " + deviceId + " disconnected (or OSC disabled). Slot freed: " + slot);
         }
     }
 
@@ -398,57 +481,64 @@ public class WinHandler {
      */
     public void setFakeInputPath(String fakeInputPath) {
         if (fakeInputPath != null && !fakeInputPath.isEmpty()) {
-            if (fakeInputWriter != null) {
-                fakeInputWriter.close();
-            }
-            fakeInputWriter = new FakeInputWriter(fakeInputPath);
-            fakeInputWriter.open();
-            Log.d("WinHandler", "FakeInputWriter initialized with path: " + fakeInputPath);
+            this.fakeInputBasePath = fakeInputPath;
+            Log.d("WinHandler", "FakeInputWriter base path set: " + fakeInputPath);
         }
     }
 
     public void closeFakeInputWriter() {
-        if (fakeInputWriter != null) {
-            fakeInputWriter.close();
-            fakeInputWriter = null;
+        if (inputManager != null && inputDeviceListener != null) {
+            inputManager.unregisterInputDeviceListener(inputDeviceListener);
         }
+        for (int i = 0; i < MAX_CONTROLLERS; i++) {
+            if (writers[i] != null) {
+                writers[i].destroy();
+                writers[i] = null;
+            }
+        }
+        deviceToSlot.clear();
+        usedSlots.clear();
+        controllers.clear();
     }
 
-    // public boolean onGenericMotionEvent(MotionEvent event) {
-    // boolean handled = false;
-    // if (currentController != null && currentController.getDeviceId() ==
-    // event.getDeviceId()) {
-    // handled = currentController.updateStateFromMotionEvent(event);
-    // if (handled) sendGamepadState();
-    // }
-    // return handled;
-    // }
+    private ExternalController getController(int deviceId) {
+        if (controllers.containsKey(deviceId)) {
+            return controllers.get(deviceId);
+        }
+        ExternalController controller = ExternalController.getController(deviceId);
+        if (controller != null) {
+            controllers.put(deviceId, controller);
+        }
+        return controller;
+    }
 
     public boolean onGenericMotionEvent(MotionEvent event) {
         boolean handled = false;
-        if (currentController != null && currentController.getDeviceId() == event.getDeviceId()) {
-            handled = currentController.updateStateFromMotionEvent(event);
+        ExternalController controller = getController(event.getDeviceId());
+
+        if (controller != null) {
+            handled = controller.updateStateFromMotionEvent(event);
             if (handled)
-                sendGamepadState();
+                sendGamepadState(controller);
         }
         return handled;
     }
 
     public boolean onKeyEvent(KeyEvent event) {
         boolean handled = false;
+        ExternalController controller = getController(event.getDeviceId());
 
-        if (currentController != null && currentController.getDeviceId() == event.getDeviceId()
-                && event.getRepeatCount() == 0) {
+        if (controller != null && event.getRepeatCount() == 0) {
             int action = event.getAction();
 
             if (action == KeyEvent.ACTION_DOWN) {
-                handled = currentController.updateStateFromKeyEvent(event);
+                handled = controller.updateStateFromKeyEvent(event);
             } else if (action == KeyEvent.ACTION_UP) {
-                handled = currentController.updateStateFromKeyEvent(event);
+                handled = controller.updateStateFromKeyEvent(event);
             }
 
             if (handled)
-                sendGamepadState();
+                sendGamepadState(controller);
         }
         return handled;
     }
@@ -461,44 +551,12 @@ public class WinHandler {
         this.inputType = inputType;
     }
 
-    public ExternalController getCurrentController() {
-        return currentController;
-    }
-
     public void execWithDelay(String command, int delaySeconds) {
         if (command == null || command.trim().isEmpty() || delaySeconds < 0)
             return;
 
         // Use a scheduled executor for delay
         Executors.newSingleThreadScheduledExecutor().schedule(() -> exec(command), delaySeconds, TimeUnit.SECONDS);
-    }
-
-    public void initializeController() {
-        currentController = ExternalController.getController(0);
-        if (currentController != null) {
-            currentController.setContext(activity); // Ensure context is set
-            // Enforce mappings upon initialization
-            // for (byte originalButton : ExternalController.buttonMappings.keySet()) {
-            // currentController.setButtonMapping(originalButton,
-            // ExternalController.buttonMappings.get(originalButton));
-            // }
-            //
-            //
-            // SharedPreferences preferences =
-            // PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
-            // triggerType = (byte) preferences.getInt("trigger_type", TRIGGER_IS_AXIS);
-            // currentController.setTriggerType(triggerType); // Ensure triggerType is set
-
-            Log.d("WinHandler", "Force mappings applied on initialization.");
-        }
-    }
-
-    public void refreshControllerMappings() {
-        if (currentController != null) {
-            Log.d("WinHandler", "Refreshing controller mappings");
-            initializeController(); // Make sure controller state is up-to-date
-            sendGamepadState(); // Send updated state to Wine
-        }
     }
 
 }

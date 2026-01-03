@@ -418,24 +418,6 @@ public class InputControlsView extends View {
     }
 
 
-//    private void processJoystickInput(ExternalController controller) {
-//        ExternalControllerBinding controllerBinding;
-//        final int[] axes = {MotionEvent.AXIS_X, MotionEvent.AXIS_Y, MotionEvent.AXIS_Z, MotionEvent.AXIS_RZ, MotionEvent.AXIS_HAT_X, MotionEvent.AXIS_HAT_Y};
-//        final float[] values = {controller.state.thumbLX, controller.state.thumbLY, controller.state.thumbRX, controller.state.thumbRY, controller.state.getDPadX(), controller.state.getDPadY()};
-//
-//        for (byte i = 0; i < axes.length; i++) {
-//            if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
-//                controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i])));
-//                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), true, values[i]);
-//            }
-//            else {
-//                controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], (byte) 1));
-//                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), false, values[i]);
-//                controllerBinding = controller.getControllerBinding(ExternalControllerBinding.getKeyCodeForAxis(axes[i], (byte)-1));
-//                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), false, values[i]);
-//            }
-//        }
-//    }
 
     private void processJoystickInput(ExternalController controller) {
         final int[] axes = {
@@ -473,24 +455,6 @@ public class InputControlsView extends View {
 
 
 
-//    @Override
-//    public boolean onGenericMotionEvent(MotionEvent event) {
-//        if (!editMode && profile != null) {
-//            ExternalController controller = profile.getController(event.getDeviceId());
-//            if (controller != null && controller.updateStateFromMotionEvent(event)) {
-//                ExternalControllerBinding controllerBinding;
-//                controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
-//                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
-//
-//                controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
-//                if (controllerBinding != null) handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
-//
-//                processJoystickInput(controller);
-//                return true;
-//            }
-//        }
-//        return super.onGenericMotionEvent(event);
-//    }
 
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
@@ -719,8 +683,8 @@ public class InputControlsView extends View {
             }
 
             if (winHandler != null) {
-                ExternalController controller = winHandler.getCurrentController();
-                if (controller != null) controller.state.copy(state);
+                // ExternalController controller = winHandler.getCurrentController();
+                // if (controller != null) controller.state.copy(state);
                 winHandler.sendGamepadState();
             }
         }

@@ -106,12 +106,6 @@ public class GamepadConfiguratorDialog {
 
             byte mappedButton = externalController.getMappedButton(buttonIdx);
 
-            // For triggers (L2 and R2), default to analog if triggerType is axis
-            if ((buttonIdx == ExternalController.IDX_BUTTON_L2 || buttonIdx == ExternalController.IDX_BUTTON_R2) &&
-                    externalController.getTriggerType() == ExternalController.TRIGGER_IS_AXIS) {
-                // Default to the trigger being processed as analog, so we don't map it to a button
-                mappedButton = buttonIdx; // Leave it as L2 or R2 for analog control
-            }
 
             String currentButton = getButtonNameByIndex(mappedButton);
             int position = adapter.getPosition(currentButton);
@@ -205,25 +199,14 @@ public class GamepadConfiguratorDialog {
             }
         }
 
-        // Determine triggerType based on the flags
-        if (triggersMappedCorrectly && !nonTriggerMappedToTrigger) {
-            externalController.setTriggerType(ExternalController.TRIGGER_IS_AXIS);
-            Log.d("ExternalController", "Setting triggerType to TRIGGER_IS_AXIS");
-        } else {
-            externalController.setTriggerType(ExternalController.TRIGGER_IS_BUTTON);
-            Log.d("ExternalController", "Setting triggerType to TRIGGER_IS_BUTTON");
-        }
-
         // Save the updated triggerType to SharedPreferences
         SharedPreferences.Editor editor = preferences.edit();
-        editor.putInt("trigger_type", externalController.getTriggerType());
         editor.apply();
 
         // Update triggerType in WinHandler
 //        ((XServerDisplayActivity) context).getWinHandler().updateTriggerType(externalController.getTriggerType());
 
         Toast.makeText(context, "Mappings saved!", Toast.LENGTH_SHORT).show();
-        ((XServerDisplayActivity) context).getWinHandler().refreshControllerMappings();
     }
 
 

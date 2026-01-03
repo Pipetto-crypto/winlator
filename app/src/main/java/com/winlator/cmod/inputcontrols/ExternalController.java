@@ -38,7 +38,6 @@ public class ExternalController {
     private String name;
     private String id;
     private int deviceId = -1;
-    private byte triggerType = TRIGGER_IS_AXIS;
     private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
     public final GamepadState state = new GamepadState();
     private XServerDisplayActivity activity;
@@ -69,13 +68,7 @@ public class ExternalController {
         this.id = id;
     }
 
-    public byte getTriggerType() {
-        return triggerType;
-    }
 
-    public void setTriggerType(byte mode) {
-        triggerType = mode;
-    }
 
     private Context context; // Add this field
 
@@ -489,10 +482,7 @@ public class ExternalController {
 
     public boolean updateStateFromMotionEvent(MotionEvent event) {
         if (isJoystickDevice(event)) {
-            if (triggerType == TRIGGER_IS_AXIS)
-                processTriggerButton(event);
-            else if (triggerType == TRIGGER_IS_BUTTON && isXboxController())
-                processXboxTriggerButton(event);
+            processTriggerButton(event);
             int historySize = event.getHistorySize();
             for (int i = 0; i < historySize; i++) processJoystickInput(event, i);
             processJoystickInput(event, -1);
@@ -508,17 +498,9 @@ public class ExternalController {
         int buttonIdx = getButtonIdxByKeyCode(keyCode);
         if (buttonIdx != -1) {
             if (buttonIdx == IDX_BUTTON_L2) {
-                if (triggerType == TRIGGER_IS_BUTTON) {
-                    state.triggerL = pressed ? 1.0f : 0f;
-                    state.setPressed(buttonIdx, pressed);
-                } else
-                    return true;
+                return true;
             } else if (buttonIdx == IDX_BUTTON_R2) {
-                if (triggerType == TRIGGER_IS_BUTTON) {
-                    state.triggerR = pressed ? 1.0f : 0f;
-                    state.setPressed(buttonIdx, pressed);
-                } else
-                    return true;
+                return true;
             } else
                 state.setPressed(buttonIdx, pressed);
             return true;

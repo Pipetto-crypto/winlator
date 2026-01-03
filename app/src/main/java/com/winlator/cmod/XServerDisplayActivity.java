@@ -181,7 +181,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     // Inside the XServerDisplayActivity class
     private SensorManager sensorManager;
-    private ExternalController controller;
 
     // Playtime stats tracking
     private long startTime;
@@ -239,19 +238,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
         boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
 
-        // Initialize the WinHandler after context is set up
-        winHandler = new WinHandler(this);
-        winHandler.initializeController();
-        controller = winHandler.getCurrentController();
-
-        if (isOpenWithAndroidBrowser || isShareAndroidClipboard)
-            wineRequestHandler = new WineRequestHandler(this);
-
-        if (controller != null) {
-            int triggerType = preferences.getInt("trigger_type", ExternalController.TRIGGER_IS_AXIS); // Default to TRIGGER_IS_AXIS
-            controller.setTriggerType((byte) triggerType); // Cast to byte if needed
-        }
-
 
 
         // Check if xinputDisabled extra is passed
@@ -261,7 +247,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
 
         // Initialize SensorManager
-        sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
 
 
 
@@ -322,6 +307,20 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         });
 
         imageFs = ImageFs.find(this);
+
+        // Cleanup event files before initializing WinHandler
+        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
+        if (devInputDir.exists() || devInputDir.mkdirs()) {
+            for (int i = 0; i < 4; i++) {
+                File eventFile = new File(devInputDir, "event" + i);
+                if (eventFile.exists()) eventFile.delete();
+            }
+            try { new File(devInputDir, "event0").createNewFile(); } catch (Exception e) {}
+        }
+
+        // Initialize the WinHandler
+        winHandler = new WinHandler(this);
+        winHandler.setFakeInputPath(devInputDir.getAbsolutePath());
 
         String screenSize = Container.DEFAULT_SCREEN_SIZE;
         containerManager = new ContainerManager(this);
@@ -1089,15 +1088,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         // Add the launcher to our environment
         environment.addComponent(guestProgramLauncherComponent);
 
+        // Initialize fake input for controller emulation - MUST be before Wine starts! Deleting old ones should also be done here ofc.
         // Initialize fake input for controller emulation - MUST be before Wine starts!
         File devInputDir = new File(imageFs.getRootDir(), "dev/input");
         if (devInputDir.exists() || devInputDir.mkdirs()) {
-            // Delete old event0 to ensure clean session (no ghost inputs)
-            File event0 = new File(devInputDir, "event0");
-            if (event0.exists()) event0.delete();
-            try { event0.createNewFile(); } catch (Exception e) {}
-            
-            winHandler.setFakeInputPath(devInputDir.getAbsolutePath());
+             // Cleanup moved to onCreate
         }
 
         // Start all environment components (XServer, Audio, Wine, etc.)
@@ -1415,6 +1410,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         touchpadView.setPointerButtonRightEnabled(false);
 
         inputControlsView.invalidate();
+        winHandler.sendGamepadState();
     }
 
     private void hideInputControls() {
@@ -1427,6 +1423,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         touchpadView.setPointerButtonRightEnabled(true);
 
         inputControlsView.invalidate();
+        winHandler.sendGamepadState();
     }
 
     private void extractGraphicsDriverFiles() {

@@ -29,7 +29,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.PopupMenu;
 import android.widget.RadioButton;
-import android.widget.RadioGroup;
+
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -55,7 +55,6 @@ import com.winlator.cmod.inputcontrols.PreferenceKeys;
 import com.winlator.cmod.math.Mathf;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.widget.InputControlsView;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -72,7 +71,7 @@ public class InputControlsFragment extends Fragment {
     private Callback<ControlsProfile> importProfileCallback;
     private final int selectedProfileId;
     private SharedPreferences preferences;
-    private RadioGroup rgTriggerType;
+
     private int[] keycodes;
 
 
@@ -83,17 +82,7 @@ public class InputControlsFragment extends Fragment {
         this.selectedProfileId = selectedProfileId;
     }
 
-    @Override
-    public void onDestroy() {
-        SharedPreferences.Editor editor = preferences.edit();
 
-        List<Integer> triggerRbIds = List.of(R.id.RBTriggerIsButton, R.id.RBTriggerIsAxis, R.id.RBTriggerIsMixed);
-        editor.putInt("trigger_type", triggerRbIds.indexOf(rgTriggerType.getCheckedRadioButtonId()));
-
-        editor.commit();
-
-        super.onDestroy();
-    }
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -169,15 +158,7 @@ public class InputControlsFragment extends Fragment {
         Button btConfigureAnalogSticks = view.findViewById(R.id.BTConfigureAnalogSticks);
         btConfigureAnalogSticks.setOnClickListener(v -> showAnalogStickConfigDialog());
 
-        rgTriggerType = view.findViewById(R.id.RGTriggerType);
-        final View btHelpTriggerMode = view.findViewById(R.id.BTHelpTriggerMode);
-        List<Integer> triggerRbIds = List.of(R.id.RBTriggerIsButton, R.id.RBTriggerIsAxis, R.id.RBTriggerIsMixed);
-        int triggerType = preferences.getInt("trigger_type", ExternalController.TRIGGER_IS_AXIS);
 
-        if (triggerType >= 0 && triggerType < triggerRbIds.size()) {
-            ((RadioButton) (rgTriggerType.findViewById(triggerRbIds.get(triggerType)))).setChecked(true);
-        }
-        btHelpTriggerMode.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_trigger_mode));
 
         view.findViewById(R.id.BTAddProfile).setOnClickListener((v) -> ContentDialog.prompt(context, R.string.profile_name, null, (name) -> {
             currentProfile = manager.createProfile(name);
@@ -540,18 +521,11 @@ public class InputControlsFragment extends Fragment {
             editor.putBoolean(PreferenceKeys.SQUARE_DEADZONE_LEFT, cbLeftStickSquareDeadzone.isChecked());
             editor.apply();
 
-            // Optionally, notify ExternalController instances to reload preferences
-            // If you have a central manager or singleton, you can call a method here
-            // For example:
-            // ExternalControllerManager.getInstance().reloadPreferences();
-
-            // For this example, we'll assume ExternalController instances listen to preference changes
         });
 
         builder.setNegativeButton("Cancel", null);
 
         // Create and show the dialog
-        AlertDialog dialog = builder.create();
-        dialog.show();
+        builder.show();
     }
 }

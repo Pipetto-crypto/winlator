@@ -282,10 +282,7 @@
     <string name="startup_selection">Startup Selection</string>
     <string name="wine_debug_channel">Wine Debug Channel</string>
     <string name="game_controller">Game Controller</string>
-    <string name="as_button">Is Button</string>
-    <string name="as_axis">Is Axis</string>
-    <string name="both">Both</string>
-    <string name="trigger_type">Type</string>
+
     <string name="experimental">Experimental</string>
     <string name="glibc_exp_edition">Based On</string>
     <string name="enabled_async">Enable Async</string>
@@ -405,7 +402,7 @@
     <string name="enable_xinput_for_wine_game">Enable XInput for Games in Wine</string>
     <string name="dinput_legacy">Legacy (Old Gamepads)</string>
     <string name="dinput_modern">Modern (Xinput like)</string>
-    <string name="mixed">Mixed</string>
+
     <string name="help_xinput"><![CDATA[
         If your game utilizes the <i><b>XInput API</b></i> for game controller support, please enable this option.<br/><br/>
         This option will affect both <i><b>virtual</b></i> (provided by Input Controls) and <i><b>physical</b></i> game controllers.
@@ -419,12 +416,7 @@
     <string name="startup_essential">Essential (Load only essential services)</string>
     <string name="startup_aggressive">Aggressive (Stop services on startup)</string>
     <string name="lc_all" translatable="false">LC_ALL</string>
-    <string name="help_trigger_mode"><![CDATA[
-        This option depends on the <i><b>Physical Controller</b></i> you are using.<br/><br/>
-        <i><b>Is Axis</b></i>: Check this if the trigger on your controller is linear (with a range of motion).<br/><br/>
-        <i><b>Is Button</b></i>: Check this If the trigger on your controller is a button (similar to a switch).<br/><br/>
-        <i><b>Note</b></i>: For linear triggers, using <i><b>Is Button</b></i> will result in the loss of linear data when mapping.<br/>
-    ]]></string>
+
     <string name="toggle_orientation">Toggle Orientation</string>
     <string name="help_file_provider"><![CDATA[
         <i><b>File Provider</b></i> allows access to Winlator\'s internal data through android file manager.<br/><br/>
