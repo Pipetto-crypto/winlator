@@ -82,7 +82,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         // Load the user's preferred theme
         sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
-        isDarkMode = sharedPreferences.getBoolean("dark_mode", true);
+        isDarkMode = sharedPreferences.getBoolean("dark_mode", false);
 
         // Apply the theme based on the preference
         if (isDarkMode) {
@@ -372,4 +372,5 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         }
     }
 }
+
 
