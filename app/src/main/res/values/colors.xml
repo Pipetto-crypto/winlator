@@ -144,10 +144,6 @@
     <color name="primary_material_light">@android:color/black</color>
     <color name="primary_text_disabled_material_dark">#4dffffff</color>
     <color name="primary_text_disabled_material_light">#4dffffff</color>
-    <color name="ripple_material_dark">#33ffffff</color>
-    <color name="ripple_material_light">#33ffffff</color>
-    <color name="secondary_text_default_material_dark">#b3ffffff</color>
-    <color name="secondary_text_default_material_light">#b3ffffff</color>
     <color name="secondary_text_disabled_material_dark">#36ffffff</color>
     <color name="secondary_text_disabled_material_light">#36ffffff</color>
     <color name="switch_thumb_disabled_material_dark">#ff616161</color>
