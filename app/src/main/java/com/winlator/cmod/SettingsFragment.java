@@ -126,13 +126,13 @@ public class SettingsFragment extends Fragment {
         preferences = PreferenceManager.getDefaultSharedPreferences(context);
 
         // Check for Dark Mode preference
-        isDarkMode = preferences.getBoolean("dark_mode", true);
+        isDarkMode = preferences.getBoolean("dark_mode", false);
         // Apply dynamic styles
         applyDynamicStyles(view, isDarkMode);
 
         // Initialize the Dark Mode checkbox
         cbDarkMode = view.findViewById(R.id.CBDarkMode);
-        cbDarkMode.setChecked(preferences.getBoolean("dark_mode", true));
+        cbDarkMode.setChecked(preferences.getBoolean("dark_mode", false));
 
         cbDarkMode.setOnCheckedChangeListener((buttonView, isChecked) -> {
             // Save dark mode preference
@@ -786,4 +786,5 @@ public class SettingsFragment extends Fragment {
         FileUtils.clear(sourceDir);
     }
 }
+
 
