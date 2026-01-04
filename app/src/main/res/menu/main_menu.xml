@@ -5,6 +5,11 @@
             android:id="@+id/main_menu_shortcuts" 
             android:icon="@drawable/icon_shortcut" 
             android:title="@string/shortcuts" />
+
+        <item 
+            android:id="@+id/main_menu_file_manager" 
+            android:icon="@drawable/icon_open" 
+            android:title="File Manager" />
         
         <item 
             android:id="@+id/main_menu_containers" 
@@ -35,10 +40,5 @@
             android:id="@+id/main_menu_about" 
             android:icon="@drawable/icon_about" 
             android:title="@string/about" />
-            
-        <item 
-            android:id="@+id/main_menu_file_manager" 
-            android:icon="@android:drawable/ic_menu_view" 
-            android:title="File Manager" />
     </group>
 </menu>
