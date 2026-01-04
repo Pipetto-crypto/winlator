@@ -396,4 +396,13 @@ public class SettingsFragment extends Fragment {
             } catch (Exception e) {}
         }
     }
+// Método necessário para o ImageFsInstaller funcionar
+    public static void resetEmulatorsVersion(Context context) {
+        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(context);
+        SharedPreferences.Editor editor = preferences.edit();
+        // Reseta as versões para forçar uma nova verificação/instalação se necessário
+        editor.remove("box64_version");
+        if (preferences.contains("fexcore_version")) editor.remove("fexcore_version");
+        editor.apply();
+    }
 }
