@@ -28,6 +28,7 @@ public class AdrenotoolsFragment extends Fragment {
     @Override 
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        setHasOptionsMenu(true); // <--- OBRIGATÓRIO PARA O BOTÃO APARECER
         this.adrenotoolsManager = new AdrenotoolsManager(getActivity());
     }
     
@@ -38,6 +39,8 @@ public class AdrenotoolsFragment extends Fragment {
         recyclerView.setLayoutManager(new LinearLayoutManager(recyclerView.getContext()));
         recyclerView.addItemDecoration(new DividerItemDecoration(recyclerView.getContext(), DividerItemDecoration.VERTICAL));
         recyclerView.setAdapter(new DriversAdapter(adrenotoolsManager.enumarateInstalledDrivers()));
+        
+        // Botão original de instalar arquivo local
         View btInstallDriver = layout.findViewById(R.id.BTInstallDriver);
         btInstallDriver.setOnClickListener((v) -> {
             ContentDialog.confirm(getContext(), getString(R.string.install_drivers_message) + " " + getString(R.string.install_drivers_warning), () -> {
@@ -65,7 +68,36 @@ public class AdrenotoolsFragment extends Fragment {
                 ((DriversAdapter)recyclerView.getAdapter()).addItem(driver);
         }
      }       
-    
+
+    // --- CÓDIGO DO MENU DE DOWNLOAD (NOVO) ---
+    @Override
+    public void onCreateOptionsMenu(android.view.Menu menu, android.view.MenuInflater inflater) {
+        // Cria um botão de menu "Baixar" com ícone de nuvem/download
+        android.view.MenuItem item = menu.add(0, 1, 0, "Baixar");
+        item.setIcon(android.R.drawable.stat_sys_download); 
+        item.setShowAsAction(android.view.MenuItem.SHOW_AS_ACTION_ALWAYS);
+    }
+
+@Override
+    public boolean onOptionsItemSelected(android.view.MenuItem item) {
+        if (item.getItemId() == 1) {
+            // AGORA ABRE O GERENCIADOR DE REPOSITÓRIOS
+            com.winlator.cmod.contentdialog.RepositoryManagerDialog repoDialog = new com.winlator.cmod.contentdialog.RepositoryManagerDialog(getContext());
+            
+            // Callback: Quando fechar tudo, recarrega a lista do fragmento
+            repoDialog.setOnDismissCallback(() -> {
+                if (recyclerView != null && recyclerView.getAdapter() instanceof DriversAdapter) {
+                    ((DriversAdapter) recyclerView.getAdapter()).reloadList();
+                }
+            });
+            
+            repoDialog.show();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+    // ----------------------------------------
+
     private class DriversAdapter extends RecyclerView.Adapter<DriversAdapter.ViewHolder> {
         private ArrayList<String> driversList;
 
@@ -85,7 +117,13 @@ public class AdrenotoolsFragment extends Fragment {
         public DriversAdapter(ArrayList<String> driversList) {
             this.driversList = driversList;
         }
-        
+
+        // Método para atualizar a lista automaticamente
+        public void reloadList() {
+            this.driversList = adrenotoolsManager.enumarateInstalledDrivers();
+            notifyDataSetChanged();
+        }
+
         @Override
         public ViewHolder onCreateViewHolder(ViewGroup viewGroup, int viewType) {
             View view = LayoutInflater.from(viewGroup.getContext()).inflate(R.layout.adrenotools_list_item, viewGroup, false);

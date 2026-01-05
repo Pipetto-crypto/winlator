@@ -1742,8 +1742,26 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             if (shortcut.path.endsWith(".lnk")) {
                 args += "\"" + shortcut.path + "\"" + execArgs;
             } else {
-                String exeDir = FileUtils.getDirname(shortcut.path);
-                String filename = FileUtils.getName(shortcut.path);
+                
+                String fullPath = shortcut.path.replace("\"", ""); 
+                String exeDir;
+                String filename;
+
+                if (fullPath.contains("\\")) {
+                    
+                    int lastSlash = fullPath.lastIndexOf("\\");
+                    if (lastSlash != -1) {
+                        exeDir = fullPath.substring(0, lastSlash);
+                        filename = fullPath.substring(lastSlash + 1);
+                    } else {
+                        exeDir = "D:\\";
+                        filename = fullPath;
+                    }
+                } else {
+                    
+                    exeDir = FileUtils.getDirname(fullPath);
+                    filename = FileUtils.getName(fullPath);
+                }
 
                 int dotIndex = filename.lastIndexOf(".");
                 int spaceIndex = (dotIndex != -1) ? filename.indexOf(" ", dotIndex) : -1;
@@ -1770,17 +1788,22 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         return command;
     }
 
-    private String getExecutable() {
-        String filename = "";
-        if (shortcut != null) {
-            filename = FileUtils.getName(shortcut.path);
+private String getExecutable() {
+        String filename = "wfm.exe";
+        if (shortcut != null && shortcut.path != null) {
+            String cleanPath = shortcut.path.replace("\"", "");
+            int lastSlash = cleanPath.lastIndexOf('/');
+            int lastBackslash = cleanPath.lastIndexOf('\\');
+            int lastSeparator = Math.max(lastSlash, lastBackslash);
+            
+            if (lastSeparator != -1) {
+                filename = cleanPath.substring(lastSeparator + 1);
+            } else {
+                filename = cleanPath;
+            }
         }
-        else
-            filename = "wfm.exe";
         return filename;
     }
-
-
     public XServer getXServer() {
         return xServer;
     }
