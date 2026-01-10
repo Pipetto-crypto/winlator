@@ -400,8 +400,6 @@
     <string name="cannot_remove_default_sound_font">Cannot remove default soundfont</string>
     <string name="enable_dinput_for_wine_game">Enable DInput for Games in Wine</string>
     <string name="enable_xinput_for_wine_game">Enable XInput for Games in Wine</string>
-    <string name="dinput_legacy">Legacy (Old Gamepads)</string>
-    <string name="dinput_modern">Modern (Xinput like)</string>
 
     <string name="help_xinput"><![CDATA[
         If your game utilizes the <i><b>XInput API</b></i> for game controller support, please enable this option.<br/><br/>

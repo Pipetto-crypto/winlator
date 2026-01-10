@@ -69,12 +69,10 @@ public abstract class WineUtils {
         }
 
         final String[] direct3dLibs = {"d3d8", "d3d9", "d3d10", "d3d10_1", "d3d10core", "d3d11", "d3d12", "d3d12core", "ddraw", "dxgi", "wined3d"};
-        final String[] xinputLibs = {"dinput", "dinput8", "xinput1_1", "xinput1_2", "xinput1_3", "xinput1_4", "xinput9_1_0", "xinputuap"};
         final String dllOverridesKey = "Software\\Wine\\DllOverrides";
 
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             for (String name : direct3dLibs) registryEditor.setStringValue(dllOverridesKey, name, "native,builtin");
-            for (String name : xinputLibs) registryEditor.setStringValue(dllOverridesKey, name, "builtin,native");
             setWindowMetrics(registryEditor);
         }
     }
@@ -242,4 +240,28 @@ public abstract class WineUtils {
             }
         }
     }
+
+    /**
+     * Configure Wine DirectInput joystick registry keys for all gamepads.
+     * By default, disables all joysticks in Wine's DirectInput.
+     * When DInput is enabled, sets joysticks to "override" mode to make them visible.
+     * 
+     * @param container The container to configure
+     * @param dinputEnabled Whether DInput is enabled for this container
+     */
+    public static void setJoystickRegistryKeys(Container container, boolean dinputEnabled) {
+        File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
+        final String joysticksKey = "Software\\Wine\\DirectInput\\Joysticks";
+        
+        // The value to set: "disabled" hides from DInput, "override" makes visible
+        final String value = dinputEnabled ? "override" : "disabled";
+        
+        try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
+            // Configure all 4 possible gamepad slots
+            for (int i = 0; i < 4; i++) {
+                registryEditor.setStringValue(joysticksKey, "Generic HID Gamepad " + i, value);
+            }
+        }
+    }
 }
+

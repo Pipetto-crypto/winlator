@@ -631,24 +631,6 @@
                     <LinearLayout style="@style/FieldSet">
 
                         <LinearLayout
-                            android:id="@+id/LLDinputMapperType"
-                            android:layout_width="match_parent"
-                            android:layout_height="wrap_content"
-                            android:orientation="vertical">
-
-                            <TextView
-                                android:layout_width="wrap_content"
-                                android:layout_height="wrap_content"
-                                android:text="@string/directinput_mapper_type" />
-
-                            <Spinner
-                                style="@style/ComboBox"
-                                android:id="@+id/SDInputType"
-                                android:layout_width="match_parent"
-                                android:entries="@array/dinput_mapper_type_entries" />
-                        </LinearLayout>
-
-                        <LinearLayout
                             android:layout_width="match_parent"
                             android:layout_height="wrap_content"
                             android:orientation="horizontal"

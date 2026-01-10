@@ -134,10 +134,6 @@
     <string-array name="fexcore_version_entries">
         <item>2508</item>
     </string-array>
-    <string-array name="dinput_mapper_type_entries">
-        <item>@string/dinput_legacy</item>
-        <item>@string/dinput_modern</item>
-    </string-array>
     <string-array name="desktop_theme_entries">
         <item>Light</item>
         <item>Dark</item>

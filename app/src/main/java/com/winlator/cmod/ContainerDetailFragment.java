@@ -186,8 +186,6 @@ public class ContainerDetailFragment extends Fragment {
         // Handled in createWinComponentsTab
 
         // Update Advanced Tab Spinner styles
-        Spinner SDInputType = view.findViewById(R.id.SDInputType);
-        SDInputType.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
         Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         sBox64Preset.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
@@ -359,10 +357,8 @@ public class ContainerDetailFragment extends Fragment {
         final Runnable showInputWarning = () -> ContentDialog.alert(context, R.string.enable_xinput_and_dinput_same_time, null);
         final CheckBox cbEnableXInput = view.findViewById(R.id.CBEnableXInput);
         final CheckBox cbEnableDInput = view.findViewById(R.id.CBEnableDInput);
-        final View llDInputType = view.findViewById(R.id.LLDinputMapperType);
         final View btHelpXInput = view.findViewById(R.id.BTXInputHelp);
         final View btHelpDInput = view.findViewById(R.id.BTDInputHelp);
-        final Spinner SDInputType = view.findViewById(R.id.SDInputType);
 
         // Check if we are in edit mode to set input type accordingly
         int inputType = isEditMode() ? container.getInputType() : WinHandler.DEFAULT_INPUT_TYPE;
@@ -372,18 +368,16 @@ public class ContainerDetailFragment extends Fragment {
         cbEnableDInput.setChecked((inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT);
 
         cbEnableDInput.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            llDInputType.setVisibility(isChecked ? View.VISIBLE : View.GONE);
-            if (isChecked && cbEnableXInput.isChecked())
-                showInputWarning.run();
+            if (isChecked && cbEnableXInput.isChecked()) {
+                cbEnableXInput.setChecked(false);
+            }
         });
 
         cbEnableXInput.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (isChecked && cbEnableDInput.isChecked())
-                showInputWarning.run();
+            if (isChecked && cbEnableDInput.isChecked()) {
+                cbEnableDInput.setChecked(false);
+            }
         });
-
-        SDInputType.setSelection(((inputType & WinHandler.FLAG_DINPUT_MAPPER_STANDARD) == WinHandler.FLAG_DINPUT_MAPPER_STANDARD) ? 0 : 1);
-        llDInputType.setVisibility(cbEnableDInput.isChecked() ? View.VISIBLE : View.GONE);
 
         btHelpXInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_xinput));
         btHelpDInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_dinput));
@@ -501,7 +495,6 @@ public class ContainerDetailFragment extends Fragment {
                 int finalInputType = 0;
                 finalInputType |= cbEnableXInput.isChecked() ? WinHandler.FLAG_INPUT_TYPE_XINPUT : 0;
                 finalInputType |= cbEnableDInput.isChecked() ? WinHandler.FLAG_INPUT_TYPE_DINPUT : 0;
-                finalInputType |= SDInputType.getSelectedItemPosition() == 0 ? WinHandler.FLAG_DINPUT_MAPPER_STANDARD : WinHandler.FLAG_DINPUT_MAPPER_XINPUT;
 
                 // Handle SDL2 environment variables based on the toggle state
                 if (cbSdl2Toggle.isChecked()) {

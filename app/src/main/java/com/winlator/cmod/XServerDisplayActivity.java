@@ -949,6 +949,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         WineStartMenuCreator.create(this, container);
         WineUtils.createDosdevicesSymlinks(container);
+        
+        // Configure Wine joystick registry keys based on DInput setting
+        int inputType = container.getInputType();
+        if (shortcut != null) {
+            String shortcutInputType = shortcut.getExtra("inputType");
+            if (!shortcutInputType.isEmpty()) {
+                inputType = Byte.parseByte(shortcutInputType);
+            }
+        }
+        boolean dinputEnabled = (inputType & WinHandler.FLAG_INPUT_TYPE_DINPUT) == WinHandler.FLAG_INPUT_TYPE_DINPUT;
+        WineUtils.setJoystickRegistryKeys(container, dinputEnabled);
 
         if (shortcut != null)
             startupSelection = shortcut.getExtra("startupSelection", String.valueOf(container.getStartupSelection()));
