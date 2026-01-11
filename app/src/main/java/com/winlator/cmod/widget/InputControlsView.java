@@ -476,19 +476,19 @@ public class InputControlsView extends View {
             ExternalController controller = profile.getController(event.getDeviceId());
 
             if (controller != null && controller.updateStateFromMotionEvent(event)) {
-                // Process L2 and R2 button bindings
+                // Process L2 and R2 button bindings - use analog trigger values, not isPressed
                 ExternalControllerBinding controllerBinding;
 
-                // L2 button
+                // L2 trigger - check analog value, not button state
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
                 if (controllerBinding != null) {
-                    handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
+                    handleInputEvent(controllerBinding.getBinding(), controller.state.triggerL > 0.5f);
                 }
 
-                // R2 button
+                // R2 trigger - check analog value, not button state
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
                 if (controllerBinding != null) {
-                    handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
+                    handleInputEvent(controllerBinding.getBinding(), controller.state.triggerR > 0.5f);
                 }
 
                 Log.d("InputEvent", "Event source: " + event.getSource());
@@ -507,6 +507,16 @@ public class InputControlsView extends View {
         return super.onGenericMotionEvent(event);
     }
 
+
+    public interface OnElementClickListener {
+        void onElementClick(ControlElement element);
+    }
+
+    private OnElementClickListener onElementClickListener;
+
+    public void setOnElementClickListener(OnElementClickListener onElementClickListener) {
+        this.onElementClickListener = onElementClickListener;
+    }
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
@@ -555,6 +565,20 @@ public class InputControlsView extends View {
             int pointerId = event.getPointerId(actionIndex);
             int actionMasked = event.getActionMasked();
             boolean handled = false;
+
+            if (onElementClickListener != null) {
+                 if (actionMasked == MotionEvent.ACTION_DOWN || actionMasked == MotionEvent.ACTION_POINTER_DOWN) {
+                     float x = event.getX(actionIndex);
+                     float y = event.getY(actionIndex);
+                     for (ControlElement element : profile.getElements()) {
+                         if (element.containsPoint(x, y)) {
+                             onElementClickListener.onElementClick(element);
+                             return true;
+                         }
+                     }
+                 }
+                 return true;
+            }
 
             switch (actionMasked) {
                 case MotionEvent.ACTION_DOWN:

@@ -360,14 +360,8 @@ public class InputControlsFragment extends Fragment {
                 }
 
                 itemView.setOnClickListener((v) -> {
-                    if (currentProfile != null) {
-                        Intent intent = new Intent(getContext(), ExternalControllerBindingsActivity.class);
-                        intent.putExtra("profile_id", currentProfile.id);
-                        intent.putExtra("controller_id", controller.getId());
-                        startActivity(intent);
-                        getActivity().overridePendingTransition(R.anim.slide_in_up, R.anim.slide_out_down);  // Custom slide animations
-                    }
-                    else AppUtils.showToast(getContext(), R.string.no_profile_selected);
+                    // Launch remapper directly - no profile needed
+                    startActivity(new Intent(getContext(), ControllerRemapActivity.class));
                 });
 
                 container.addView(itemView);

@@ -97,6 +97,7 @@ public class WinHandler {
         inputManager.registerInputDeviceListener(inputDeviceListener, null);
 
         preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
+        ExternalController.loadMappings(activity);
     }
 
     private boolean sendPacket(int port) {

@@ -59,6 +59,12 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
         container.findViewById(R.id.BTAddElement).setOnClickListener(this);
         container.findViewById(R.id.BTRemoveElement).setOnClickListener(this);
         container.findViewById(R.id.BTElementSettings).setOnClickListener(this);
+
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Warning")
+                .setMessage("Mixing Mouse and Gamepad controls can cause issues.")
+                .setPositiveButton("OK", null)
+                .show();
     }
 
     @Override
