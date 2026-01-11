@@ -347,7 +347,7 @@ public class ControlElement {
     public void draw(Canvas canvas) {
         int snappingSize = inputControlsView.getSnappingSize();
         Paint paint = inputControlsView.getPaint();
-        int primaryColor = inputControlsView.getSecondaryColor(); // getPrimaryColor();
+        int primaryColor = inputControlsView.getPrimaryColor(); // getPrimaryColor();
 
         int fillColor = ColorUtils.setAlphaComponent(primaryColor, 70);
 
@@ -886,3 +886,4 @@ public class ControlElement {
         return currentPointerId != -1 || anyStateActive();
     }
 }
+
