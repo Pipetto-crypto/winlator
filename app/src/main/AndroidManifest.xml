@@ -102,9 +102,9 @@
             android:exported="false" />
 
         <activity
-            android:name="com.winlator.cmod.ExternalControllerBindingsActivity"
-            android:theme="@style/AppTheme"
-            android:screenOrientation="sensor"
+            android:name="com.winlator.cmod.ControllerRemapActivity"
+            android:theme="@style/AppThemeFullscreen"
+            android:screenOrientation="sensorLandscape"
             android:exported="false" />
 
 

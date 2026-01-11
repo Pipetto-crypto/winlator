@@ -102,10 +102,10 @@ public class ControlElement {
             bindings[3] = Binding.KEY_A;
         }
         else if (type == Type.TRACKPAD) {
-            bindings[0] = Binding.MOUSE_MOVE_UP;
-            bindings[1] = Binding.MOUSE_MOVE_RIGHT;
-            bindings[2] = Binding.MOUSE_MOVE_DOWN;
-            bindings[3] = Binding.MOUSE_MOVE_LEFT;
+            bindings[0] = Binding.GAMEPAD_RIGHT_THUMB_UP;
+            bindings[1] = Binding.GAMEPAD_RIGHT_THUMB_RIGHT;
+            bindings[2] = Binding.GAMEPAD_RIGHT_THUMB_DOWN;
+            bindings[3] = Binding.GAMEPAD_RIGHT_THUMB_LEFT;
         }
         else if (type == Type.RANGE_BUTTON) {
             scroller = new RangeScroller(inputControlsView, this);

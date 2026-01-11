@@ -18,6 +18,8 @@ import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 
 public class ExternalController {
     public static final byte IDX_BUTTON_A = 0;
@@ -32,6 +34,10 @@ public class ExternalController {
     public static final byte IDX_BUTTON_R3 = 9;
     public static final byte IDX_BUTTON_L2 = 10;
     public static final byte IDX_BUTTON_R2 = 11;
+    public static final byte IDX_BUTTON_UP = 12;
+    public static final byte IDX_BUTTON_RIGHT = 13;
+    public static final byte IDX_BUTTON_DOWN = 14;
+    public static final byte IDX_BUTTON_LEFT = 15;
     private String name;
     private String id;
     private int deviceId = -1;
@@ -47,6 +53,44 @@ public class ExternalController {
 
     public void setName(String name) {
         this.name = name;
+    }
+
+    public static void loadMappings(Context context) {
+        SharedPreferences prefs = context.getSharedPreferences("ctrl_map", Context.MODE_PRIVATE);
+
+        // Load button mappings
+        String buttons = prefs.getString("buttons", prefs.getString("m", ""));
+        buttonMappings.clear();
+        if (!buttons.isEmpty()) {
+            for (String p : buttons.split(",")) {
+                String[] kv = p.split(":");
+                if (kv.length == 2) {
+                    try {
+                        buttonMappings.put(Byte.parseByte(kv[0]), Byte.parseByte(kv[1]));
+                    } catch (Exception e) {}
+                }
+            }
+        } else {
+            // Defaults
+            for (byte i = 0; i <= 15; i++) buttonMappings.put(i, i);
+        }
+
+        // Load axis mappings
+        String axes = prefs.getString("axes", "");
+        axisMappings.clear();
+        if (!axes.isEmpty()) {
+            for (String p : axes.split(",")) {
+                String[] kv = p.split(":");
+                if (kv.length == 2) {
+                    try {
+                        axisMappings.put(Byte.parseByte(kv[0]), Byte.parseByte(kv[1]));
+                    } catch (Exception e) {}
+                }
+            }
+        } else {
+            // Defaults
+            for (byte i = 0; i < 4; i++) axisMappings.put(i, i);
+        }
     }
 
     public String getId() {
@@ -66,22 +110,43 @@ public class ExternalController {
 
     // Remove static keyword
     public static final HashMap<Byte, Byte> buttonMappings = new HashMap<>();
-
+    
+    // Axis mapping constants
+    public static final byte AXIS_LEFT_X = 0;
+    public static final byte AXIS_LEFT_Y = 1;
+    public static final byte AXIS_RIGHT_X = 2;
+    public static final byte AXIS_RIGHT_Y = 3;
+    public static final byte AXIS_LEFT_INVERT_X = 4;  // Invert left X
+    public static final byte AXIS_LEFT_INVERT_Y = 5;  // Invert left Y
+    public static final byte AXIS_RIGHT_INVERT_X = 6; // Invert right X
+    public static final byte AXIS_RIGHT_INVERT_Y = 7; // Invert right Y
+    
+    // Axis mappings: physical axis → target axis
+    public static final HashMap<Byte, Byte> axisMappings = new HashMap<>();
+    
+    // Get mapped axis with optional inversion
+    public static byte getMappedAxis(byte physicalAxis) {
+        return axisMappings.getOrDefault(physicalAxis, physicalAxis);
+    }
+    
+    // Check if an axis should be inverted
+    public static boolean isAxisInverted(byte axis) {
+        byte mapped = getMappedAxis(axis);
+        return mapped >= 4 && mapped <= 7;
+    }
+    
+    // Get the actual target axis (removing invert flag)
+    public static byte getTargetAxis(byte axis) {
+        byte mapped = getMappedAxis(axis);
+        if (mapped >= 4) return (byte)(mapped - 4);
+        return mapped;
+    }
 
     private boolean triggerLPressedViaButton = false;
     private boolean triggerRPressedViaButton = false;
 
 
-//    public ExternalController() {
-//
-//
-//        // Initialize trigger mappings to themselves
-//        buttonMappings.put(IDX_BUTTON_L2, IDX_BUTTON_L2);
-//        buttonMappings.put(IDX_BUTTON_R2, IDX_BUTTON_R2);
-//
-//        // Ensure triggerType is set to TRIGGER_IS_AXIS
-//        triggerType = TRIGGER_IS_AXIS;
-//    }
+
 
 
     public int getDeviceId() {
@@ -133,6 +198,20 @@ public class ExternalController {
         // Remove triggerType handling from here
     }
 
+    public void removeButtonMapping(byte originalButton) {
+        buttonMappings.remove(originalButton);
+    }
+
+    public void removeButtonMappingForTarget(byte targetButton) {
+        Iterator<Map.Entry<Byte, Byte>> iterator = buttonMappings.entrySet().iterator();
+        while (iterator.hasNext()) {
+            Map.Entry<Byte, Byte> entry = iterator.next();
+            if (entry.getValue() == targetButton) {
+                iterator.remove();
+            }
+        }
+    }
+
 
     public byte getMappedButton(byte originalButton) {
         byte mappedButton = buttonMappings.getOrDefault(originalButton, originalButton);
@@ -169,19 +248,72 @@ public class ExternalController {
     }
 
     private void processJoystickInput(MotionEvent event, int historyPos) {
-        state.thumbLX = getCenteredAxis(event, MotionEvent.AXIS_X, historyPos);
-        state.thumbLY = getCenteredAxis(event, MotionEvent.AXIS_Y, historyPos);
-        state.thumbRX = getCenteredAxis(event, MotionEvent.AXIS_Z, historyPos);
-        state.thumbRY = getCenteredAxis(event, MotionEvent.AXIS_RZ, historyPos);
+        // Get raw axis values
+        float rawLX = getCenteredAxis(event, MotionEvent.AXIS_X, historyPos);
+        float rawLY = getCenteredAxis(event, MotionEvent.AXIS_Y, historyPos);
+        float rawRX = getCenteredAxis(event, MotionEvent.AXIS_Z, historyPos);
+        float rawRY = getCenteredAxis(event, MotionEvent.AXIS_RZ, historyPos);
+        
+        // Physical axis values array: [leftX, leftY, rightX, rightY]
+        float[] physical = {rawLX, rawLY, rawRX, rawRY};
+        
+        // Initialize output with zeros
+        float[] output = {0, 0, 0, 0};
+        
+        // Apply axis mappings: for each physical axis, route to its target
+        for (byte phys = 0; phys < 4; phys++) {
+            byte mapped = axisMappings.getOrDefault(phys, phys);  // Default: same axis
+            byte target = (byte)(mapped % 4);  // Target axis (0-3)
+            boolean invert = mapped >= 4;  // Inversion flag
+            
+            float value = physical[phys];
+            if (invert) value = -value;
+            
+            // Add value to output (allows multiple sources to same target)
+            output[target] += value;
+        }
+        
+        // Clamp and set output values
+        state.thumbLX = Math.max(-1f, Math.min(1f, output[0]));
+        state.thumbLY = Math.max(-1f, Math.min(1f, output[1]));
+        state.thumbRX = Math.max(-1f, Math.min(1f, output[2]));
+        state.thumbRY = Math.max(-1f, Math.min(1f, output[3]));
 
         if (historyPos == -1) {
             float axisX = getCenteredAxis(event, MotionEvent.AXIS_HAT_X, historyPos);
             float axisY = getCenteredAxis(event, MotionEvent.AXIS_HAT_Y, historyPos);
 
-            state.dpad[0] = axisY == -1.0f && Math.abs(state.thumbLY) < ControlElement.STICK_DEAD_ZONE;
-            state.dpad[1] = axisX == 1.0f && Math.abs(state.thumbLX) < ControlElement.STICK_DEAD_ZONE;
-            state.dpad[2] = axisY == 1.0f && Math.abs(state.thumbLY) < ControlElement.STICK_DEAD_ZONE;
-            state.dpad[3] = axisX == -1.0f && Math.abs(state.thumbLX) < ControlElement.STICK_DEAD_ZONE;
+            // Remap Logic for HATs (D-Pad Virtual IDs 12-15)
+            // 12=Up, 13=Right, 14=Down, 15=Left
+            
+            int[] dpadIds = {12, 13, 14, 15};
+            boolean[] rawStates = {
+                axisY == -1.0f, // Up
+                axisX == 1.0f,  // Right
+                axisY == 1.0f,  // Down
+                axisX == -1.0f  // Left
+            };
+
+            for (int i=0; i<4; i++) {
+                byte mapped = getMappedButton((byte)dpadIds[i]);
+                boolean pressed = rawStates[i] && (i%2==0 ? Math.abs(state.thumbLY) : Math.abs(state.thumbLX)) < ControlElement.STICK_DEAD_ZONE;
+
+                // Handle Target: D-Pad
+                if (mapped >= 12 && mapped <= 15) {
+                     int targetDir = mapped - 12; // 0-3
+                     state.dpad[targetDir] = pressed; 
+                } 
+                // Handle Target: Triggers
+                else if (mapped == IDX_BUTTON_L2) {
+                     state.triggerL = Math.max(state.triggerL, pressed ? 1.0f : 0.0f);
+                } else if (mapped == IDX_BUTTON_R2) {
+                     state.triggerR = Math.max(state.triggerR, pressed ? 1.0f : 0.0f);
+                }
+                // Handle Target: Buttons
+                else {
+                     state.setPressed(mapped, pressed);
+                }
+            }
         }
     }
 
@@ -190,46 +322,37 @@ public class ExternalController {
     private void processTriggerButton(MotionEvent event) {
         float l = event.getAxisValue(MotionEvent.AXIS_LTRIGGER) == 0f ? event.getAxisValue(MotionEvent.AXIS_BRAKE) : event.getAxisValue(MotionEvent.AXIS_LTRIGGER);
         float r = event.getAxisValue(MotionEvent.AXIS_RTRIGGER) == 0f ? event.getAxisValue(MotionEvent.AXIS_GAS) : event.getAxisValue(MotionEvent.AXIS_RTRIGGER);
-        state.triggerL = l;
-        state.triggerR = r;
-        state.setPressed(IDX_BUTTON_L2, l == 1.0f);
-        state.setPressed(IDX_BUTTON_R2, r == 1.0f);
-    }
-
-    public boolean isXboxController() {
-        InputDevice device = InputDevice.getDevice(getDeviceId());
-        if (device == null) return false;
-        int vendorId = device.getVendorId();
-        return vendorId == 0x045E; // Microsoft's Vendor ID for Xbox controllers
-    }
-
-    private void processXboxTriggerButton(MotionEvent event) {
-        // Retrieve axis values for triggers
-        float l = event.getAxisValue(MotionEvent.AXIS_LTRIGGER) == 0f
-                ? event.getAxisValue(MotionEvent.AXIS_BRAKE)
-                : event.getAxisValue(MotionEvent.AXIS_LTRIGGER);
-        float r = event.getAxisValue(MotionEvent.AXIS_RTRIGGER) == 0f
-                ? event.getAxisValue(MotionEvent.AXIS_GAS)
-                : event.getAxisValue(MotionEvent.AXIS_RTRIGGER);
-
-        // Simulate full press by setting trigger values to 1.0f when pulled
-        if (l > 0.0f) {
-            state.triggerL = 1.0f; // Simulate full press
-            state.setPressed(IDX_BUTTON_L2, true);
+        
+        // Apply remapping for triggers
+        byte mappedL = getMappedButton(IDX_BUTTON_L2);
+        byte mappedR = getMappedButton(IDX_BUTTON_R2);
+        
+        // Handle left trigger remapping
+        if (mappedL == IDX_BUTTON_L2) {
+            // L2 not remapped - set trigger value normally
+            state.triggerL = Math.max(state.triggerL, l);
+        } else if (mappedL == IDX_BUTTON_R2) {
+            // L2 remapped to R2 - swap trigger value
+            state.triggerR = Math.max(state.triggerR, l);
         } else {
-            state.triggerL = 0.0f; // Simulate release
-            state.setPressed(IDX_BUTTON_L2, false);
+            // L2 remapped to a button - set button pressed, don't set triggerL
+            state.setPressed(mappedL, l > 0.5f);
+            // Suppress original trigger axis
         }
-
-        if (r > 0.0f) {
-            state.triggerR = 1.0f; // Simulate full press
-            state.setPressed(IDX_BUTTON_R2, true);
+        
+        // Handle right trigger remapping
+        if (mappedR == IDX_BUTTON_R2) {
+            // R2 not remapped - set trigger value normally
+            state.triggerR = Math.max(state.triggerR, r);
+        } else if (mappedR == IDX_BUTTON_L2) {
+            // R2 remapped to L2 - swap trigger value
+            state.triggerL = Math.max(state.triggerL, r);
         } else {
-            state.triggerR = 0.0f; // Simulate release
-            state.setPressed(IDX_BUTTON_R2, false);
+            // R2 remapped to a button - set button pressed, don't set triggerR
+            state.setPressed(mappedR, r > 0.5f);
+            // Suppress original trigger axis
         }
     }
-
 
 
 //    private void processTriggerButton(MotionEvent event) {
@@ -351,6 +474,10 @@ public class ExternalController {
 
     public boolean updateStateFromMotionEvent(MotionEvent event) {
         if (isJoystickDevice(event)) {
+            // Reset triggers to base button state (prevents Key presses being cleared by Motion updates)
+            state.triggerL = triggerLPressedViaButton ? 1.0f : 0.0f;
+            state.triggerR = triggerRPressedViaButton ? 1.0f : 0.0f;
+            
             processTriggerButton(event);
             int historySize = event.getHistorySize();
             for (int i = 0; i < historySize; i++) processJoystickInput(event, i);
@@ -365,72 +492,38 @@ public class ExternalController {
         boolean pressed = event.getAction() == KeyEvent.ACTION_DOWN;
         int keyCode = event.getKeyCode();
         int buttonIdx = getButtonIdxByKeyCode(keyCode);
-        if (buttonIdx != -1) {
-            if (buttonIdx == IDX_BUTTON_L2) {
-                return true;
-            } else if (buttonIdx == IDX_BUTTON_R2) {
-                return true;
-            } else
-                state.setPressed(buttonIdx, pressed);
-            return true;
-        }
 
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_DPAD_UP:
-                state.dpad[0] = pressed && Math.abs(state.thumbLY) < ControlElement.STICK_DEAD_ZONE;
+        if (buttonIdx != -1) {
+            // Apply button mapping: physical source → target ID
+            byte mappedIdx = getMappedButton((byte) buttonIdx);
+
+            // Handle Target: Triggers (Analog or Digital Button mapped to Trigger)
+            if (mappedIdx == IDX_BUTTON_L2) {
+                triggerLPressedViaButton = pressed;
+                state.triggerL = pressed ? 1.0f : 0f;
                 return true;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-                state.dpad[1] = pressed && Math.abs(state.thumbLX) < ControlElement.STICK_DEAD_ZONE;
+            } else if (mappedIdx == IDX_BUTTON_R2) {
+                triggerRPressedViaButton = pressed;
+                state.triggerR = pressed ? 1.0f : 0f;
                 return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-                state.dpad[2] = pressed && Math.abs(state.thumbLY) < ControlElement.STICK_DEAD_ZONE;
+            } 
+            
+            // Handle Target: D-Pad (Mapped from Buttons/Keys)
+            else if (mappedIdx >= 12 && mappedIdx <= 15) {
+                int dpadIndex = mappedIdx - 12;
+                state.dpad[dpadIndex] = pressed;
                 return true;
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-                state.dpad[3] = pressed && Math.abs(state.thumbLX) < ControlElement.STICK_DEAD_ZONE;
+            }
+            
+            // Handle Target: Regular Buttons
+            else {
+                state.setPressed(mappedIdx, pressed);
                 return true;
+            }
         }
         return false;
     }
 
-//    public boolean updateStateFromKeyEvent(KeyEvent event) {
-//        boolean pressed = event.getAction() == KeyEvent.ACTION_DOWN;
-//        int keyCode = event.getKeyCode();
-//        int buttonIdx = getButtonIdxByKeyCode(keyCode);
-//
-//        if (buttonIdx != -1) {
-//            byte mappedButtonIdx = getMappedButton((byte) buttonIdx);
-//
-//            if (mappedButtonIdx == IDX_BUTTON_L2) {
-//                state.triggerL = pressed ? 1.0f : 0f;
-//                state.setPressed(mappedButtonIdx, pressed);
-//                triggerLPressedViaButton = pressed;
-//            } else if (mappedButtonIdx == IDX_BUTTON_R2) {
-//                state.triggerR = pressed ? 1.0f : 0f;
-//                state.setPressed(mappedButtonIdx, pressed);
-//                triggerRPressedViaButton = pressed;
-//            } else {
-//                state.setPressed(mappedButtonIdx, pressed);
-//            }
-//            return true;
-//        }
-//
-//        // Handle D-pad directions with mappings
-//        switch (keyCode) {
-//            case KeyEvent.KEYCODE_DPAD_UP:
-//                state.dpad[0] = pressed && Math.abs(state.thumbLY) < ControlElement.STICK_DEAD_ZONE;
-//                return true;
-//            case KeyEvent.KEYCODE_DPAD_RIGHT:
-//                state.dpad[1] = pressed && Math.abs(state.thumbLX) < ControlElement.STICK_DEAD_ZONE;
-//                return true;
-//            case KeyEvent.KEYCODE_DPAD_DOWN:
-//                state.dpad[2] = pressed && Math.abs(state.thumbLY) < ControlElement.STICK_DEAD_ZONE;
-//                return true;
-//            case KeyEvent.KEYCODE_DPAD_LEFT:
-//                state.dpad[3] = pressed && Math.abs(state.thumbLX) < ControlElement.STICK_DEAD_ZONE;
-//                return true;
-//        }
-//        return false;
-//    }
 
 
 
@@ -537,6 +630,14 @@ public class ExternalController {
                 return IDX_BUTTON_L2;
             case KeyEvent.KEYCODE_BUTTON_R2:
                 return IDX_BUTTON_R2;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                return IDX_BUTTON_UP;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                return IDX_BUTTON_RIGHT;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                return IDX_BUTTON_DOWN;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                return IDX_BUTTON_LEFT;
             default:
                 return -1;
         }
@@ -568,6 +669,14 @@ public class ExternalController {
                 return IDX_BUTTON_L2;
             case "R2":
                 return IDX_BUTTON_R2;
+            case "UP":
+                return IDX_BUTTON_UP;
+            case "RIGHT":
+                return IDX_BUTTON_RIGHT;
+            case "DOWN":
+                return IDX_BUTTON_DOWN;
+            case "LEFT":
+                return IDX_BUTTON_LEFT;
             default:
                 return -1;
         }
