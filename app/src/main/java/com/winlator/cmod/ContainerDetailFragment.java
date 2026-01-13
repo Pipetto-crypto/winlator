@@ -104,17 +104,7 @@ public class ContainerDetailFragment extends Fragment {
         this.containerId = containerId;
     }
 
-    private static final String[] SDL2_ENV_VARS = {
-            "SDL_JOYSTICK_WGI=0",
-            "SDL_XINPUT_ENABLED=1",
-            "SDL_JOYSTICK_RAWINPUT=0",
-            "SDL_JOYSTICK_HIDAPI=1",
-            "SDL_DIRECTINPUT_ENABLED=0",
-            "SDL_JOYSTICK_ALLOW_BACKGROUND_EVENTS=1",
-            "SDL_HINT_FORCE_RAISEWINDOW=0",
-            "SDL_ALLOW_TOPMOST=0",
-            "SDL_MOUSE_FOCUS_CLICKTHROUGH=1"
-    };
+
 
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
@@ -382,8 +372,7 @@ public class ContainerDetailFragment extends Fragment {
         btHelpXInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_xinput));
         btHelpDInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_dinput));
 
-        final CheckBox cbSdl2Toggle = view.findViewById(R.id.CBSdl2Toggle);
-        cbSdl2Toggle.setChecked(isEditMode() && container.getEnvVars().contains("SDL_XINPUT_ENABLED=1"));
+
 
         final EditText etLC_ALL = view.findViewById(R.id.ETlcall);
         Locale systemLocal = Locale.getDefault();
@@ -496,20 +485,7 @@ public class ContainerDetailFragment extends Fragment {
                 finalInputType |= cbEnableXInput.isChecked() ? WinHandler.FLAG_INPUT_TYPE_XINPUT : 0;
                 finalInputType |= cbEnableDInput.isChecked() ? WinHandler.FLAG_INPUT_TYPE_DINPUT : 0;
 
-                // Handle SDL2 environment variables based on the toggle state
-                if (cbSdl2Toggle.isChecked()) {
-                    // Add SDL2 environment variables if the toggle is enabled
-                    for (String envVar : SDL2_ENV_VARS) {
-                        if (!envVars.contains(envVar)) {
-                            envVars += (envVars.isEmpty() ? "" : " ") + envVar;
-                        }
-                    }
-                } else {
-                    // Remove SDL2 environment variables if the toggle is disabled
-                    for (String envVar : SDL2_ENV_VARS) {
-                        envVars = envVars.replace(envVar, "").replaceAll("\\s{2,}", " ").trim();
-                    }
-                }
+
 
 
 

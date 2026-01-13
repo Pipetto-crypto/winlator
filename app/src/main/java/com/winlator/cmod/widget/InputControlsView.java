@@ -451,6 +451,23 @@ public class InputControlsView extends View {
                 }
             }
         }
+
+        // Handle Analog Triggers (L2/R2)
+        // We use the binding for the digital button (e.g. KEYCODE_BUTTON_L2) to determing where to map the analog value
+        processTriggerInput(controller, controller.state.triggerL, KeyEvent.KEYCODE_BUTTON_L2);
+        processTriggerInput(controller, controller.state.triggerR, KeyEvent.KEYCODE_BUTTON_R2);
+    }
+
+    private void processTriggerInput(ExternalController controller, float value, int keyCode) {
+        ExternalControllerBinding binding = controller.getControllerBinding(keyCode);
+        if (binding != null) {
+            boolean isPressed = value > ControlElement.STICK_DEAD_ZONE; // Use deadzone or simple > 0
+            if (isPressed) {
+                handleInputEvent(binding.getBinding(), true, value);
+            } else {
+                handleInputEvent(binding.getBinding(), false, 0);
+            }
+        }
     }
 
 
@@ -653,8 +670,10 @@ public class InputControlsView extends View {
     public boolean onKeyEvent(KeyEvent event) {
         if (profile != null && event.getRepeatCount() == 0) {
             ExternalController controller = profile.getController(event.getDeviceId());
+            
             if (controller != null) {
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(event.getKeyCode());
+                
                 if (controllerBinding != null) {
                     int action = event.getAction();
 
@@ -683,23 +702,27 @@ public class InputControlsView extends View {
             int buttonIdx = binding.ordinal() - Binding.GAMEPAD_BUTTON_A.ordinal();
             if (buttonIdx <= ExternalController.IDX_BUTTON_R2) {
                 if (buttonIdx == ExternalController.IDX_BUTTON_L2)
-                    state.triggerL = isActionDown ? 1.0f : 0f;
+                    state.triggerL = isActionDown ? (offset != 0 ? offset : 1.0f) : 0f;
                 else if (buttonIdx == ExternalController.IDX_BUTTON_R2)
-                    state.triggerR = isActionDown ? 1.0f : 0f;
+                    state.triggerR = isActionDown ? (offset != 0 ? offset : 1.0f) : 0f;
                 else
                     state.setPressed(buttonIdx, isActionDown);
             }
             else if (binding == Binding.GAMEPAD_LEFT_THUMB_UP || binding == Binding.GAMEPAD_LEFT_THUMB_DOWN) {
-                state.thumbLY = isActionDown ? offset : 0;
+                float val = (isActionDown && offset == 0) ? 1.0f : Math.abs(offset);
+                state.thumbLY = isActionDown ? (binding == Binding.GAMEPAD_LEFT_THUMB_UP ? -val : val) : 0;
             }
             else if (binding == Binding.GAMEPAD_LEFT_THUMB_LEFT || binding == Binding.GAMEPAD_LEFT_THUMB_RIGHT) {
-                state.thumbLX = isActionDown ? offset : 0;
+                float val = (isActionDown && offset == 0) ? 1.0f : Math.abs(offset);
+                state.thumbLX = isActionDown ? (binding == Binding.GAMEPAD_LEFT_THUMB_LEFT ? -val : val) : 0;
             }
             else if (binding == Binding.GAMEPAD_RIGHT_THUMB_UP || binding == Binding.GAMEPAD_RIGHT_THUMB_DOWN) {
-                state.thumbRY = isActionDown ? offset : 0;
+                float val = (isActionDown && offset == 0) ? 1.0f : Math.abs(offset);
+                state.thumbRY = isActionDown ? (binding == Binding.GAMEPAD_RIGHT_THUMB_UP ? -val : val) : 0;
             }
             else if (binding == Binding.GAMEPAD_RIGHT_THUMB_LEFT || binding == Binding.GAMEPAD_RIGHT_THUMB_RIGHT) {
-                state.thumbRX = isActionDown ? offset : 0;
+                float val = (isActionDown && offset == 0) ? 1.0f : Math.abs(offset);
+                state.thumbRX = isActionDown ? (binding == Binding.GAMEPAD_RIGHT_THUMB_LEFT ? -val : val) : 0;
             }
             else if (binding == Binding.GAMEPAD_DPAD_UP || binding == Binding.GAMEPAD_DPAD_RIGHT ||
                      binding == Binding.GAMEPAD_DPAD_DOWN || binding == Binding.GAMEPAD_DPAD_LEFT) {

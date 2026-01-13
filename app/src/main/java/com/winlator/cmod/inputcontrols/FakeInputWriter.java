@@ -114,8 +114,90 @@ public class FakeInputWriter {
         isOpen = false;
     }
 
+    /**
+     * Reset all input state to neutral (all buttons released, axes zeroed).
+     * This keeps the file open so games that cache the file descriptor can still
+     * reconnect.
+     */
+    public synchronized void reset() {
+        if (!isOpen && !open())
+            return;
+
+        buffer.clear();
+        hasChanges = false;
+
+        // Release all buttons
+        for (int i = 0; i < BUTTON_MAP.length; i++) {
+            if (prevButtonStates[i]) {
+                prevButtonStates[i] = false;
+                writeEvent(EV_MSC, MSC_SCAN, BUTTON_MAP[i]);
+                writeEvent(EV_KEY, BUTTON_MAP[i], 0);
+            }
+        }
+
+        // Zero all axes
+        if (prevThumbLX != 0) {
+            prevThumbLX = 0;
+            writeEvent(EV_ABS, ABS_X, 0);
+        }
+        if (prevThumbLY != 0) {
+            prevThumbLY = 0;
+            writeEvent(EV_ABS, ABS_Y, 0);
+        }
+        if (prevThumbRX != 0) {
+            prevThumbRX = 0;
+            writeEvent(EV_ABS, ABS_RX, 0);
+        }
+        if (prevThumbRY != 0) {
+            prevThumbRY = 0;
+            writeEvent(EV_ABS, ABS_RY, 0);
+        }
+        if (prevTriggerL != 0) {
+            prevTriggerL = 0;
+            writeEvent(EV_ABS, ABS_BRAKE, 0);
+        }
+        if (prevTriggerR != 0) {
+            prevTriggerR = 0;
+            writeEvent(EV_ABS, ABS_GAS, 0);
+        }
+        if (prevHatX != 0) {
+            prevHatX = 0;
+            writeEvent(EV_ABS, ABS_HAT0X, 0);
+        }
+        if (prevHatY != 0) {
+            prevHatY = 0;
+            writeEvent(EV_ABS, ABS_HAT0Y, 0);
+        }
+
+        if (hasChanges) {
+            writeEvent(EV_SYN, SYN_REPORT, 0);
+            buffer.flip();
+            try {
+                channel.write(buffer);
+            } catch (IOException e) {
+                Log.e(TAG, "Reset write error: " + e.getMessage());
+            }
+        }
+        Log.i(TAG, "Reset fake input to neutral state: " + eventFile.getAbsolutePath());
+    }
+
+    /**
+     * Soft release - reset state without deleting the file.
+     * Use this for disconnect events so games can reconnect.
+     */
+    public synchronized void softRelease() {
+        reset();
+        close();
+        Log.i(TAG, "Soft released fake input: " + eventFile.getAbsolutePath());
+    }
+
+    /**
+     * Full destroy - reset, close, and delete the file.
+     * Only use this when the container is shutting down.
+     */
     public synchronized void destroy() {
         destroyed = true;
+        reset();
         close();
         if (eventFile != null && eventFile.exists()) {
             boolean deleted = eventFile.delete();

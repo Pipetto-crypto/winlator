@@ -669,13 +669,6 @@
                                 android:layout_gravity="center" />
                         </LinearLayout>
 
-                        <CheckBox
-                            android:id="@+id/CBSdl2Toggle"
-                            android:layout_width="wrap_content"
-                            android:layout_height="wrap_content"
-                            android:text="Enable SDL2 Compatibility" />
-
-
                     </LinearLayout>
 
                     <TextView

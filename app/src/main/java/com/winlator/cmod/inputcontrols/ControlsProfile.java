@@ -80,7 +80,22 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
 
     public ExternalController getController(int deviceId) {
         if (!controllersLoaded) loadControllers();
-        for (ExternalController controller : controllers) if (controller.getDeviceId() == deviceId) return controller;
+        
+        // First try direct deviceId match
+        for (ExternalController controller : controllers) {
+            if (controller.getDeviceId() == deviceId) return controller;
+        }
+        
+        // If no match, try to find by descriptor
+        android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+        if (device != null) {
+            String descriptor = device.getDescriptor();
+            for (ExternalController controller : controllers) {
+                if (controller.getId().equals(descriptor)) {
+                    return controller;
+                }
+            }
+        }
         return null;
     }
 

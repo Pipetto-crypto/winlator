@@ -405,25 +405,52 @@ public class WinHandler {
 
     public void sendGamepadState() {
         final ControlsProfile profile = activity.getInputControlsView().getProfile();
-        final boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad()
+        if (profile == null)
+            return;
+
+        final GamepadState gamepadState = profile.getGamepadState();
+        final boolean useVirtualGamepad = profile.isVirtualGamepad()
                 && activity.getInputControlsView().isShowTouchscreenControls();
 
         // Handle virtual gamepad (on-screen controls)
         if (useVirtualGamepad) {
             int slot = assignSlot(OSC_DEVICE_ID);
             if (slot >= 0 && writers[slot] != null) {
-                writers[slot].writeGamepadState(profile.getGamepadState());
+                writers[slot].writeGamepadState(gamepadState);
             }
         } else {
             releaseSlot(OSC_DEVICE_ID);
         }
 
-        // Handle physical controller (Refactored)
+        // Also send gamepad state for external controllers with custom bindings
+        // This handles remapped button inputs from external controllers
+        ArrayList<ExternalController> controllers = profile.loadControllers();
+        for (ExternalController controller : controllers) {
+            if (controller.getControllerBindingCount() > 0) {
+                int slot = assignSlot(controller.getDeviceId());
+                if (slot >= 0 && writers[slot] != null) {
+                    // Use the profile's gamepad state which contains the remapped buttons
+                    writers[slot].writeGamepadState(gamepadState);
+                }
+            }
+        }
     }
 
     public void sendGamepadState(ExternalController controller) {
         if (controller == null)
             return;
+
+        // Check if this controller has bindings in the current profile
+        // If it does, we should NOT send the raw state here, because InputControlsView
+        // will send the remapped state via the no-arg sendGamepadState().
+        ControlsProfile profile = activity.getInputControlsView().getProfile();
+        if (profile != null) {
+            ExternalController profileController = profile.getController(controller.getDeviceId());
+            if (profileController != null && profileController.getControllerBindingCount() > 0) {
+                return; // Suppress raw state sending
+            }
+        }
+
         int slot = assignSlot(controller.getDeviceId());
         if (slot >= 0 && writers[slot] != null) {
             writers[slot].writeGamepadState(controller.state);
@@ -459,12 +486,14 @@ public class WinHandler {
         Integer slot = deviceToSlot.remove(deviceId);
         if (slot != null) {
             if (writers[slot] != null) {
-                writers[slot].destroy();
-                writers[slot] = null;
+                // Use softRelease instead of destroy to keep the event file
+                // This allows games to reconnect without losing the file descriptor
+                writers[slot].softRelease();
+                // Don't null out the writer - keep it for potential reconnection
             }
             usedSlots.remove(slot);
             controllers.remove(deviceId);
-            Log.d("WinHandler", "Device " + deviceId + " disconnected (or OSC disabled). Slot freed: " + slot);
+            Log.d("WinHandler", "Device " + deviceId + " disconnected (or OSC disabled). Slot soft-released: " + slot);
         }
     }
 

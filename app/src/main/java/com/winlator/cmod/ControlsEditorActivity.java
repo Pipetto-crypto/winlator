@@ -2,6 +2,7 @@ package com.winlator.cmod;
 
 import android.graphics.BitmapFactory;
 import android.os.Bundle;
+import android.content.SharedPreferences;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.AdapterView;
@@ -18,8 +19,11 @@ import android.widget.Spinner;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.PreferenceManager;
 
 import com.winlator.cmod.R;
+import com.winlator.cmod.contentdialog.ContentDialog;
+
 import com.winlator.cmod.inputcontrols.Binding;
 import com.winlator.cmod.inputcontrols.ControlElement;
 import com.winlator.cmod.inputcontrols.ControlsProfile;
@@ -65,6 +69,20 @@ public class ControlsEditorActivity extends AppCompatActivity implements View.On
                 .setMessage("Mixing Mouse and Gamepad controls can cause issues.")
                 .setPositiveButton("OK", null)
                 .show();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // Use a handler delay to ensure the activity is fully visible and interactive
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(this);
+            if (!prefs.getBoolean("mix_warning_shown_v4", false)) {
+                ContentDialog.alert(this, R.string.warning_gamepad_mouse_mix, () -> {
+                    prefs.edit().putBoolean("mix_warning_shown_v4", true).apply();
+                });
+            }
+        }, 500);
     }
 
     @Override
