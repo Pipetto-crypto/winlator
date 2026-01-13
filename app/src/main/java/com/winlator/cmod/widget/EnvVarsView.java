@@ -33,6 +33,8 @@ public class EnvVarsView extends FrameLayout {
         {"MESA_SHADER_CACHE_DISABLE", "CHECKBOX", "false", "true"},
         {"mesa_glthread", "CHECKBOX", "false", "true"},
         {"WINEESYNC", "CHECKBOX", "0", "1"},
+        {"VKD3D_SHADER_MODEL", "SELECT_MULTIPLE", "6.6"},
+        {"WRAPPER_BLIT", "SELECT_MULTIPLE", "1"},
         {"FD_DEV_FEATURES", "SELECT_MULTIPLE", "enable_tp_ubwc_flag_hint=1", "storage_8bit=1"},
         {"TU_DEBUG", "SELECT_MULTIPLE", "forcecb", "nocb", "startup", "deck_emu", "nir", "nobin", "sysmem", "gmem", "forcebin", "layout", "noubwc", "nomultipos", "nolrz", "nolrzfc", "perf", "perfc", "flushall", "syncdraw", "push_consts_per_stage", "rast_order", "unaligned_store", "log_skip_gmem_ops", "dynamic", "bos", "3d_load", "fdm", "noconform", "rd"},
         {"IR3_SHADER_DEBUG", "SELECT_MULTIPLE", "nouboopt", "nopreamble", "noearlypreamble"},
@@ -252,6 +254,7 @@ public class EnvVarsView extends FrameLayout {
     }
 
 }
+
 
 
 
