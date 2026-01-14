@@ -98,7 +98,7 @@ public class WineD3DConfigDialog extends ContentDialog {
         }
     }
 
-    private static String getDeviceIdFromGPUName(Context context, String gpuName) {
+    public static String getDeviceIdFromGPUName(Context context, String gpuName) {
         String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
         String deviceId = "";
         try {
@@ -116,7 +116,7 @@ public class WineD3DConfigDialog extends ContentDialog {
         return deviceId;
     }
 
-    private static String getVendorIdFromGPUName(Context context, String gpuName) {
+    public static String getVendorIdFromGPUName(Context context, String gpuName) {
         String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
         String vendorId = "";
         try {

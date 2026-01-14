@@ -92,6 +92,7 @@
     </string-array>
     <string-array name="bcn_emulation_type_entries">
         <item>software</item>
+        <item>compute</item>
     </string-array>
     <string-array name="bcn_emulation_cache_entries">
         <item>0</item>

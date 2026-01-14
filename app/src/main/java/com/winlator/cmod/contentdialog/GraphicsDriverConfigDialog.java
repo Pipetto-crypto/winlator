@@ -17,9 +17,14 @@ import com.winlator.cmod.contents.AdrenotoolsManager;
 import com.winlator.cmod.contents.ContentsManager;
 import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.DefaultVersion;
+import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.widget.MultiSelectionComboBox;
+
+import org.json.JSONArray;
+import org.json.JSONException;
+import org.json.JSONObject;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -33,6 +38,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
     private Spinner sVersion;
     private Spinner sVulkanVersion;
     private MultiSelectionComboBox mscAvailableExtensions;
+    private Spinner sGPUName;
     private Spinner sMaxDeviceMemory;
     private Spinner sPresentMode;
     private Spinner sResourceType;
@@ -45,6 +51,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
     private static String selectedVulkanVersion;
     private static String selectedVersion;
     private static String blacklistedExtensions = "";
+    private static String selectedGPUName;
     private static String selectedDeviceMemory;
 
     private static String isSyncFrame;
@@ -55,6 +62,25 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
     private static String selectedBCnEmulationType;
     private static String isBCnCacheEnabled;
 
+    private void loadGPUNameSpinner(Context context, Spinner spinner)  {
+        String gpuNameList = FileUtils.readString(context, "gpu_cards.json");
+        ArrayList<String> entries = new ArrayList<>();
+
+        entries.add("Device");
+
+        try {
+            JSONArray jarray = new JSONArray(gpuNameList);
+            for (int i = 0; i < jarray.length(); i++) {
+                JSONObject jobj = jarray.getJSONObject(i);
+                String gpuName = jobj.getString("name");
+                entries.add(gpuName);
+            }
+            ArrayAdapter<String> adapter = new ArrayAdapter<>(context, android.R.layout.simple_spinner_dropdown_item, entries);
+            spinner.setAdapter(adapter);
+        }
+        catch (JSONException e) {
+        }
+    }
 
     public static HashMap<String, String> parseGraphicsDriverConfig(String graphicsDriverConfig) {
         HashMap<String, String> mappedConfig = new HashMap<>();
@@ -102,7 +128,8 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
                 "resourceType=" + selectedResourceType + ";" +
                 "bcnEmulation=" + selectedBCnEmulation + ";" +
                 "bcnEmulationType=" + selectedBCnEmulationType + ";" +
-                "bcnEmulationCache=" + isBCnCacheEnabled;
+                "bcnEmulationCache=" + isBCnCacheEnabled + ";" +
+                "gpuName=" + selectedGPUName;
         Log.i(TAG, "Written config " + graphicsDriverConfig);
         return graphicsDriverConfig;
     }
@@ -126,6 +153,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         sVulkanVersion = findViewById(R.id.SGraphicsDriverVulkanVersion);
         mscAvailableExtensions = findViewById(R.id.MSCAvailableExtensions);
         sPresentMode = findViewById(R.id.SGraphicsDriverPresentMode);
+        sGPUName = findViewById(R.id.SGraphicsDriverGPUName);
         sMaxDeviceMemory = findViewById(R.id.SGraphicsDriverMaxDeviceMemory);
         sResourceType = findViewById(R.id.SGraphicsDriverResourceType);
         sBCnEmulation = findViewById(R.id.SGraphicsDriverBCnEmulation);
@@ -139,6 +167,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         String vulkanVersion = config.get("vulkanVersion");
         String initialVersion = config.get("version");
         String blExtensions = config.get("blacklistedExtensions");
+        String gpuName = config.get("gpuName");
         String maxDeviceMemory = config.get("maxDeviceMemory");
         String syncFrame = config.get("syncFrame");
         String disablePresentWait = config.get("disablePresentWait");
@@ -180,6 +209,18 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
             @Override
             public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
                 selectedVulkanVersion = sVulkanVersion.getSelectedItem().toString();
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+
+            }
+        });
+
+        sGPUName.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                selectedGPUName = sGPUName.getSelectedItem().toString();
             }
 
             @Override
@@ -277,7 +318,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         contentsManager.syncContents();
         
         // Populate the spinner with available versions from ContentsManager and pre-select the initial version
-        populateGraphicsDriverVersions(anchor.getContext(), contentsManager, vulkanVersion, initialVersion, blExtensions, maxDeviceMemory, presentMode, resourceType, bcnEmulation, bcnEmulationType, bcnEmulationCache, graphicsDriver);
+        populateGraphicsDriverVersions(anchor.getContext(), contentsManager, vulkanVersion, initialVersion, blExtensions, gpuName, maxDeviceMemory, presentMode, resourceType, bcnEmulation, bcnEmulationType, bcnEmulationCache, graphicsDriver);
 
         setOnConfirmCallback(() -> {
             blacklistedExtensions = mscAvailableExtensions.getUnSelectedItemsAsString();
@@ -289,7 +330,7 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         });
     }
 
-    private void populateGraphicsDriverVersions(Context context, ContentsManager contentsManager, String vulkanVersion, @Nullable String initialVersion, @Nullable String blExtensions, String maxDeviceMemory, String presentMode, String selectedResourceType, String bcnEmulation, String bcnEmulationType, String bcnEmulationCache, String graphicsDriver) {
+    private void populateGraphicsDriverVersions(Context context, ContentsManager contentsManager, String vulkanVersion, @Nullable String initialVersion, @Nullable String blExtensions, String gpuName, String maxDeviceMemory, String presentMode, String selectedResourceType, String bcnEmulation, String bcnEmulationType, String bcnEmulationCache, String graphicsDriver) {
         List<String> wrapperVersions = new ArrayList<>();
         String[] wrapperDefaultVersions = context.getResources().getStringArray(R.array.wrapper_graphics_driver_version_entries);
 
@@ -311,9 +352,12 @@ public class GraphicsDriverConfigDialog extends ContentDialog {
         Log.d(TAG, "Graphics driver: " + graphicsDriver);
         Log.d(TAG, "Initial version: " + initialVersion);
 
+        loadGPUNameSpinner(context, sGPUName);
+
         // Use the custom selection logic
         setSpinnerSelectionWithFallback(sVersion, initialVersion, graphicsDriver);
         AppUtils.setSpinnerSelectionFromValue(sVulkanVersion, vulkanVersion);
+        AppUtils.setSpinnerSelectionFromValue(sGPUName, gpuName);
         AppUtils.setSpinnerSelectionFromNumber(sMaxDeviceMemory, maxDeviceMemory);
         AppUtils.setSpinnerSelectionFromValue(sPresentMode, presentMode);
         AppUtils.setSpinnerSelectionFromValue(sResourceType, selectedResourceType);
