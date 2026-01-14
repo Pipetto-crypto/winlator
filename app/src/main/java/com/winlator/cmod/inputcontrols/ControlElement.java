@@ -25,7 +25,7 @@ import java.util.Arrays;
 public class ControlElement {
     public static final float STICK_DEAD_ZONE = 0.15f;
     public static final float DPAD_DEAD_ZONE = 0.3f;
-    public static final float STICK_SENSITIVITY = 3.0f;
+    public static final float STICK_SENSITIVITY = 2.0f;
     public static final float TRACKPAD_MIN_SPEED = 0.8f;
     public static final float TRACKPAD_MAX_SPEED = 20.0f;
     public static final byte TRACKPAD_ACCELERATION_THRESHOLD = 4;
@@ -723,17 +723,42 @@ public class ControlElement {
                 if (currentPosition == null) currentPosition = new PointF();
                 currentPosition.x = boundingBox.left + deltaX * radius + radius;
                 currentPosition.y = boundingBox.top + deltaY * radius + radius;
-                final boolean[] states = {deltaY <= -STICK_DEAD_ZONE, deltaX >= STICK_DEAD_ZONE, deltaY >= STICK_DEAD_ZONE, deltaX <= -STICK_DEAD_ZONE};
-
-                for (byte i = 0; i < 4; i++) {
-                    float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    Binding binding = getBindingAt(i);
-                    if (binding.isGamepad()) {
-                        value = Mathf.clamp(Math.max(0, Math.abs(value) - 0.01f) * Mathf.sign(value) * STICK_SENSITIVITY, -1, 1);
-                        inputControlsView.handleInputEvent(binding, true, value);
+                
+                // Check if any binding is gamepad - if so, use unified stick input
+                Binding firstBinding = getBindingAt(0);
+                if (firstBinding.isGamepad()) {
+                    // Use radial deadzone to prevent angle snapping
+                    float magnitude = (float)Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                    
+                    float finalX = 0;
+                    float finalY = 0;
+                    
+                    if (magnitude > STICK_DEAD_ZONE) {
+                        // Normalize and apply sensitivity
+                        float normalizedX = deltaX / magnitude;
+                        float normalizedY = deltaY / magnitude;
+                        
+                        // Scale magnitude by sensitivity, respecting deadzone
+                        float scaledMagnitude = Math.max(0, magnitude - 0.01f) * STICK_SENSITIVITY;
+                        scaledMagnitude = Math.min(scaledMagnitude, 1.0f);
+                        
+                        finalX = normalizedX * scaledMagnitude;
+                        finalY = normalizedY * scaledMagnitude;
+                    }
+                    
+                    // Use unified stick input method - sets both X and Y together
+                    inputControlsView.handleStickInput(firstBinding, finalX, finalY);
+                    
+                    // Mark all directions as active for proper release handling
+                    for (byte i = 0; i < 4; i++) {
                         this.states[i] = true;
                     }
-                    else {
+                } else {
+                    // Fallback to per-direction handling for mouse/keyboard bindings
+                    final boolean[] states = {deltaY <= -STICK_DEAD_ZONE, deltaX >= STICK_DEAD_ZONE, deltaY >= STICK_DEAD_ZONE, deltaX <= -STICK_DEAD_ZONE};
+                    for (byte i = 0; i < 4; i++) {
+                        float value = i == 1 || i == 3 ? deltaX : deltaY;
+                        Binding binding = getBindingAt(i);
                         boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
                         inputControlsView.handleInputEvent(binding, state, value);
                         this.states[i] = state;
@@ -743,22 +768,40 @@ public class ControlElement {
                 inputControlsView.invalidate();
             }
             else if (type == Type.TRACKPAD) {
-                final boolean[] states = {deltaY <= -TRACKPAD_MIN_SPEED, deltaX >= TRACKPAD_MIN_SPEED, deltaY >= TRACKPAD_MIN_SPEED, deltaX <= -TRACKPAD_MIN_SPEED};
-                int cursorDx = 0;
-                int cursorDy = 0;
-
-                for (byte i = 0; i < 4; i++) {
-                    float value = (i == 1 || i == 3 ? deltaX : deltaY);
-                    Binding binding = getBindingAt(i);
-                    if (binding.isGamepad()) {
-                        if (interpolator == null) interpolator = new CubicBezierInterpolator();
-                        if (Math.abs(value) > TRACKPAD_ACCELERATION_THRESHOLD) value *= STICK_SENSITIVITY;
-                        interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
-                        float interpolatedValue = interpolator.getInterpolation(Math.min(1.0f, Math.abs(value / TRACKPAD_MAX_SPEED)));
-                        inputControlsView.handleInputEvent(binding, true, Mathf.clamp(interpolatedValue * Mathf.sign(value), -1, 1));
+                // Check if gamepad bindings - use unified handling
+                Binding firstBinding = getBindingAt(0);
+                if (firstBinding.isGamepad()) {
+                    // Apply interpolation to both axes
+                    if (interpolator == null) interpolator = new CubicBezierInterpolator();
+                    interpolator.set(0.075f, 0.95f, 0.45f, 0.95f);
+                    
+                    float valueX = deltaX;
+                    float valueY = deltaY;
+                    if (Math.abs(valueX) > TRACKPAD_ACCELERATION_THRESHOLD) valueX *= STICK_SENSITIVITY;
+                    if (Math.abs(valueY) > TRACKPAD_ACCELERATION_THRESHOLD) valueY *= STICK_SENSITIVITY;
+                    
+                    float interpX = interpolator.getInterpolation(Math.min(1.0f, Math.abs(valueX / TRACKPAD_MAX_SPEED)));
+                    float interpY = interpolator.getInterpolation(Math.min(1.0f, Math.abs(valueY / TRACKPAD_MAX_SPEED)));
+                    
+                    float finalX = Mathf.clamp(interpX * Mathf.sign(valueX), -1, 1);
+                    float finalY = Mathf.clamp(interpY * Mathf.sign(valueY), -1, 1);
+                    
+                    // Use unified stick input
+                    inputControlsView.handleStickInput(firstBinding, finalX, finalY);
+                    
+                    // Mark all as active
+                    for (byte i = 0; i < 4; i++) {
                         this.states[i] = true;
                     }
-                    else {
+                } else {
+                    // Mouse movement handling
+                    final boolean[] states = {deltaY <= -TRACKPAD_MIN_SPEED, deltaX >= TRACKPAD_MIN_SPEED, deltaY >= TRACKPAD_MIN_SPEED, deltaX <= -TRACKPAD_MIN_SPEED};
+                    int cursorDx = 0;
+                    int cursorDy = 0;
+
+                    for (byte i = 0; i < 4; i++) {
+                        float value = (i == 1 || i == 3 ? deltaX : deltaY);
+                        Binding binding = getBindingAt(i);
                         if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) value *= TouchpadView.CURSOR_ACCELERATION;
                         if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_RIGHT) {
                             cursorDx = Mathf.roundPoint(value);
@@ -771,14 +814,14 @@ public class ControlElement {
                             this.states[i] = states[i];
                         }
                     }
-                }
 
-                if (cursorDx != 0 || cursorDy != 0)  {
-                    XServer xServer = inputControlsView.getXServer();
-                    if (xServer.isRelativeMouseMovement())
-                        xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, cursorDx, cursorDy, 0);
-                    else
-                        inputControlsView.getXServer().injectPointerMoveDelta(cursorDx, cursorDy);
+                    if (cursorDx != 0 || cursorDy != 0)  {
+                        XServer xServer = inputControlsView.getXServer();
+                        if (xServer.isRelativeMouseMovement())
+                            xServer.getWinHandler().mouseEvent(MouseEventFlags.MOVE, cursorDx, cursorDy, 0);
+                        else
+                            inputControlsView.getXServer().injectPointerMoveDelta(cursorDx, cursorDy);
+                    }
                 }
             }
             else {

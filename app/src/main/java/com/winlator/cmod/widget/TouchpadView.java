@@ -54,6 +54,7 @@ public class TouchpadView extends View {
     private static final Byte EFFECTIVE_TOUCH_DISTANCE = 20;
     private float resolutionScale;
     private static final int UPDATE_FORM_DELAYED_TIME = 50;
+    private boolean mouseEnabled = true;
 
     private Handler timeoutHandler; // Reference to the activity's timeout handler
     private Runnable hideControlsRunnable; // Runnable to hide the controls
@@ -166,6 +167,9 @@ public class TouchpadView extends View {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+        // If mouse is disabled, ignore all input
+        if (!mouseEnabled) return true;
+        
         boolean isTouchscreenMode = preferences.getBoolean("touchscreen_toggle", false);
 
         // Reset the timeout timer to keep controls visible
@@ -696,5 +700,9 @@ public class TouchpadView extends View {
     public void toggleFullscreen() {
         new Handler().postDelayed(() -> updateXform(getWidth(), getHeight(), xServer.screenInfo.width, xServer.screenInfo.height),
                 UPDATE_FORM_DELAYED_TIME);
+    }
+    
+    public void setMouseEnabled(boolean enabled) {
+        this.mouseEnabled = enabled;
     }
 }

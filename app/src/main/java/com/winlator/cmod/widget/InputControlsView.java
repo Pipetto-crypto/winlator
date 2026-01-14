@@ -694,6 +694,35 @@ public class InputControlsView extends View {
         handleInputEvent(binding, isActionDown, 0);
     }
 
+    /**
+     * Handle stick input with proper 2D axis management.
+     * Use this for analog sticks to avoid per-direction axis conflicts.
+     */
+    public void handleStickInput(Binding firstBinding, float deltaX, float deltaY) {
+        if (!firstBinding.isGamepad()) return;
+        
+        GamepadState state = profile.getGamepadState();
+        WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+        
+        // Determine which stick this is based on the first binding
+        boolean isLeftStick = firstBinding == Binding.GAMEPAD_LEFT_THUMB_UP || 
+                             firstBinding == Binding.GAMEPAD_LEFT_THUMB_DOWN ||
+                             firstBinding == Binding.GAMEPAD_LEFT_THUMB_LEFT ||
+                             firstBinding == Binding.GAMEPAD_LEFT_THUMB_RIGHT;
+        
+        if (isLeftStick) {
+            state.thumbLX = deltaX;
+            state.thumbLY = deltaY;
+        } else {
+            state.thumbRX = deltaX;
+            state.thumbRY = deltaY;
+        }
+        
+        if (winHandler != null) {
+            winHandler.sendGamepadState();
+        }
+    }
+
     public void handleInputEvent(Binding binding, boolean isActionDown, float offset) {
         WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
         if (binding.isGamepad()) {
