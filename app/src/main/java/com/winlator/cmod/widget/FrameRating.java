@@ -2,6 +2,8 @@ package com.winlator.cmod.widget;
 
 import android.app.ActivityManager;
 import android.content.Context;
+import android.content.IntentFilter;
+import android.content.Intent;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -9,7 +11,7 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
-
+import android.os.BatteryManager;
 import com.winlator.cmod.R;
 
 import com.winlator.cmod.container.Container;
@@ -30,6 +32,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final TextView tvRenderer;
     private final TextView tvGPU;
     private final TextView tvRAM;
+    private final TextView tvPOWER;
     private HashMap graphicsDriverConfig;
 
     public FrameRating(Context context, HashMap graphicsDriverConfig) {
@@ -50,6 +53,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvGPU = view.findViewById(R.id.TVGPU);
         tvGPU.setText(GPUInformation.getRenderer(graphicsDriverConfig.get("version").toString(), context));
         tvRAM = view.findViewById(R.id.TVRAM);
+        tvPOWER = view.findViewById(R.id.TVPOWER);
         totalRAM = getTotalRAM();
         this.graphicsDriverConfig = graphicsDriverConfig;
         addView(view);
@@ -62,6 +66,17 @@ public class FrameRating extends FrameLayout implements Runnable {
         activityManager.getMemoryInfo(memoryInfo);
         totalRAM = StringUtils.formatBytes(memoryInfo.totalMem);
         return totalRAM;
+    }
+
+    private String getPower() {
+        BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+        IntentFilter batteryFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        Intent batteryStatusIntent = context.registerReceiver(null,batteryFilter);
+        double voltage = batteryStatusIntent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) / 1000.0;//伏特
+        double current = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) / 1000000.0;//安培
+        double power = voltage * current;//瓦特
+        double capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+        return String.format("%.1fW (%d%%)", power,capacity );
     }
     
     private String getAvailableRAM() {
@@ -104,5 +119,6 @@ public class FrameRating extends FrameLayout implements Runnable {
         if (getVisibility() == GONE) setVisibility(View.VISIBLE);
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
         tvRAM.setText(getAvailableRAM() + " GB Used / " + totalRAM + " Total");
+        tvPOWER.setText(getPower());
     }
 }

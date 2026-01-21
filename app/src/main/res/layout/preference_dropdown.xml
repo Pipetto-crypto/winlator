@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout android:gravity="center_vertical" android:background="?android:selectableItemBackground" android:paddingRight="?android:scrollbarSize" android:layout_width="fill_parent" android:layout_height="wrap_content" android:minHeight="?android:listPreferredItemHeight" android:paddingEnd="?android:scrollbarSize"
   xmlns:android="http://schemas.android.com/apk/res/android" xmlns:app="http://schemas.android.com/apk/res-auto">
-    <Spinner android:id="@id/spinner" android:visibility="invisible" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="0.0" />
-    <FrameLayout android:id="@id/icon_frame" android:layout_width="wrap_content" android:layout_height="wrap_content">
+    <Spinner android:id="@+id/spinner" android:visibility="invisible" android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_weight="0.0" />
+    <FrameLayout android:id="@+id/icon_frame" android:layout_width="wrap_content" android:layout_height="wrap_content">
         <androidx.preference.internal.PreferenceImageView android:id="@android:id/icon" android:layout_width="wrap_content" android:layout_height="wrap_content" app:maxHeight="48.0dip" app:maxWidth="48.0dip" />
     </FrameLayout>
     <RelativeLayout android:layout_width="0.0dip" android:layout_height="wrap_content" android:layout_marginLeft="15.0dip" android:layout_marginTop="6.0dip" android:layout_marginRight="6.0dip" android:layout_marginBottom="6.0dip" android:layout_weight="1.0" android:layout_marginStart="15.0dip" android:layout_marginEnd="6.0dip">

@@ -85,10 +85,12 @@ public class ContentsFragment extends Fragment {
             String json = Downloader.downloadString(contentsURL);
             if (json == null)
                 return;
-            getActivity().runOnUiThread(() -> {
-                manager.setRemoteProfiles(json);
-                loadContentList();
-            });
+            if (!isDestroy(getActivity())){
+                getActivity().runOnUiThread(() -> {
+                    manager.setRemoteProfiles(json);
+                    loadContentList();
+                });
+            }
         }).start();
     }
 
@@ -357,4 +359,9 @@ public class ContentsFragment extends Fragment {
             return data.size();
         }
     }
+    
+    protected boolean isDestroy(Activity activity) {
+        return activity == null || activity.isFinishing() ||
+                (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN_MR1 && activity.isDestroyed());
+    }	
 }
