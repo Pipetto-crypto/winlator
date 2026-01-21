@@ -2,8 +2,8 @@ package com.winlator.cmod.widget;
 
 import android.app.ActivityManager;
 import android.content.Context;
-import android.content.IntentFilter;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.os.SystemClock;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -12,6 +12,7 @@ import android.view.View;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.os.BatteryManager;
+import android.content.BroadcastReceiver;
 import com.winlator.cmod.R;
 
 import com.winlator.cmod.container.Container;
@@ -34,6 +35,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final TextView tvRAM;
     private final TextView tvPOWER;
     private HashMap graphicsDriverConfig;
+    private BroadcastReceiver batteryReceiver;
 
     public FrameRating(Context context, HashMap graphicsDriverConfig) {
         this(context, graphicsDriverConfig ,null);
@@ -56,6 +58,9 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvPOWER = view.findViewById(R.id.TVPOWER);
         totalRAM = getTotalRAM();
         this.graphicsDriverConfig = graphicsDriverConfig;
+        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        batteryReceiver = new BatteryLevelReceiver();
+        context.registerReceiver(batteryReceiver , filter);
         addView(view);
     }
     
@@ -67,17 +72,6 @@ public class FrameRating extends FrameLayout implements Runnable {
         totalRAM = StringUtils.formatBytes(memoryInfo.totalMem);
         return totalRAM;
     }
-
-    private String getPower() {
-        BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
-        IntentFilter batteryFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
-        Intent batteryStatusIntent = context.registerReceiver(null,batteryFilter);
-        double voltage = batteryStatusIntent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) / 1000.0;//伏特
-        double current = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) / 1000000.0;//安培
-        double power = voltage * current;//瓦特
-        double capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-        return String.format("%.1fW (%d%%)", power,capacity );
-    }
     
     private String getAvailableRAM() {
         String availableRAM = "";
@@ -87,6 +81,19 @@ public class FrameRating extends FrameLayout implements Runnable {
         long usedMem = memoryInfo.totalMem - memoryInfo.availMem;
         availableRAM = StringUtils.formatBytes(usedMem, false);
         return availableRAM;
+    }
+
+    private class BatteryLevelReceiver extends BroadcastReceiver {
+
+        @Override
+        public void onReceive(Context context, Intent intent) {
+            BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+           int voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) / 1000; //伏特
+           double current = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) / 1000000.0;//安培
+            double power = voltage * current;//瓦特
+            int capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+            tvPOWER.setText(String.format("%.1fW (%d%%)", power,capacity ));
+        }
     }
 
     public void setRenderer(String renderer) {
@@ -119,6 +126,11 @@ public class FrameRating extends FrameLayout implements Runnable {
         if (getVisibility() == GONE) setVisibility(View.VISIBLE);
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
         tvRAM.setText(getAvailableRAM() + " GB Used / " + totalRAM + " Total");
-        tvPOWER.setText(getPower());
+    }
+
+    @Override
+    protected void onDetachedFromWindow() {
+        super.onDetachedFromWindow();
+        context.unregisterReceiver(batteryReceiver);
     }
 }

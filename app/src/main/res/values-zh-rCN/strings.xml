@@ -175,7 +175,12 @@
     <string name="performance">性能模式</string>
     <string name="preset">预设</string>
     <string name="you_cannot_remove_this_preset">您无法删除此预设</string>
-    <string name="dxwrapper_help_content">&lt;i&gt;&lt;b&gt;WineD3D&lt;/b&gt;&lt;/i&gt; 是将DirectX 1-11转换为OpenGL的转译层。&lt;br /&gt;&lt;br /&gt; &lt;i&gt;&lt;b&gt;DXVK&lt;/b&gt;&lt;/i&gt; 是将Direct3D 9-11转换为Vulkan的转译层。&lt;br /&gt;&lt;br /&gt; &lt;i&gt;&lt;b&gt;VKD3D&lt;/b&gt;&lt;/i&gt; 是将Direct3D 12 API转换为Vulkan的转译层。&lt;br /&gt; &lt;br /&gt; &lt;i&gt;&lt;b&gt;CNC DDraw&lt;/b&gt;&lt;/i&gt; 是为提升经典游戏兼容性而实现的DirectDraw组件。</string>
+    <string name="dxwrapper_help_content"><![CDATA[
+        <i><b>WineD3D</b></i> 是将DirectX 1-11转换为OpenGL的转译层。<br /><br />
+        <i><b>DXVK</b></i> 是将Direct3D 9-11转换为Vulkan的转译层。<br /><br />
+        <i><b>VKD3D</b></i> 是将Direct3D 12 API转换为Vulkan的转译层。<br /><br />
+        <i><b>CNC DDraw</b></i> 是为提升经典游戏兼容性而实现的DirectDraw组件。
+    ]]></string>
     <string name="box64_env_var_help__dynarec_safeflags"><![CDATA[
         处理 CALL/RET 操作码上的标志<br /><br />
         <b>0</b> : 将 CALL/RET 视为不需要任何标志（更快但不建议）<br />
@@ -187,69 +192,81 @@
         <b>0</b> : 像 x86 上一样生成 -NAN<br />
         <b>1</b> : 不要对 NAN 做任何特殊的事情，尽可能快（默认，更快）<br />
     ]]></string>
-    <string name="box64_env_var_help__dynarec_fastround">Generation of precise x86 rounding</string>
-    <string name="box64_env_var_help__dynarec_x87double">Use of Float/Double for x87 emulation</string>
+    <string name="box64_env_var_help__dynarec_fastround"><![CDATA[
+        启用/禁用精确 x86 舍入的生成<br /><br />
+        <b>0</b> : 像 x86 上一样生成 float/double -> int 舍入<br />
+        <b>1</b> : 不要对边缘情况舍入做任何特殊的事情，以尽可能快地进行（无 INF/NAN/Overflow -> MIN_INT 转换）（默认，更快）<br />
+    ]]></string>
+    <string name="box64_env_var_help__dynarec_x87double"><![CDATA[
+        强制使用双精度浮点数对x87进行模拟<br /><br />
+        <b>0</b> : 尝试在可能的情况下使用单精度浮点数进行 x87 仿真（默认值，更快）<br />
+        <b>1</b> : 强制使用双精度浮点数对x87进行模拟（速度较慢，某些特定游戏可能需要，例如孤岛危机）<br />
+    ]]></string>
     <string name="box64_env_var_help__dynarec_bigblock"><![CDATA[
-        Dynarec building BigBlock<br /><br />
-        <b>0</b> : Don\'t try to build block as big as possible<br />
-        <b>1</b> : Build Dynarec block as big as possible<br />
-        <b>2</b> : Build Dynarec block bigger (continue when block overlaps, but only for blocks in elf memory)<br />
-        <b>3</b> : Build Dynarec block bigger (continue when block overlaps, for all types of memory)
+        启用/禁用 Box64 的 Dynarec 构建 BigBlock。<br /><br />
+        <b>0</b> : 不要尝试构建尽可能大的块（可以帮助使用大量线程和 JIT 的程序，如 C#/Unity）（加载 libmonobdwgc-2.0.so 时默认）<br />
+        <b>1</b> : 构建尽可能大的 Dynarec 块（默认值。）<br />
+        <b>2</b> : 将Dynarec块构建得更大（当块重叠时不要停止，但仅限于elf内存中的块）<br />
+        <b>3</b> : 将 Dynarec 块构建得更大（对于所有类型的内存，块重叠时不要停止）
     ]]></string>
     <string name="box64_env_var_help__dynarec_strongmem"><![CDATA[
-        Simulation of Strong Memory model<br /><br />
-        <b>0</b> : Don\'t try anything special<br />
-        <b>1</b> : Enable some Memory Barrier when writing to memory (on some MOV opcode)<br />
-        <b>2</b> : All 1 plus a Memory Barrier on every write to memory using MOV<br />
-        <b>3</b> : All 2 plus Memory Barrier when reading from memory and on some SSE/SSE2 opcodes
+        强内存模型模拟<br /><br />
+        <b>0</b> : 不尝试任何特殊操作<br />
+        <b>1</b> : 在写入内存时启用一些内存屏障（在某些MOV操作码上）<br />
+        <b>2</b> : 所有1的操作，加上每次使用MOV写入内存时都加上内存屏障<br />
+        <b>3</b> : 所有2的操作，加上在从内存读取时以及在某些SSE/SSE2操作码上加上内存屏障
     ]]></string>
-    <string name="box64_env_var_help__dynarec_forward">Defines the max allowed forward value when building Block</string>
-    <string name="box64_env_var_help__dynarec_callret">Optimization of CALL/RET opcodes</string>
-    <string name="box64_env_var_help__dynarec_wait">Defines whether or not Dynarec will wait for the FillBlock to be ready</string>
+    <string name="box64_env_var_help__dynarec_forward">定义代码块构建时的最大前向跳转值</string>
+    <string name="box64_env_var_help__dynarec_callret"><![CDATA[
+        CALL/RET 操作码优化（与 jit/dynarec/smc 不兼容）<br /><br />
+        <b>0</b> : 不优化CALL/RET，两者都使用跳转表（默认）<br />
+        <b>1</b> : 尝试优化CALL/RET，尽可能跳过JumpTable的使用<br />
+    ]]></string>
+    <string name="box64_env_var_help__dynarec_wait">主要用于处理多线程程序的同步问题。当设置为 1 时，它会强制 Dynarec 在某些情况下等待其他线程完成特定操作，这可以提高程序的稳定性，避免因线程竞争导致的崩溃或错误。然而，这种等待会引入额外的开销，从而可能降低性能。当设置为 0 时，会禁用这种等待机制，通常能获得更好的性能，但可能会降低某些多线程程序的兼容性。</string>
     <string name="box64_env_var_help__dynarec_weakbarrier"><![CDATA[
-        Tweak memory barriers to reduce performance impact of strong memory emulation<br /><br />
-        <b>0</b> : Use regular safe barriers<br />
-        <b>1</b> : Use weak barriers for mild performance boost<br />
-        <b>2</b> : Use weak barriers, additionally disable last write barriers]]></string>
+        调整内存屏障以降低强内存序模拟的性能损耗<br /><br />
+        <b>0</b> : 使用常规安全屏障<br />
+        <b>1</b> : 采用弱屏障以小幅提升性能<br />
+        <b>2</b> : 采用弱屏障并禁用最终写屏障]]></string>
     <string name="box64_env_var_help__dynarec_aligned_atomics"><![CDATA[
-        Generate aligned atomics only (only available on Arm64 for now).<br /><br />
-        <b>0</b> : Generate unaligned atomics handling code.<br />
-        <b>1</b> : Generate aligned atomics only, which is faster and smaller code size, but will cause SIGBUS for LOCK prefixed opcodes operating on aligned data addresses.]]></string>
+        仅生成对齐原子操作（当前仅限 ARM64平台）.<br /><br />
+        <b>0</b> : 生成非对齐原子操作处理代码.<br />
+        <b>1</b> : 仅生成对齐原子操作，代码执行更快且体积更小。但针对对齐数据地址执行LOCK前缀指令时将触发SIGBUS信号.]]></string>
     <string name="box64_env_var_help__dynarec_df"><![CDATA[
-        Enable or disable the use of deferred flags.<br /><br />
-        <b>0</b> : Disable the use of deferred flags.<br />
-        <b>1</b> : Enable the use of deferred flags.]]></string>
+        启用或禁用延迟标志功能.<br /><br />
+        <b>0</b> : 禁用延迟标志功能.<br />
+        <b>1</b> : 启用延迟标志功能.]]></string>
     <string name="box64_env_var_help__dynarec_dirty"><![CDATA[
-        Allow continue running a block that is unprotected and potentially dirty.<br /><br />
-        <b>0</b> : Do not allow continue running a block that is unprotected and potentially dirty.<br />
-        <b>1</b> : Allow continue to run a dynablock that write data in the same page as code. It can gets faster in loading time of some game but can also get unexpected crashes.<br />
-        <b>2</b> : Will also, when it detect an HotPage, flag that page as NEVERCLEAN, and so it will not be write protected but Block build from that page will always be tested. It can be faster that way (but some SMC case might not be trapped).]]></string>
+        允许继续运行未受保护且可能被污染的数据块.<br /><br />
+        <b>0</b> : 禁止继续运行未受保护且存在污染风险的数据块.<br />
+        <b>1</b> : 允许运行动态代码块，该机制允许代码页写入数据。可提升某些游戏加载速度，但可能导致意外崩溃.<br />
+        <b>2</b> : 当检测到热页时，将其标记为永不清理。该页将取消写保护，但相关代码块会持续验证。速度更快（但可能无法捕获自修改代码行为）.]]></string>
     <string name="box64_env_var_help__dynarec_nativeflags"><![CDATA[
-        Enable or disable the use of native flags.<br /><br />
-        <b>0</b> : Do not use native flags.<br />
-        <b>1</b> : Use native flags when possible.]]></string>
+        启用或禁用原生标志功能.<br /><br />
+        <b>0</b> : 禁用原生标志功能.<br />
+        <b>1</b> : 在条件允许时使用原生标志功能.]]></string>
     <string name="box64_env_var_help__dynarec_pause"><![CDATA[
-        Enable x86 PAUSE emulation, may help the performance of spinlocks.<br /><br />
-        <b>0</b> : Ignore x86 PAUSE instruction.<br />
-        <b>1</b> : Use YIELD to emulate x86 PAUSE instruction.<br />
-        <b>2</b> : Use WFI to emulate x86 PAUSE instruction.<br />
-        <b>3</b> : Use SEVL+WFE to emulate x86 PAUSE instruction.
+        启用x86 PAUSE指令模拟，可能有助于提升自旋锁的性能.<br /><br />
+        <b>0</b> : 忽略x86 PAUSE指令.<br />
+        <b>1</b> : 使用YIELD指令模拟x86 PAUSE指令.<br />
+        <b>2</b> : 使用WFI指令模拟x86 PAUSE指令.<br />
+        <b>3</b> : 使用SEVL+WFE 指令组合模拟x86 PAUSE指令.
     ]]></string>
     <string name="box64_env_var_help__avx"><![CDATA[
-        AVX and AVX2 implemented, along with BMI1, BMI2, ADX, FMA, F16C and RDANDR extension!<br /><br />
-        <b>0</b> : Disable AVX extension<br />
-        <b>1</b> : enable AVX, BMI1, F16C and VAES extension.<br />
-        <b>2</b> : All 1 plus enable AVX2, BMI2, FMA, ADX,VPCLMULQDQ and RDRAND.<br />\
+        AVX、AVX2及BMI1、BMI2、ADX、FMA、F16C、RDRAND扩展指令集已实现!<br /><br />
+        <b>0</b> : 禁用AVX扩展<br />
+        <b>1</b> : 启用AVX、BMI1、F16C及VAES扩展.<br />
+        <b>2</b> : 包含选项1所有功能，并额外启用AVX2、BMI2、FMA、ADX、VPCLMULQDQ与 RDRAND.<br />\
     ]]></string>
-    <string name="box64_env_var_help__maxcpu">Maximum number of CPUs presented to programs by Box64</string>
-    <string name="box64_env_var_help__unityplayer">Detect UnityPlayer.dll and apply strongmem settings</string>
-    <string name="box64_env_var_help__mmap32">Force every memory allocation in 32bit address spaces</string>
-    <string name="fexcore_env_var_help__tsoenabled">Enables TSO IR ops (required for multithreaded apps).</string>
-    <string name="fexcore_env_var_help__vectortsoenabled">Makes vector load/stores atomic when TSO is enabled.</string>
-    <string name="fexcore_env_var_help__halfbarriertsoenabled">Uses half-barrier atomics for unaligned loads/stores under TSO.</string>
-    <string name="fexcore_env_var_help__memcpysettsoenabled">Makes REP MOVS / REP STOS atomic under TSO.</string>
-    <string name="fexcore_env_var_help__multiblock">Enables multiblock code compilation. Can cause longer JIT compilation and stutter.</string>
-    <string name="fexcore_env_var_help__hostfeatures">Controls CPU feature forcing.</string>
+    <string name="box64_env_var_help__maxcpu">Box64向程序呈现的最大CPU核数</string>
+    <string name="box64_env_var_help__unityplayer">检测UnityPlayer.dll并应用强内存优化设置</string>
+    <string name="box64_env_var_help__mmap32">强制在32位地址空间内分配所有内存</string>
+    <string name="fexcore_env_var_help__tsoenabled">TSO内存一致性模型 (用于多线程应用).</string>
+    <string name="fexcore_env_var_help__vectortsoenabled">启用 TSO 时使向量加载/存储具有原子性（顺序执行，避免重排序）.</string>
+    <string name="fexcore_env_var_help__halfbarriertsoenabled">在TSO模式下对未对齐的加载/存储使用半屏障原子操作.</string>
+    <string name="fexcore_env_var_help__memcpysettsoenabled">在TSO模式下使 REP MOVS / REP STOS 具有原子性.</string>
+    <string name="fexcore_env_var_help__multiblock">启用多块代码编译。可能导致更长的即时编译和卡顿.</string>
+    <string name="fexcore_env_var_help__hostfeatures">强制控制CPU功能.</string>
     <string name="fexcore_env_var_help__smalltscscale">Scales TSC on low-frequency systems.</string>
     <string name="fexcore_env_var_help__smc_checks">Self-Modifying Code checks.</string>
     <string name="fexcore_env_var_help__volatilemetadata">Uses volatile metadata from PE files for TSO when available.</string>
