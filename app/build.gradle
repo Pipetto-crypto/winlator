@@ -120,13 +120,11 @@ android {
     namespace 'com.winlator.cmod'
     // Keep compileSdk from your current config. If you want to match Termux-X11, you could set to 34.
     compileSdk 34
-
     defaultConfig {
         applicationId "com.winlator.cmod"
         minSdkVersion 26
         // We’re preserving Winlator’s request to keep targetSdkVersion at 28
         targetSdkVersion 28
-
         versionCode 20
         versionName "7.1.4x-cmod"
 
@@ -170,7 +168,7 @@ android {
     buildTypes {
         release {
             signingConfig signingConfigs.sign_default
-            minifyEnabled false
+            minifyEnabled true
             proguardFiles getDefaultProguardFile("proguard-android.txt"),"proguard-rules.pro"
         }
         debug {

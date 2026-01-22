@@ -11,3 +11,5 @@ git submodule update --init
 ```
 git submodule add <repository-url> <path>
 ```
+1. 添加原版winlator文件管理器
+2. 修改快捷方式界面
