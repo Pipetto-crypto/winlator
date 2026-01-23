@@ -678,5 +678,5 @@
     <string name="hold_mode">长按</string>
     <string name="toggle_mode">短按切换</string>
     <string name="calibrate_gyroscope">校准陀螺仪</string>
-    <string name="trigger">扳机键类型</string>
+    <string name="trigger">扳机键</string>
 </resources>
