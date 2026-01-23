@@ -630,7 +630,7 @@
     <string name="install_drivers_warning">请注意，由于当前PC模拟器的限制，未经修补的高通驱动程序可能无法在8Gen2以下的芯片组上正常运行。</string>
     <string name="enable_vulkan_api_dump">启用Vulkan API调用转储到文件功能.</string>
     <string name="dll_emulator">32位模拟器</string>
-    <string name="64_emulator">64位模拟器</string>
+    <string name="modern_emulator">64位模拟器</string>
     <string name="open_with_android_browser">从Wine打开安卓浏览器</string>
     <string name="share_android_clipboard">在Wine上使用安卓剪贴板</string>
     <string name="ddraw_wrapper">DDraw/Glide兼容层</string>
