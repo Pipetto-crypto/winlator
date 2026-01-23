@@ -36,6 +36,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final TextView tvPOWER;
     private HashMap graphicsDriverConfig;
     private BroadcastReceiver batteryReceiver;
+    private int voltage = 0;
 
     public FrameRating(Context context, HashMap graphicsDriverConfig) {
         this(context, graphicsDriverConfig ,null);
@@ -87,13 +88,16 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         @Override
         public void onReceive(Context context, Intent intent) {
-            BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
-           int voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) / 1000; //伏特
-           double current = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) / 1000000.0;//安培
-            double power = voltage * current;//瓦特
-            int capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-            tvPOWER.setText(String.format("%.1fW (%d%%)", power,capacity ));
+            voltage = intent.getIntExtra(BatteryManager.EXTRA_VOLTAGE, -1) / 1000; //伏特
         }
+    }
+    
+    private String getPower(){
+        BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+        double current = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) / 1000000.0;//安培
+        double power = voltage * current;//瓦特
+        int capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
+        return String.format("%.1fW (%d%%)", power,capacity );
     }
 
     public void setRenderer(String renderer) {
@@ -126,6 +130,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         if (getVisibility() == GONE) setVisibility(View.VISIBLE);
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
         tvRAM.setText(getAvailableRAM() + " GB Used / " + totalRAM + " Total");
+        tvPOWER.setText(getPower());
     }
 
     @Override

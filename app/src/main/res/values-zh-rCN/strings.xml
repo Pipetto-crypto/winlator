@@ -65,7 +65,7 @@
     <string name="processor_affinity">处理器关联核心</string>
     <string name="processor_affinity_32_bit_apps">处理器关联核心 (32位应用)</string>
     <string name="cursor_speed">光标速度</string>
-    <string name="relative_mouse_movement">鼠标</string>
+    <string name="relative_mouse_movement">相对鼠标移动</string>
     <string name="toggle_switch">长按模式</string>
     <string name="profile_exported_to">配置文件导出至</string>
     <string name="unable_to_import_profile">无法导入配置文件</string>
@@ -298,7 +298,10 @@
     <string name="startup_selection">启动选择</string>
     <string name="wine_debug_channel">Wine调试通道</string>
     <string name="game_controller">游戏控制器</string>
-
+    <string name="as_button">非线性</string>
+    <string name="as_axis">线性</string>
+    <string name="both">两者</string>
+    <string name="trigger_type">扳机键类型</string>
     <string name="experimental">实验性的</string>
     <string name="glibc_exp_edition">Glibc实验版</string>
     <string name="enabled_async">启用异步</string>
@@ -367,8 +370,7 @@
     <string name="saves">存档管理</string>
     <string name="import_save">导入存档</string>
     <string name="transfer">转移</string>
-    <string name="share">分享</string>
-    <string name="unregister">解除</string>
+    <string name="unregister">删除</string>
     <string name="no_saves_to_display">没有可显示的存档内容</string>
     <string name="new_save">注册一个存档</string>
     <string name="save_path">存档路径</string>
@@ -393,7 +395,6 @@
     <string name="save_transfer">转移存档</string>
     <string name="select_container">目标容器：</string>
     <string name="transfer_complete">转移完成</string>
-    <string name="transfer_failed">转移失败</string>
     <string name="unable_to_transfer_save">无法转移存档</string>
     <string name="spinner_container_selection">正在转移...</string>
     <string name="name_required">名称必填</string>
@@ -431,7 +432,12 @@
     <string name="startup_essential">基本 (仅加载基本服务)</string>
     <string name="startup_aggressive">激进 (启动时停止服务)</string>
     <string name="lc_all" translatable="false">LC_ALL</string>
-
+    <string name="help_trigger_mode"><![CDATA[
+        这个选项取决于你正在使用的 <i><b>物理控制器</b></i> 。<br/><br/>
+        <i><b>线性</b></i>: 如果你的控制器的扳机键是线性的（具有一定行程），请勾选此选项。<br/><br/>
+        <i><b>非线性</b></i>: 如果你的控制器的扳机键是按钮（类似一个开关），请勾选此选项。<br/><br/>
+        <i><b>注意</b></i>: 如果为线性扳机勾选了<i><b>按钮</b></i> ，则映射时会丢弃线性数据。<br/>
+    ]]></string>
     <string name="toggle_orientation">切换方向</string>
     <string name="help_file_provider"><![CDATA[
         <i><b>文件提供器</b></i> 允许通过安卓文件管理器访问Winlator的内部数据。<br/><br/>
@@ -496,8 +502,9 @@
     <string name="analog_stick_settings">模拟摇杆设置</string>
     <string name="left_analog_stick_settings">左模拟摇杆设置</string>
     <string name="right_analog_stick_settings">右模拟摇杆设置</string>
-    <string name="deadzone">死区: %1$d%%</string>
-    <string name="sensitivity">灵敏度: %1$d%%</string>
+    <string name="deadzone">死区:</string>
+    <string name="sensitivity">灵敏度:</string>
+    <string name="left_stick_square_deadzone">左摇杆方形死区</string>
     <string name="invert_x_axis_left">反转X轴 (左摇杆)</string>
     <string name="invert_y_axis_left">反转Y轴 (左摇杆)</string>
     <string name="invert_x_axis_right">反转X轴 (右摇杆)</string>
@@ -555,7 +562,7 @@
     <string name="pref_touchMode">触屏输入模式</string>
     <string name="pref_scaleTouchpad">将显示比例因子应用于触摸板d</string>
     <string name="pref_showStylusClickOverride">显示触控笔点击选项</string>
-    <string name="pref_showStylusClickOverride_summary">S触控笔触摸覆盖，左键、中键或右键单击（仅限触控笔）</string>
+    <string name="pref_showStylusClickOverride_summary">触控笔触摸覆盖，左键、中键或右键单击（仅限触控笔）</string>
     <string name="pref_stylusIsMouse">启用触控笔鼠标模式</string>
     <string name="pref_stylusIsMouse_summary">让你的触控笔像鼠标一样工作。激活后，触控笔只会移动光标并发送鼠标点击，而不会受到压力、角度和倾斜度的影响。</string>
     <string name="pref_stylusButtonContactModifierMode">触控笔按钮接触修改模式</string>
@@ -623,6 +630,7 @@
     <string name="install_drivers_warning">请注意，由于当前PC模拟器的限制，未经修补的高通驱动程序可能无法在8Gen2以下的芯片组上正常运行。</string>
     <string name="enable_vulkan_api_dump">启用Vulkan API调用转储到文件功能.</string>
     <string name="dll_emulator">32位模拟器</string>
+    <string name="64_emulator">64位模拟器</string>
     <string name="open_with_android_browser">从Wine打开安卓浏览器</string>
     <string name="share_android_clipboard">在Wine上使用安卓剪贴板</string>
     <string name="ddraw_wrapper">DDraw/Glide兼容层</string>
@@ -642,4 +650,33 @@
     <string name="vkbasalt_sharpness_denoise">锐化降噪</string>
     <string name="shutdown">关机</string>
     <string name="disable_mouse">禁用鼠标</string>
+    <string name="no_items_to_display_saves">从您的容器中选择一个存档文件目录进行注册，即可开始！</string>
+    <string name="failed_create_directories_for_save">无法创建存档目录!</string>
+    <string name="save_imported_successfully">存档导入成功!</string>
+    <string name="save_imported_failed">存档导入失败</string>
+    <string name="failed_create_temporary_directory">无法创建临时目录</string>
+    <string name="failed_decompress_archive">解压存档失败</string>
+    <string name="unexpected_archive_structure">存档文件损坏或丢失</string>
+    <string name="JSON_file_not_found">存档中未找到JSON配置文件</string>
+    <string name="failed_to_copy_save_files">复制存档失败</string>
+    <string name="save_directory_is_invalid">存档目录无效</string>
+    <string name="save_json_is_missing">存档JSON文件缺失</string>
+    <string name="failed_to_create_export_directory">无法创建导出目录</string>
+    <string name="failed_to_copy_json_file">无法复制JSON文件</string>
+    <string name="failed_to_copy_save_directory">无法复制存档目录</string>
+    <string name="save_exported_to">存档导出至</string>
+    <string name="failed_to_export_save">存档导出失败</string>
+    <string name="transfer_failed">存档转移失败</string>
+    <string name="dark_mode">暗黑模式</string>
+    <string name="winlator_path">Winlator文件夹</string>
+    <string name="choose_path">选择文件夹</string>
+    <string name="shortcut_export_path">快捷方式导出文件夹</string>
+    <string name="path_settings">文件夹设置</string>
+    <string name="gyroscope">陀螺仪</string>
+    <string name="enable_right_stick_gyroscope">启用右摇杆陀螺仪（实验性功能）</string>
+    <string name="gyro_activator_button">陀螺激活按键：</string>
+    <string name="hold_mode">长按</string>
+    <string name="toggle_mode">短按切换</string>
+    <string name="calibrate_gyroscope">校准陀螺仪</string>
+    <string name="trigger">扳机键类型</string>
 </resources>

@@ -80,7 +80,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textStyle="bold"
-            android:text="Gyroscope"
+            android:text="@string/gyroscope"
             android:textColor="@color/colorPrimary"
             android:layout_marginTop="8dp" />
 
@@ -92,7 +92,7 @@
             android:id="@+id/CBGyroEnabled"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Enable Right-Stick Gyroscope (Experimental)"
+            android:text="@string/enable_right_stick_gyroscope"
             android:layout_marginBottom="16dp" /> <!-- Added margin for better spacing -->
 
         <!-- Gyro Activator Button Label -->
@@ -100,7 +100,7 @@
             android:id="@+id/TVGyroTriggerLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="Gyro Activator Button:"
+            android:text="@string/gyro_activator_button"
             android:layout_marginBottom="8dp"/> <!-- Add some bottom margin for better spacing -->
 
         <!-- Spinner for selecting the gyro trigger button -->
@@ -122,14 +122,14 @@
                 android:id="@+id/RBHoldMode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Hold Mode"
+                android:text="@string/hold_mode"
                 android:layout_marginEnd="16dp" /> <!-- Add end margin for spacing -->
 
             <RadioButton
                 android:id="@+id/RBToggleMode"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Toggle Mode" />
+                android:text="@string/toggle_mode" />
         </RadioGroup>
 
         <!-- Configure Gyroscope Button -->
@@ -138,13 +138,13 @@
             android:id="@+id/BTConfigureGyro"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Calibrate Gyroscope" /> <!-- Add top margin for spacing -->
+            android:text="@string/calibrate_gyroscope" /> <!-- Add top margin for spacing -->
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:textStyle="bold"
-            android:text="Trigger"
+            android:text="@string/trigger"
             android:textColor="@color/colorPrimary"
             android:layout_marginTop="8dp" />
 
@@ -203,7 +203,7 @@
             android:id="@+id/BTConfigureAnalogSticks"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:text="Configure Analog Sticks"
+            android:text="@string/configure_analog_sticks"
             android:layout_gravity="center_horizontal"
             android:layout_marginTop="16dp" />
 

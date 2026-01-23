@@ -104,7 +104,7 @@
             android:exported="false" />
 
         <activity
-            android:name=".saves.CustomFilePickerActivity"
+            android:name="com.winlator.cmod.saves.CustomFilePickerActivity"
             android:theme="@style/AppTheme"
             android:screenOrientation="sensor"
             android:exported="false" />

@@ -661,7 +661,7 @@ public class InputControlsFragment extends Fragment {
 
         AlertDialog.Builder builder = new AlertDialog.Builder(getContext());
         builder.setView(dialogView);
-        builder.setTitle("Configure Analog Sticks");
+        builder.setTitle(R.string.configure_analog_sticks);
         builder.setCancelable(false);
 
         // Initialize UI elements
@@ -699,16 +699,16 @@ public class InputControlsFragment extends Fragment {
 
         // Set initial values
         sbLeftDeadzone.setProgress((int) currentDeadzoneLeft);
-        tvLeftDeadzone.setText("Deadzone: " + sbLeftDeadzone.getProgress() + "%");
+        tvLeftDeadzone.setText(getContext().getString(R.string.deadzone) + sbLeftDeadzone.getProgress() + "%");
 
         sbLeftSensitivity.setProgress((int) currentSensitivityLeft);
-        tvLeftSensitivity.setText("Sensitivity: " + sbLeftSensitivity.getProgress() + "%");
+        tvLeftSensitivity.setText(getContext().getString(R.string.sensitivity) + sbLeftSensitivity.getProgress() + "%");
 
         sbRightDeadzone.setProgress((int) currentDeadzoneRight);
-        tvRightDeadzone.setText("Deadzone: " + sbRightDeadzone.getProgress() + "%");
+        tvRightDeadzone.setText(getContext().getString(R.string.deadzone) + sbRightDeadzone.getProgress() + "%");
 
         sbRightSensitivity.setProgress((int) currentSensitivityRight);
-        tvRightSensitivity.setText("Sensitivity: " + sbRightSensitivity.getProgress() + "%");
+        tvRightSensitivity.setText(getContext().getString(R.string.sensitivity) + sbRightSensitivity.getProgress() + "%");
 
         cbInvertLeftX.setChecked(invertLeftX);
         cbInvertLeftY.setChecked(invertLeftY);
@@ -721,7 +721,7 @@ public class InputControlsFragment extends Fragment {
         sbLeftDeadzone.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvLeftDeadzone.setText("Deadzone: " + progress + "%");
+                tvLeftDeadzone.setText(getContext().getString(R.string.deadzone) + progress + "%");
             }
 
             @Override
@@ -734,7 +734,7 @@ public class InputControlsFragment extends Fragment {
         sbLeftSensitivity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvLeftSensitivity.setText("Sensitivity: " + progress + "%");
+                tvLeftSensitivity.setText(getContext().getString(R.string.sensitivity) + progress + "%");
             }
 
             @Override
@@ -747,7 +747,7 @@ public class InputControlsFragment extends Fragment {
         sbRightDeadzone.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvRightDeadzone.setText("Deadzone: " + progress + "%");
+                tvRightDeadzone.setText(getContext().getString(R.string.deadzone) + progress + "%");
             }
 
             @Override
@@ -760,7 +760,7 @@ public class InputControlsFragment extends Fragment {
         sbRightSensitivity.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
             public void onProgressChanged(SeekBar seekBar, int progress, boolean fromUser) {
-                tvRightSensitivity.setText("Sensitivity: " + progress + "%");
+                tvRightSensitivity.setText(getContext().getString(R.string.sensitivity) + progress + "%");
             }
 
             @Override

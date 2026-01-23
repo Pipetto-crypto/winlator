@@ -233,12 +233,12 @@
                         android:id="@+id/CBDarkMode"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Enable Dark Mode" />
+                        android:text="@string/dark_mode" />
                 </LinearLayout>
                 <TextView
                     android:id="@+id/TVTheme"
                     style="@style/FieldSetLabel"
-                    android:text="Theme" />
+                    android:text="@string/theme" />
             </FrameLayout>
 
             <!-- Shortcuts -->
@@ -249,7 +249,7 @@
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Winlator Path" />
+                        android:text="@string/winlator_path" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -266,13 +266,13 @@
                             android:id="@+id/BTChooseWinlatorPath"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Choose Path" />
+                            android:text="@string/choose_path" />
                     </LinearLayout>
 
                     <TextView
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Shortcut Export Path" />
+                        android:text="@string/shortcut_export_path" />
 
                     <LinearLayout
                         android:layout_width="match_parent"
@@ -289,13 +289,13 @@
                             android:id="@+id/BTChooseShortcutExportPath"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="Choose Path" />
+                            android:text="@string/choose_path" />
                     </LinearLayout>
                 </LinearLayout>
                 <TextView
                     android:id="@+id/TVShortcutSettings"
                     style="@style/FieldSetLabel"
-                    android:text="Path Settings" />
+                    android:text="@string/path_settings" />
             </FrameLayout>
 
             <FrameLayout
@@ -355,7 +355,7 @@
                         android:id="@+id/CBXinputToggle"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="Disable Xinput (Used for Exclusive M/KB support)"
+                        android:text="@string/disable_xinput_for_shortcut"
                         android:layout_marginTop="8dp" />
 
                 </LinearLayout>
