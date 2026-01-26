@@ -216,6 +216,33 @@ Java_com_winlator_cmod_core_GPUInformation_getVulkanVersion(JNIEnv *env, jclass 
     return (*env)->NewStringUTF(env, driverVersion);
 }
 
+JNIEXPORT jint JNICALL
+Java_com_winlator_cmod_core_GPUInformation_getVendorID(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
+    VkPhysicalDeviceProperties props = {};
+    uint32_t vendorID;
+
+    if  (create_instance(driverName, env, context) != VK_SUCCESS) {
+        printf("Failed to create instance");
+        return 0;
+    }
+
+    if (enumerate_physical_devices() != VK_SUCCESS) {
+        printf("Failed to query physical devices");
+        return 0;
+    }
+
+    getPhysicalDeviceProperties(physicalDevice, &props);
+    vendorID = props.vendorID;
+
+    destroyInstance(instance, NULL);
+
+    if (vulkan_handle)
+        dlclose(vulkan_handle);
+
+    return vendorID;
+}
+
+
 JNIEXPORT jstring JNICALL
 Java_com_winlator_cmod_core_GPUInformation_getRenderer(JNIEnv *env, jclass obj, jstring driverName, jobject context) {
     VkPhysicalDeviceProperties props = {};

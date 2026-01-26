@@ -1471,10 +1471,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         File rootDir = imageFs.getRootDir();
 
-        if (dxwrapper.contains("dxvk"))
+        if (dxwrapper.contains("dxvk")) {
             DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-        else
+            String version = dxwrapperConfig.get("version");
+            if (version.equals("1.11.1-sarek")) {
+                Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
+                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
+            }
+        }
+        else {
             WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
+        }
 
         boolean useDRI3 = preferences.getBoolean("use_dri3", true);
         if (!useDRI3) {
@@ -1538,14 +1545,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         switch (bcnEmulation) {
             case "auto" -> {
-                if (bcnEmulationType.equals("compute")) {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "1");
                 }
                 envVars.put("WRAPPER_EMULATE_BCN", "3");
             }
             case "full" -> {
-                if (bcnEmulationType.equals("compute")) {
+                if (bcnEmulationType.equals("compute") && GPUInformation.getVendorID(null, null) != 0x5143) {
                     envVars.put("ENABLE_BCN_COMPUTE", "1");
                     envVars.put("BCN_COMPUTE_AUTO", "0");
                 }
@@ -1628,6 +1635,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (dxwrapper.contains("dxvk")) {
             Log.d(TAG, "Extracting DXVK wrapper files, version: " + dxwrapper);
+
             String dxvkWrapper = dxwrapper.split(";")[0];
             String vkd3dWrapper = dxwrapper.split(";")[1];
             String ddrawrapper = dxwrapper.split(";")[2];

@@ -108,7 +108,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         // Determine text color based on dark mode
         int textColor = isDarkMode ? Color.WHITE : Color.BLACK;
         setNavigationViewItemTextColor(navigationView, textColor);
-        
+
+        // Create Winlator folder if not present
+        File winlatorDir = new File(SettingsFragment.DEFAULT_WINLATOR_PATH);
+        if (!winlatorDir.exists())
+            winlatorDir.mkdirs();
 
         containerManager = new ContainerManager(this);
 
