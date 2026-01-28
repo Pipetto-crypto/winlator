@@ -579,5 +579,9 @@ public abstract class FileUtils {
             return false;
         }
     }
+    public static String getExtension(String filename) {
+        int dotIndex;
+        return (filename == null || filename.isEmpty() || (dotIndex = filename.lastIndexOf(".")) == -1) ? "" : filename.substring(dotIndex + 1);
+    }
 
 }

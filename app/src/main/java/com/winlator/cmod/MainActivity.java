@@ -145,14 +145,14 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     private void showAllFilesAccessDialog() {
         new AlertDialog.Builder(this)
-                .setTitle("All Files Access Required")
-                .setMessage("In order to grant access to additional storage devices such as USB storage device, the All Files Access permission must be granted. Press Okay to grant All Files Access in your Android Settings.")
-                .setPositiveButton("Okay", (dialog, which) -> {
+                .setTitle(R.string.files_access_title)
+                .setMessage(R.string.files_access_content)
+                .setPositiveButton(getString(R.string.ok), (dialog, which) -> {
                     Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
                     intent.setData(Uri.parse("package:" + getPackageName()));
                     startActivity(intent);
                 })
-                .setNegativeButton("Cancel", null)
+                .setNegativeButton(getString(R.string.cancel), null)
                 .show();
     }
     // Method to show SaveEditDialog
@@ -197,13 +197,18 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         FragmentManager fragmentManager = getSupportFragmentManager();
         List<Fragment> fragments = fragmentManager.getFragments();
         for (Fragment fragment : fragments) {
-            if (fragment instanceof ContainersFragment && fragment.isVisible()) {
+            if (fragment instanceof BaseFileManagerFragment && fragment.isVisible()) {
+                BaseFileManagerFragment fileManagerFragment = (BaseFileManagerFragment) fragment;
+                if (fileManagerFragment.onBackPressed()) {
+                    return;
+                }
+            }else if (fragment instanceof ContainersFragment && fragment.isVisible()) {
                 finish();
                 return;
             }
         }
         if (!editInputControls)
-            show(new ContainersFragment(), true);  // Pass `true` to trigger the reverse animation
+            showFragment(new ContainersFragment(), true);  // Pass `true` to trigger the reverse animation
         else
             super.onBackPressed();
     }
@@ -227,10 +232,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
     @Override
     public boolean onOptionsItemSelected(MenuItem menuItem) {
+        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.FLFragmentContainer);
         if (menuItem.getItemId() == android.R.id.home) {
             if (editInputControls) {
                 onBackPressed();
                 return true;
+            }
+            if (currentFragment instanceof BaseFileManagerFragment) {
+                BaseFileManagerFragment fileManagerFragment = (BaseFileManagerFragment) currentFragment;
+                if (fileManagerFragment.onOptionsMenuClicked()) {
+                    return true;
+                }
             }
 
             if (drawerLayout.isDrawerOpen(GravityCompat.START)) {
@@ -287,25 +299,25 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
 
         switch (item.getItemId()) {
             case R.id.main_menu_shortcuts:
-                show(new ShortcutsFragment(), false);  // Forward animation
+                showFragment(new ShortcutsFragment(), false);  // Forward animation
                 break;
             case R.id.main_menu_containers:
-                show(new ContainersFragment(), false);  // Forward animation
+                showFragment(new ContainersFragment(), false);  // Forward animation
                 break;
             case R.id.main_menu_input_controls:
-                show(new InputControlsFragment(selectedProfileId), false);  // Forward animation
+                showFragment(new InputControlsFragment(selectedProfileId), false);  // Forward animation
                 break;
             case R.id.main_menu_contents:
-                show(new ContentsFragment(), false);  // Forward animation
+                showFragment(new ContentsFragment(), false);  // Forward animation
                 break;
             case R.id.main_menu_adrenotools_gpu_drivers:
-                show(new AdrenotoolsFragment(), false);
+                showFragment(new AdrenotoolsFragment(), false);
                 break;
             case R.id.main_menu_settings:
-                show(new SettingsFragment(), false);  // Forward animation
+                showFragment(new SettingsFragment(), false);  // Forward animation
                 break;
             case R.id.main_menu_saves:
-                show(new SavesFragment(), false);  // Forward animation
+                showFragment(new SavesFragment(), false);  // Forward animation
                 break;
             case R.id.main_menu_about:
                 showAboutDialog();
@@ -314,17 +326,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         return true;
     }
 
-
-//    private void show(Fragment fragment) {
-//        FragmentManager fragmentManager = getSupportFragmentManager();
-//        fragmentManager.beginTransaction()
-//                .replace(R.id.FLFragmentContainer, fragment)
-//                .commit();
-//
-//        drawerLayout.closeDrawer(GravityCompat.START);
-//    }
-
-    private void show(Fragment fragment, boolean reverse) {
+    public void showFragment(Fragment fragment, boolean reverse) {
         FragmentManager fragmentManager = getSupportFragmentManager();
         if (reverse) {
             fragmentManager.beginTransaction()

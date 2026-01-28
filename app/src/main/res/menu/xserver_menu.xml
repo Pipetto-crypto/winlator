@@ -12,7 +12,8 @@
         <item
             android:icon="@drawable/icon_mouse"
             android:id="@+id/main_menu_relative_mouse_movement"
-            android:title="@string/relative_mouse_movement" />
+            android:title="@string/relative_mouse_movement"
+            android:checkable="true" />
         <item
             android:icon="@drawable/icon_screen_effect"
             android:id="@+id/main_menu_screen_effects"

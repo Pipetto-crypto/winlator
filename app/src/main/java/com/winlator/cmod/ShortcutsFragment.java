@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.content.pm.ShortcutInfo;
 import android.content.pm.ShortcutManager;
 import android.graphics.drawable.Icon;
+import android.provider.Settings;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -399,9 +400,24 @@ public class ShortcutsFragment extends Fragment {
 
     private void addShortcutToScreen(Shortcut shortcut) {
         ShortcutManager shortcutManager = getSystemService(requireContext(), ShortcutManager.class);
-        if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported())
+        if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported()){
             shortcutManager.requestPinShortcut(buildScreenShortCut(shortcut.name, shortcut.name, shortcut.container.id,
                     shortcut.file.getPath(), Icon.createWithBitmap(shortcut.icon), shortcut.getExtra("uuid")), null);
+        } else {
+            showAllFilesAccessDialog();
+        }
+    }
+    private void showAllFilesAccessDialog() {
+        new AlertDialog.Builder(getContext())
+                .setTitle(R.string.add_shortcut_title)
+                .setMessage(R.string.add_shortcut_content)
+                .setPositiveButton(getString(R.string.ok), (dialog, which) -> {
+                    Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+                    intent.setData(Uri.parse("package:" + getContext().getPackageName()));
+                    startActivity(intent);
+                })
+                .setNegativeButton(getString(R.string.cancel), null)
+                .show();
     }
 
     public static void disableShortcutOnScreen(Context context, Shortcut shortcut) {

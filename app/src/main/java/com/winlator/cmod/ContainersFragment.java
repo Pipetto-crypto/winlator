@@ -45,6 +45,7 @@ import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.PreloaderDialog;
 import com.winlator.cmod.xenvironment.ImageFs;
+import com.winlator.cmod.MainActivity;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -219,6 +220,10 @@ public class ContainersFragment extends Fragment {
                         break;
                     case R.id.container_info:
                         (new StorageInfoDialog(getActivity(), container)).show();
+                        break;
+                    case R.id.menu_item_file_manager:
+                        final MainActivity activity = (MainActivity) getActivity();
+                        activity.showFragment(new ContainerFileManagerFragment(container.id),false);
                         break;
                 }
                 return true;

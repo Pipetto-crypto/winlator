@@ -347,7 +347,7 @@
                         android:id="@+id/CBCursorLock"
                         android:layout_width="wrap_content"
                         android:layout_height="wrap_content"
-                        android:text="True Mouse Control (Deactivate with Volume Down)"
+                        android:text="@string/disable_mouse_for_shortcut"
                         android:layout_marginTop="8dp" />
 
                     <!-- New Xinput Toggle Checkbox -->

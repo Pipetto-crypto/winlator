@@ -30,4 +30,23 @@ public class StreamUtils {
             return false;
         }
     }
+
+     public static int skip(InputStream inStream, int bytesToSkip) throws IOException {
+        try {
+            int bytesSkipped = (int) inStream.skip(bytesToSkip);
+            if (bytesSkipped > 0 && bytesSkipped != bytesToSkip) {
+                byte[] skipBuffer = new byte[1024];
+                while (bytesSkipped != bytesToSkip) {
+                    int bytesRead = inStream.read(skipBuffer, 0, Math.min(skipBuffer.length, bytesToSkip - bytesSkipped));
+                    if (bytesRead == -1) {
+                        break;
+                    }
+                    bytesSkipped += bytesRead;
+                }
+            }
+            return bytesSkipped;
+        } catch (IOException e) {
+            return 0;
+        }
+    }
 }

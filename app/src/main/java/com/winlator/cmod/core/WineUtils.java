@@ -4,11 +4,12 @@ import android.content.Context;
 
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.xenvironment.ImageFs;
-
+import com.winlator.cmod.container.Drive;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-
+import java.io.IOException;
+import java.util.Iterator;
 import java.io.File;
 import java.util.Locale;
 
@@ -213,5 +214,62 @@ public abstract class WineUtils {
                 registryEditor.setDwordValue("System\\CurrentControlSet\\Services\\"+name, "Start", value);
             }
         }
+    }
+    public static String dosToUnixPath(String dosPath, Container container) {
+        int index = dosPath.indexOf(":");
+        if (index == -1) {
+            return "";
+        }
+        String driveLetter = dosPath.substring(0, index).toUpperCase(Locale.ENGLISH);
+        String relativePath = StringUtils.removeStartSlash(dosPath.substring(index + 1).replace("\\", "/"));
+        if (driveLetter.equals("C")) {
+            String unixPath = container.getRootDir() + "/.wine/drive_c/" + relativePath;
+            return unixPath;
+        }
+        if (driveLetter.equals("Z")) {
+            File rootDir = new File(container.getRootDir(), "../../");
+            try {
+                String unixPath2 = rootDir.getCanonicalPath() + "/" + relativePath;
+                return unixPath2;
+            } catch (IOException e) {
+                return "";
+            }
+        }
+        for (String[] drive : container.drivesIterator()) {
+            if (driveLetter.equals(drive[0])) {
+                String unixPath3 = drive[0] + ":/" + relativePath;
+                return unixPath3;
+            }
+        }
+        return "";
+    }
+    public static String unixToDOSPath(String unixPath, Container container) {
+        int index;
+        String dosPath = "";
+        String driveLetter = "";
+        Iterator<String[]> it = container.drivesIterator().iterator();
+        while (true) {
+            if (!it.hasNext()) {
+                break;
+            }
+            String drive = it.next()[0];
+            if (unixPath.startsWith(drive)) {
+                driveLetter = drive + ":";
+                dosPath = unixPath.substring(drive.length()).replace("/", "\\");
+                break;
+            }
+        }
+        if (dosPath.isEmpty() && (index = unixPath.indexOf("/.wine/drive_c")) != -1) {
+            driveLetter = "C:";
+            dosPath = unixPath.substring(index + 14).replace("/", "\\");
+        }
+        if (!dosPath.startsWith("\\")) {
+            dosPath = dosPath + "\\";
+        }
+        String dosPath2 = driveLetter + StringUtils.removeEndSlash(dosPath);
+        if (dosPath2.equals(driveLetter)) {
+            return dosPath2 + "\\";
+        }
+        return dosPath2;
     }
 }

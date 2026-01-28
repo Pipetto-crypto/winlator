@@ -65,7 +65,7 @@
     <string name="processor_affinity">处理器关联核心</string>
     <string name="processor_affinity_32_bit_apps">处理器关联核心 (32位应用)</string>
     <string name="cursor_speed">光标速度</string>
-    <string name="relative_mouse_movement">相对鼠标移动</string>
+    <string name="relative_mouse_movement">使用实体鼠标</string>
     <string name="toggle_switch">长按模式</string>
     <string name="profile_exported_to">配置文件导出至</string>
     <string name="unable_to_import_profile">无法导入配置文件</string>
@@ -473,6 +473,7 @@
     <string name="enable_touchscreen_timeout">超时隐藏按键 (重启生效)</string>
     <string name="enable_touchscreen_haptics">启用按键振动</string>
     <string name="disable_xinput_for_shortcut">禁用 Xinput (实现键鼠独占控制)</string>
+    <string name="disable_mouse_for_shortcut">禁用实体鼠标</string>
     <string name="fullscreen_stretched">全屏拉伸</string>
     <string name="export_container">备份容器</string>
     <string name="exporting_container">正在导出容器...</string>
@@ -679,4 +680,10 @@
     <string name="toggle_mode">短按切换</string>
     <string name="calibrate_gyroscope">校准陀螺仪</string>
     <string name="trigger">扳机键</string>
+    <string name="files_access_title">请求访问所有文件</string>
+    <string name="files_access_content">为了允许访问存储设备，必须授予"所有文件访问"权限。请在设置中点击"确定"授予所有文件访问权限。</string>
+    <string name="add_shortcut_title">请求桌面快捷方式</string>
+    <string name="add_shortcut_content">为了创建游戏快捷方式，请开启桌面快捷方式权限</string>
+    <string name="file_manager">文件管理器</string>
+    <string name="size">大小</string>
 </resources>

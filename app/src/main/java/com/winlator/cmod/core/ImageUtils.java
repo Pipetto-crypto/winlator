@@ -11,6 +11,7 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
 
 public abstract class ImageUtils {
     private static int calculateInSampleSize(BitmapFactory.Options options, int maxSize) {
@@ -103,5 +104,13 @@ public abstract class ImageUtils {
             }
         }
         return false;
+    }
+
+    public static boolean isPNGData(ByteBuffer data) {
+        int position = data.position();
+        if (Byte.toUnsignedInt(data.get(position + 0)) != 137 || data.get(position + 1) != 80 || data.get(position + 2) != 78 || data.get(position + 3) != 71) {
+            return false;
+        }
+        return true;
     }
 }

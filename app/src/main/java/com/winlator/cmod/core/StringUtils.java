@@ -104,4 +104,18 @@ public class StringUtils {
 
         return escapedPath;
     }
+
+    public static String clearReservedChars(String name) {
+        return (name == null || name.isEmpty()) ? "" : name.replaceAll("[\\\\/:*?\"<>\\|]+", "");
+    }
+
+    public static String removeStartSlash(String value) {
+        while (true) {
+            if (value.startsWith("/") || value.startsWith("\\")) {
+                value = value.substring(1);
+            } else {
+                return value;
+            }
+        }
+    }
 }

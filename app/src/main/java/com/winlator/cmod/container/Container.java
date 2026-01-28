@@ -603,5 +603,8 @@ public class Container {
         }
         return false;
     }
+    public File getUserDir() {
+        return new File(this.rootDir, ".wine/drive_c/users/xuser/");
+    }
 
 }

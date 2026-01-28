@@ -173,7 +173,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     PreloaderDialog preloaderDialog = null;
     private Runnable configChangedCallback = null;
     private boolean isPaused = false;
-    private boolean isRelativeMouseMovement = false;
 
     // Inside the XServerDisplayActivity class
     private SensorManager sensorManager;
@@ -810,7 +809,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
         final GLRenderer renderer = xServerView.getRenderer();
-        switch (item.getItemId()) {
+        final int id = item.getItemId();
+        switch (id) {
             case R.id.main_menu_keyboard:
                 AppUtils.showKeyboard(this);
                 drawerLayout.closeDrawers();
@@ -820,9 +820,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 drawerLayout.closeDrawers();
                 break;
             case R.id.main_menu_relative_mouse_movement:
-                isRelativeMouseMovement = !isRelativeMouseMovement;
+                xServer.setRelativeMouseMovement(!xServer.isRelativeMouseMovement());
+                item.setChecked(xServer.isRelativeMouseMovement());
                 drawerLayout.closeDrawers();
-                xServer.setRelativeMouseMovement(isRelativeMouseMovement);
                 break;
             case R.id.main_menu_toggle_fullscreen:
                 renderer.toggleFullscreen();
