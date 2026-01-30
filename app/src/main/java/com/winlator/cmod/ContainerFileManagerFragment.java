@@ -77,7 +77,7 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
         FileInfo parent = !folderStack.isEmpty() ? (FileInfo) folderStack.peek() : null;
         ArrayList<FileInfo> files = loadFiles(container, parent);
         this.recyclerView.setAdapter(new FileInfoAdapter(files));
-        this.emptyTextView.setVisibility(files.isEmpty() ? 0 : 8);
+        this.emptyTextView.setVisibility(files.isEmpty() ? View.VISIBLE : View.GONE);
         updateActionBarTitle();
     }
 
@@ -130,7 +130,7 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
     private void instantiateClipboard(FileInfo file, boolean cutMode) {
         clearClipboard();
         this.clipboard = new BaseFileManagerFragment.Clipboard(new File[]{new File(file.path)}, cutMode);
-        this.pasteButton.setVisibility(0);
+        this.pasteButton.setVisibility(View.VISIBLE);
     }
 
     /* JADX INFO: Access modifiers changed from: private */
@@ -337,15 +337,15 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
                 }
                 holder.title.setText(item.getDisplayName());
             }
-            holder.subtitle.setVisibility(8);
+            holder.subtitle.setVisibility(View.GONE);
             holder.runButton.setImageResource(R.drawable.icon_open);
             if (type == FileInfo.Type.DIRECTORY && !folderStack.isEmpty()) {
                 holder.subtitle.setText(item.getItemCount() + " " + context.getString(R.string.items));
-                holder.subtitle.setVisibility(0);
+                holder.subtitle.setVisibility(View.VISIBLE);
             } else if (type == FileInfo.Type.FILE) {
                 holder.runButton.setImageResource(R.drawable.icon_run);
                 holder.subtitle.setText(StringUtils.formatBytes(item.getSize()));
-                holder.subtitle.setVisibility(0);
+                holder.subtitle.setVisibility(View.VISIBLE);
             }
             if (type == FileInfo.Type.FILE) {
                 holder.imageView.setImageResource(R.drawable.container_file);

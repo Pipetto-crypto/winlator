@@ -19,7 +19,8 @@ import java.util.Arrays;
 
 import org.json.JSONException;
 import org.json.JSONObject;
-
+import org.json.JSONArray;
+import java.io.IOException;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -134,13 +135,13 @@ public class ContainerManager {
                 FileUtils.delete(containerDir);
                 return null;
             }
-
 //            // Extract the selected graphics driver files
 //            String driverVersion = container.getGraphicsDriverVersion();
 //            if (!extractGraphicsDriverFiles(driverVersion, containerDir, null)) {
 //                FileUtils.delete(containerDir);
 //                return null;
 //            }
+            
 
             container.saveData();
             maxContainerId++;
@@ -151,7 +152,6 @@ public class ContainerManager {
         }
         return null;
     }
-
 
     private void duplicateContainer(Container srcContainer) {
         int id = maxContainerId + 1;
@@ -232,7 +232,6 @@ public class ContainerManager {
 
     private void extractCommonDlls(WineInfo wineInfo, String srcName, String dstName, File containerDir, OnExtractFileListener onExtractFileListener) throws JSONException {
         File srcDir = new File(wineInfo.path + "/lib/wine/" + srcName);
-
         File[] srcfiles = srcDir.listFiles(file -> file.isFile());
 
         for (File file : srcfiles) {
@@ -249,6 +248,15 @@ public class ContainerManager {
             }
             FileUtils.copy(file, dstFile);
         }
+        try {
+            String[] commonDlls = context.getAssets().list("common_dlls/");
+            for (String dllFile : commonDlls) {
+                String assetPath = "common_dlls/"+dllFile;
+                File dstFile = new File(containerDir, ".wine/drive_c/windows/"+dstName+"/"+dllFile);
+                FileUtils.copy(context, assetPath, dstFile);
+            }
+        }
+        catch (IOException e) {}
     }
 
     public boolean extractContainerPatternFile(Container container, String wineVersion, ContentsManager contentsManager, File containerDir, OnExtractFileListener onExtractFileListener) {
