@@ -686,4 +686,17 @@
     <string name="add_shortcut_content">为了创建游戏快捷方式，请开启桌面快捷方式权限</string>
     <string name="file_manager">文件管理器</string>
     <string name="size">大小</string>
+    <string name="items">项</string>
+    <string name="drive">磁盘</string>
+    <string name="contains">包含</string>
+    <string name="folder">文件夹</string>
+    <string name="file">文件</string>
+    <string name="location">位置</string>
+    <string name="modified">修改时间</string>
+    <string name="file_added_to_desktop">文件已添加到快捷方式</string>
+    <string name="you_cannot_paste_files_here">你不能在这里粘贴文件</string>
+    <string name="cut">剪切</string>
+    <string name="rename">重命名</string>
+    <string name="add_to_desktop">添加快捷方式</string>
+    <string name="information">详情</string>
 </resources>

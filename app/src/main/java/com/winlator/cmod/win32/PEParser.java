@@ -5,6 +5,7 @@ import android.graphics.BitmapFactory;
 import com.winlator.cmod.core.ImageUtils;
 import com.winlator.cmod.core.StreamUtils;
 import com.winlator.cmod.core.StringUtils;
+import com.winlator.cmod.core.MSBitmap;
 import java.io.BufferedInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -294,9 +295,8 @@ public class PEParser {
     public static Bitmap extractIcon(File peFile, int iconIndex) {
         try {
             return new PEParser(peFile).extractIcon(iconIndex);
-        }catch (IOException e) {
+        } catch (IOException e) {
             return null;
         }
-        
     }
 }

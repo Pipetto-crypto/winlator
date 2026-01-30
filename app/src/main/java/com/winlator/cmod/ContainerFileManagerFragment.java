@@ -29,7 +29,7 @@ import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.core.WineUtils;
 import com.winlator.cmod.win32.MSIcon;
-import com.winlator.cmod.win32.MSLink;
+import com.winlator.cmod.core.MSLink;
 import com.winlator.cmod.win32.PEParser;
 import java.io.File;
 import java.lang.ref.WeakReference;
@@ -39,13 +39,16 @@ import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 import java.util.Collections;
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.FileWriter;
+import com.winlator.cmod.xenvironment.ImageFs;
+import android.util.Log;
 
 /* loaded from: classes.dex */
 public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileInfo> {
     private Container container;
     private final int containerId;
     private String startPath;
-    private BaseFileManagerFragment.ViewStyle viewStyle;
 
     public ContainerFileManagerFragment(int containerId) {
         this(containerId, null);
@@ -96,12 +99,10 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
         }
         File userDir = container.getUserDir();
         File documentsDir = new File(userDir, "Documents");
-        File favoritesDir = new File(userDir, "Favorites");
         String name = documentsDir.getName();
         String path = documentsDir.getPath();
         FileInfo.Type fileInfoType = FileInfo.Type.DIRECTORY;
         fileInfos.add(new FileInfo(container, name, path, fileInfoType));
-        fileInfos.add(new FileInfo(container, favoritesDir.getName(), favoritesDir.getPath(), fileInfoType));
         Collections.sort(fileInfos);
         return fileInfos;
     }
@@ -133,23 +134,28 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
     }
 
     /* JADX INFO: Access modifiers changed from: private */
-    private void addFavorite(FileInfo file) throws Exception {
+    private void addDesktop(FileInfo file) throws Exception {
         
         Context context = getContext();
-        File favoritesDir = new File(container.getUserDir(), context.getString(R.string.favorites));
-        File targetFile = new File(favoritesDir, FileUtils.getBasename(file.name) + ".lnk");
-        if (!targetFile.exists()) {
-            MSLink.LinkInfo linkInfo = new MSLink.LinkInfo();
-            linkInfo.targetPath = WineUtils.unixToDOSPath(file.path, container);
-            linkInfo.isDirectory = file.type == FileInfo.Type.DIRECTORY;
-            try {
-                boolean success = MSLink.createFile(linkInfo, targetFile);
-                if (success) {
-                    AppUtils.showToast(context, R.string.file_added_to_favorites);
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
+         try {
+            String displayName = FileUtils.getBasename(file.name);
+            String unixPath = file.toFile().getAbsolutePath();
+            File shortcutsDir = container.getDesktopDir();
+            ImageFs imageFs = ImageFs.find(context);
+            if (!shortcutsDir.exists()) shortcutsDir.mkdirs();
+            File desktopFile = new File(shortcutsDir, displayName + ".desktop");
+            Log.d("unixPath",unixPath);
+            try (PrintWriter writer = new PrintWriter(new FileWriter(desktopFile))) {
+                writer.println("[Desktop Entry]");
+                writer.println("Name=" + displayName);
+                writer.println("Exec=env WINEPREFIX=" + "\"" + imageFs.wineprefix + "\"" + " wine " + unixPath);
+                writer.println("Type=Application");
+                writer.println("container_id:" + container.id);
+                writer.close();
             }
+            AppUtils.showToast(context, R.string.file_added_to_desktop);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
         
     }
@@ -325,7 +331,7 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
                 String driveText = getContext().getString(R.string.drive);
                 holder.title.setText(driveText + " (" + item.name + ")");
             } else {
-                MSLink.LinkInfo linkInfo = item.getLinkinfo();
+                MSLink.Options linkInfo = item.getLinkinfo();
                 if (linkInfo != null && linkInfo.isDirectory) {
                     type = FileInfo.Type.DIRECTORY;
                 }
@@ -380,18 +386,18 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
                         menu.findItem(R.id.menu_item_cut).setVisible(false);
                         menu.findItem(R.id.menu_item_remove).setVisible(false);
                         menu.findItem(R.id.menu_item_rename).setVisible(false);
-                        menu.findItem(R.id.menu_item_add_favorite).setVisible(false);
-                    } else if (((FileInfo) folderStack.peek()).name.equals("Favorites")) {
-                        menu.findItem(R.id.menu_item_add_favorite).setVisible(false);
+                        menu.findItem(R.id.menu_item_add_desktop).setVisible(false);
+                    } else if (!FileUtils.getExtension(item.path).equals("exe")) {
+                        menu.findItem(R.id.menu_item_add_desktop).setVisible(false);
                     }
                     listItemMenu.setOnMenuItemClickListener(new PopupMenu.OnMenuItemClickListener() { 
                         @Override // android.widget.PopupMenu.OnMenuItemClickListener
                         public final boolean onMenuItemClick(MenuItem menuItem) {
                             int itemId = menuItem.getItemId();
                             switch (itemId) {
-                                case R.id.menu_item_add_favorite /* 2131296718 */:
+                                case R.id.menu_item_add_desktop /* 2131296718 */:
                                     try{
-                                        addFavorite(item);
+                                        addDesktop(item);
                                     } catch (Exception e) {
                                         e.printStackTrace();
                                     }
@@ -439,7 +445,7 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
 
         private void openFile(FileInfo file) {
             Activity activity = getActivity();
-            MSLink.LinkInfo linkInfo = file.getLinkinfo();
+            MSLink.Options linkInfo = file.getLinkinfo();
             boolean isFile = true;
             if (linkInfo == null ? file.type != FileInfo.Type.FILE : linkInfo.isDirectory) {
                 isFile = false;
@@ -466,9 +472,6 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
             if (file.path.endsWith("xuser/" + context.getString(R.string.documents))) {
                 return Integer.valueOf(R.drawable.container_folder_documents);
             }
-            if (file.path.endsWith("xuser/" + context.getString(R.string.favorites))) {
-                return Integer.valueOf(R.drawable.container_folder_favorites);
-            }
             return numValueOf;
         }
         if (type == FileInfo.Type.DRIVE) {
@@ -490,7 +493,7 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
             case "dll":
                 return Integer.valueOf(R.drawable.container_file_library);
             case "lnk":
-                MSLink.LinkInfo linkInfo = file.getLinkinfo();
+                MSLink.Options linkInfo = file.getLinkinfo();
                 if (linkInfo != null) {
                     if (linkInfo.isDirectory) {
                         return numValueOf;

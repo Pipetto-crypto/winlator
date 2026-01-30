@@ -26,9 +26,9 @@
         android:title="@string/rename"
         android:iconTint="?attr/colorAccent"/>
     <item
-        android:icon="@drawable/icon_popup_menu_add_favorite"
-        android:id="@+id/menu_item_add_favorite"
-        android:title="@string/add_to_favorites"
+        android:icon="@drawable/icon_shortcut"
+        android:id="@+id/menu_item_add_desktop"
+        android:title="@string/add_to_desktop"
         android:iconTint="?attr/colorAccent"/>
     <item
         android:icon="@drawable/icon_popup_menu_info"

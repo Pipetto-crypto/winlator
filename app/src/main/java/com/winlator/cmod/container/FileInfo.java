@@ -3,7 +3,7 @@ package com.winlator.cmod.container;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.core.WineUtils;
-import com.winlator.cmod.win32.MSLink;
+import com.winlator.cmod.core.MSLink;
 import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -12,7 +12,7 @@ import java.io.IOException;
 /* loaded from: classes.dex */
 public class FileInfo implements Comparable<FileInfo> {
     private final Container container;
-    private MSLink.LinkInfo linkInfo;
+    private MSLink.Options linkInfo;
     public final String name;
     public final String path;
     public final Type type;
@@ -70,15 +70,15 @@ public class FileInfo implements Comparable<FileInfo> {
     }
 
     public File getLinkFile() {
-        MSLink.LinkInfo linkInfo = getLinkinfo();
+        MSLink.Options linkInfo = getLinkinfo();
         if (linkInfo != null) {
             return new File(WineUtils.dosToUnixPath(linkInfo.targetPath, this.container));
         }
         return null;
     }
 
-    public MSLink.LinkInfo getLinkinfo() {
-        MSLink.LinkInfo linkInfo = this.linkInfo;
+    public MSLink.Options getLinkinfo() {
+        MSLink.Options linkInfo = this.linkInfo;
         if (linkInfo != null) {
             return linkInfo;
         }
@@ -100,7 +100,7 @@ public class FileInfo implements Comparable<FileInfo> {
     }
 
     public String getDisplayName() {
-        MSLink.LinkInfo linkInfo = getLinkinfo();
+        MSLink.Options linkInfo = getLinkinfo();
         String str = this.name;
         return linkInfo != null ? FileUtils.getBasename(str) : str;
     }

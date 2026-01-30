@@ -4,6 +4,7 @@ import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.ImageUtils;
+import com.winlator.cmod.core.MSBitmap;
 import com.winlator.cmod.win32.MSIcon;
 import java.io.File;
 import java.nio.ByteBuffer;

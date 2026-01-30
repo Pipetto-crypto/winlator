@@ -12,6 +12,7 @@ import java.io.IOException;
 import java.util.Iterator;
 import java.io.File;
 import java.util.Locale;
+import android.util.Log;
 
 public abstract class WineUtils {
     public static void createDosdevicesSymlinks(Container container) {
@@ -248,17 +249,21 @@ public abstract class WineUtils {
         String dosPath = "";
         String driveLetter = "";
         Iterator<String[]> it = container.drivesIterator().iterator();
+        Log.d("FilePath",unixPath);
         while (true) {
             if (!it.hasNext()) {
                 break;
             }
-            String drive = it.next()[0];
-            if (unixPath.startsWith(drive)) {
-                driveLetter = drive + ":";
-                dosPath = unixPath.substring(drive.length()).replace("/", "\\");
+            String[] drive = it.next();
+            String drivePath = drive[1];
+            Log.d("FilePath:drive",drivePath);
+            if (unixPath.startsWith(drivePath)) {
+                driveLetter = drive[0] + ":";
+                dosPath = unixPath.substring(drivePath.length()).replace("/", "\\");
                 break;
             }
         }
+        Log.d("FilePath:dosPath",dosPath);
         if (dosPath.isEmpty() && (index = unixPath.indexOf("/.wine/drive_c")) != -1) {
             driveLetter = "C:";
             dosPath = unixPath.substring(index + 14).replace("/", "\\");

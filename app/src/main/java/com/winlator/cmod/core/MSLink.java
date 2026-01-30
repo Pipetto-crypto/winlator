@@ -3,7 +3,7 @@ package com.winlator.cmod.core;
 import android.content.Context;
 
 import com.winlator.cmod.xenvironment.ImageFs;
-
+import android.util.Log;
 import java.io.DataInputStream;
 import java.io.File;
 import java.io.FileInputStream;
@@ -12,6 +12,8 @@ import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Arrays;
+import java.nio.charset.StandardCharsets;
 
 public abstract class MSLink {
     public static final byte SW_SHOWNORMAL = 1;
@@ -23,11 +25,13 @@ public abstract class MSLink {
     private static final int ForceNoLinkInfo = 1<<8;
 
     public static final class Options {
+        public String arguments;
+        public int fileSize;
+        public int iconIndex;
+        public String iconLocation;
+        public boolean isDirectory;
         public String targetPath;
         public String cmdArgs;
-        public String iconLocation;
-        public int iconIndex;
-        public int fileSize;
         public int showCommand = SW_SHOWNORMAL;
     }
 
@@ -70,6 +74,40 @@ public abstract class MSLink {
         return ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(value).array();
     }
 
+    private static String readStringData(ByteBuffer data, boolean isUnicode) {
+        short CountCharacters = data.getShort();
+        if (CountCharacters == 0) {
+            return null;
+        }
+        byte[] bytes = new byte[(isUnicode ? (short) 2 : (short) 1) * CountCharacters];
+        data.get(bytes);
+        String string = isUnicode ? new String(bytes, StandardCharsets.UTF_16LE) : new String(bytes);
+        int indexOfNull = string.indexOf(0);
+        return indexOfNull != -1 ? string.substring(0, indexOfNull) : string;
+    }
+
+    private static String readNullTerminatedString(ByteBuffer data) {
+        byte[] bytes = new byte[256];
+        int i = 0;
+        while (true) {
+            byte value = data.get();
+            if (value == 0) {
+                return new String(Arrays.copyOf(bytes, i));
+            }
+            bytes[i] = value;
+            i++;
+        }
+    }
+
+    private static byte[] generateStringData(String str) {
+        ByteBuffer buffer = ByteBuffer.allocate(str.length() + 2).order(ByteOrder.LITTLE_ENDIAN);
+        buffer.putShort((short) str.length());
+        for (int i = 0; i < str.length(); i++) {
+            buffer.put((byte) str.charAt(i));
+        }
+        return buffer.array();
+    }
+
     private static byte[] stringSizePaddedToByteArray(String str) {
         ByteBuffer buffer = ByteBuffer.allocate(str.length() + 2).order(ByteOrder.LITTLE_ENDIAN);
         buffer.putShort((short)str.length());
@@ -82,13 +120,13 @@ public abstract class MSLink {
         return ArrayUtils.concat(buffer.array(), bytes);
     }
 
-    public static void createFile(String targetPath, File outputFile) {
+    public static Boolean createFile(String targetPath, File outputFile) {
         Options options = new Options();
         options.targetPath = targetPath;
-        createFile(options, outputFile);
+        return createFile(options, outputFile);
     }
 
-    public static void createFile(Options options, File outputFile) {
+    public static Boolean createFile(Options options, File outputFile) {
         byte[] HeaderSize = new byte[]{0x4c, 0x00, 0x00, 0x00};
         byte[] LinkCLSID = convertCLSIDtoDATA("00021401-0000-0000-c000-000000000046");
 
@@ -170,11 +208,17 @@ public abstract class MSLink {
             os.write(IDList);
             os.write(TerminalID);
 
-            if (StringData.length > 0) os.write(StringData);
+            if (StringData.length > 0){
+                os.write(StringData);
+                os.close();
+                return true;
+            } 
         }
         catch (IOException e) {
             e.printStackTrace();
+            return false;
         }
+        return false;
     }
 
     public static String parseFilePath(File lnkFile) {
@@ -197,7 +241,6 @@ public abstract class MSLink {
             else {
                 return filePath;
             }
-
             int localBasePathOffset = data.getInt(linkInfoStart + 16);
             if (localBasePathOffset > 0) {
                 filePath = StringUtils.fromANSIString(data, linkInfoStart + localBasePathOffset);
@@ -206,6 +249,7 @@ public abstract class MSLink {
             fis.close();
         }
         catch (IOException e) {
+            e.printStackTrace();
         }
 
         return filePath;
@@ -230,5 +274,136 @@ public abstract class MSLink {
         }
         catch (IOException e) {
         }
+    }
+
+    public static Options extractLinkInfo(File linkFile) throws IOException {
+        boolean z;
+        int iAbs;
+        byte[] bytes;
+        String str;
+        byte[] bytes2 = FileUtils.read(linkFile);
+        if (bytes2 == null) {
+            return null;
+        }
+        ByteBuffer data = ByteBuffer.wrap(bytes2).order(ByteOrder.LITTLE_ENDIAN);
+        if (data.get() != 76 || data.get() != 0 || data.get() != 0 || data.get() != 0) {
+            return null;
+        }
+        int LinkFlags = data.getInt(20);
+        int IconIndex = data.getInt(56);
+        data.position(76);
+        String driveLetter = "";
+        String path = "";
+        boolean isDirectory = false;
+        Options linkInfo = null;
+        if ((LinkFlags & 1) != 0) {
+            short IDListSize = data.getShort();
+            byte[] prefixOfDirectory = {49, 0, 0, 0, 0, 0};
+            byte[] prefixOfArchive = {50, 0, 0, 0, 0, 0};
+            while (IDListSize > 2) {
+                short ItemIDSize = data.getShort();
+                byte[] ItemData = new byte[ItemIDSize - 2];
+                data.get(ItemData);
+                if (ArrayUtils.startsWith(prefixOfDirectory, ItemData)) {
+                    String filename = StringUtils.fromANSIString(Arrays.copyOfRange(ItemData, 12, ItemData.length));
+                    StringBuilder sb = new StringBuilder();
+                    sb.append(path);
+                    if (path.isEmpty()) {
+                        bytes = bytes2;
+                        str = "";
+                    } else {
+                        bytes = bytes2;
+                        str = "\\";
+                    }
+                    sb.append(str);
+                    sb.append(filename);
+                    path = sb.toString();
+                    isDirectory = true;
+                } else {
+                    bytes = bytes2;
+                    if (ArrayUtils.startsWith(prefixOfArchive, ItemData)) {
+                        String filename2 = StringUtils.fromANSIString(Arrays.copyOfRange(ItemData, 12, ItemData.length));
+                        StringBuilder sb2 = new StringBuilder();
+                        sb2.append(path);
+                        sb2.append(!path.isEmpty() ? "\\" : "");
+                        sb2.append(filename2);
+                        path = sb2.toString();
+                        isDirectory = false;
+                    } else if (ItemData[0] == 47 || ItemData[0] == 35) {
+                        driveLetter = StringUtils.fromANSIString(Arrays.copyOfRange(ItemData, 1, ItemData.length));
+                    }
+                }
+                IDListSize = (short) (IDListSize - ItemIDSize);
+                bytes2 = bytes;
+            }
+            data.getShort();
+        }
+        if ((LinkFlags & 2) != 0) {
+            int oldPosition = data.position();
+            int LinkInfoSize = data.getInt();
+            int LinkInfoHeaderSize = data.getInt();
+            int LinkInfoFlags = data.getInt();
+            if (LinkInfoHeaderSize < 36 && (LinkInfoFlags & 2) == 0) {
+                data.getInt();
+                data.getInt();
+                data.getInt();
+                data.getInt();
+                if ((LinkInfoFlags & 1) != 0) {
+                    data.position(data.position() + 17);
+                    String LocalBasePath = readNullTerminatedString(data);
+                    linkInfo = 0 == 0 ? new Options() : null;
+                    linkInfo.targetPath = LocalBasePath;
+                }
+                data.get();
+            } else {
+                data.position(oldPosition + LinkInfoSize);
+            }
+        }
+        if (!driveLetter.matches("[A-Za-z]:\\\\?")) {
+            z = true;
+        } else {
+            if (!driveLetter.endsWith("\\")) {
+                driveLetter = driveLetter + "\\";
+            }
+            if (linkInfo == null) {
+                linkInfo = new Options();
+            }
+            linkInfo.targetPath = driveLetter + path;
+            linkInfo.isDirectory = isDirectory;
+            if (IconIndex != 0) {
+                z = true;
+                iAbs = Math.abs(IconIndex) + 1;
+            } else {
+                z = true;
+                iAbs = -1;
+            }
+            linkInfo.iconIndex = iAbs;
+        }
+        boolean isUnicode = (LinkFlags & 128) != 0 ? z : false;
+        if ((LinkFlags & 4) != 0) {
+            readStringData(data, isUnicode);
+        }
+        if ((LinkFlags & 8) != 0) {
+            readStringData(data, isUnicode);
+        }
+        if ((LinkFlags & 16) != 0) {
+            readStringData(data, isUnicode);
+        }
+        if ((LinkFlags & 32) != 0) {
+            String arguments = readStringData(data, isUnicode);
+            if (linkInfo != null) {
+                linkInfo.arguments = arguments;
+            }
+        }
+        if ((LinkFlags & 64) != 0) {
+            String iconLocation = readStringData(data, isUnicode);
+            if (linkInfo != null) {
+                if (iconLocation != null && iconLocation.equals("shell32.dll")) {
+                    iconLocation = "C:/windows/system32/shell32.dll";
+                }
+                linkInfo.iconLocation = iconLocation;
+            }
+        }
+        return linkInfo;
     }
 }
