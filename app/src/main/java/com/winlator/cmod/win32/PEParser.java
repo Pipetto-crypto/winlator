@@ -16,13 +16,14 @@ import java.nio.ByteOrder;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Stack;
+import android.util.Log;
 
 /* loaded from: classes.dex */
 public class PEParser {
     private final File peFile;
     private int resourcesRVA = 0;
     private int resourcesOffset = 0;
-
+    
     private interface ImageResourceEntry {
     }
 
@@ -203,7 +204,7 @@ public class PEParser {
                 if (ImageUtils.isPNGData(iconData)) {
                     BitmapFactory.Options options = new BitmapFactory.Options();
                     options.inJustDecodeBounds = true;
-                    BitmapFactory.decodeByteArray(iconData.array(), 0, iconData.limit(), options);
+                    // BitmapFactory.decodeByteArray(iconData.array(), 0, iconData.limit(), options);
                     if (iconIndex >= 0) {
                         if (i != iconIndex) {
                             z = false;
@@ -213,11 +214,7 @@ public class PEParser {
                             return BitmapFactory.decodeByteArray(iconData.array(), 0, iconData.limit());
                         }
                     } else {
-                        if (largeIcon != (options.outWidth >= 32)) {
-                        }
-                        success = z;
-                        if (!success) {
-                        }
+                        return BitmapFactory.decodeByteArray(iconData.array(), 0, iconData.limit());
                     }
                 } else {
                     int bitmapOffset = iconData.getInt();
@@ -233,6 +230,14 @@ public class PEParser {
                     if (bitCount != 8 || (compression == 0 && clrUsed == 0)) {
                         if (iconIndex < 0) {
                             if (largeIcon == (bmpWidth >= 32)) {
+
+                                if (bitCount==8){
+                                    iconData.position(bitmapOffset);
+                                }
+                                if (bitCount<8){
+                                    return null;
+                                }
+                                return MSBitmap.decodeBuffer(bmpWidth, bmpWidth, bitCount, iconData);
                             }
                         } else if (i == iconIndex) {
                             boolean z2 = bitCount >= 8;

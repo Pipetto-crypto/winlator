@@ -140,12 +140,6 @@
             </intent-filter>
         </provider>
 
-        <activity
-            android:name=".restore.RestoreActivity"
-            android:process=":restore_process"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-            android:exported="true" />
-
         <meta-data
             android:name="com.samsung.android.multidisplay.keep_process_alive"
             android:value="false"/>

@@ -8,6 +8,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import android.util.Log;
 
 public abstract class MSBitmap {
     public static Bitmap open(File targetFile) {

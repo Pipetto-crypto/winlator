@@ -150,6 +150,7 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
                 writer.println("Name=" + displayName);
                 writer.println("Exec=env WINEPREFIX=" + "\"" + imageFs.wineprefix + "\"" + " wine " + unixPath);
                 writer.println("Type=Application");
+                writer.println("Icon=wine");
                 writer.println("container_id:" + container.id);
                 writer.close();
             }
