@@ -4,6 +4,7 @@ import static androidx.core.content.ContextCompat.getSystemService;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -61,6 +62,7 @@ import java.nio.file.StandardCopyOption;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import com.winlator.cmod.core.AppUtils;
 
 public class ShortcutsFragment extends Fragment {
     private RecyclerView recyclerView;
@@ -400,9 +402,21 @@ public class ShortcutsFragment extends Fragment {
 
     private void addShortcutToScreen(Shortcut shortcut) {
         ShortcutManager shortcutManager = getSystemService(requireContext(), ShortcutManager.class);
+        Log.d("isRequestPinShortcutSupported",(shortcutManager != null && shortcutManager.isRequestPinShortcutSupported())+"");
         if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported()){
-            shortcutManager.requestPinShortcut(buildScreenShortCut(shortcut.name, shortcut.name, shortcut.container.id,
-                    shortcut.file.getPath(), Icon.createWithBitmap(shortcut.icon), shortcut.getExtra("uuid")), null);
+            ShortcutInfo pinShortcutInfo = buildScreenShortCut(shortcut.name, shortcut.name, shortcut.container.id,shortcut.file.getPath(), Icon.createWithBitmap(shortcut.icon), shortcut.getExtra("uuid"));
+            Intent pinnedShortcutCallbackIntent =
+                    shortcutManager.createShortcutResultIntent(pinShortcutInfo);
+            PendingIntent successCallBack = PendingIntent.getBroadcast(requireContext(),0,pinnedShortcutCallbackIntent,PendingIntent.FLAG_IMMUTABLE);
+            boolean result = shortcutManager.requestPinShortcut(pinShortcutInfo, successCallBack.getIntentSender());
+            if (result) {
+                // 请求成功，系统会显示确认对话框
+                AppUtils.showToast(getContext(), R.string.add_shortcut_success);
+            } else {
+                // 设备不支持或用户已禁用此功能
+                Log.d("result","dsadasdsa");
+                showAllFilesAccessDialog();
+            }
         } else {
             showAllFilesAccessDialog();
         }

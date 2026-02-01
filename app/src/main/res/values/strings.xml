@@ -668,6 +668,7 @@ E.g. <b>META</b> for <i>META key</i>, \n
     <string name="files_access_content">In order to grant access to additional storage devices such as USB storage device, the All Files Access permission must be granted. Press Okay to grant All Files Access in your Android Settings</string>
     <string name="add_shortcut_title">Add Shortcut Required</string>
     <string name="add_shortcut_content">In order To Create a Game Shortcut,please Open desktop shortcut permissions</string>
+    <string name="add_shortcut_success">Add Shortcut Success</string>
     <string name="file_manager">File Manager</string>
     <string name="home">Home</string>
     <string name="new_folder">New Folder</string>

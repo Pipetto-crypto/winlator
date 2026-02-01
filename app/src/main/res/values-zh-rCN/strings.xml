@@ -684,6 +684,7 @@
     <string name="files_access_content">为了允许访问存储设备，必须授予"所有文件访问"权限。请在设置中点击"确定"授予所有文件访问权限。</string>
     <string name="add_shortcut_title">请求桌面快捷方式</string>
     <string name="add_shortcut_content">为了创建游戏快捷方式，请开启桌面快捷方式权限</string>
+    <string name="add_shortcut_success">游戏快捷方式创建成功</string>
     <string name="file_manager">文件管理器</string>
     <string name="size">大小</string>
     <string name="items">项</string>
