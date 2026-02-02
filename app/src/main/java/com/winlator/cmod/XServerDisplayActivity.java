@@ -1441,11 +1441,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (dxwrapper.contains("dxvk")) {
             DXVKConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
-            String version = dxwrapperConfig.get("version");
-            if (version.equals("1.11.1-sarek")) {
-                Log.d("GraphicsDriverExtraction", "Disabling Wrapper PATCH_OPCONSTCOMP SPIR-V pass");
-                envVars.put("WRAPPER_NO_PATCH_OPCONSTCOMP", "1");
-            }
         }
         else {
             WineD3DConfigDialog.setEnvVars(this, dxwrapperConfig, envVars);
@@ -1465,7 +1460,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "layers" + ".tzst", rootDir);
             TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/extra_libs" + ".tzst", rootDir);
             if (wineInfo.isArm64EC() && !GPUInformation.getRenderer(null,null).contains("Mali"))
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "graphics_driver/zink_dlls" + ".tzst", new File(rootDir, imageFs.WINEPREFIX + "/drive_c/windows"));
+                TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, this, "graphics_driver/zink_dlls" + ".txz", new File(rootDir, imageFs.WINEPREFIX + "/drive_c/windows"));
         }
 
         if (adrenoToolsDriverId != "System") {
@@ -1612,13 +1607,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 Log.d(TAG, "Applying user-defined DXVK content profile: " + dxvkWrapper);
                 contentsManager.applyContent(dxvkProfile);
             } else {
-                Log.d(TAG, "Extracting fallback DXVK .tzst archive: " + dxvkWrapper);
-                TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + dxvkWrapper + ".tzst", windowsDir, onExtractFileListener);
-
-                if (compareVersion(dxvkWrapper, "2.4") < 0) {
-                    Log.d(TAG, "Extracting d8vk as part of DXVK version " + dxvkWrapper);
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/d8vk-" + DefaultVersion.D8VK + ".tzst", windowsDir, onExtractFileListener);
-                }
+                Log.d(TAG, "Extracting fallback DXVK .txz archive: " + dxvkWrapper);
+                TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, this, "dxwrapper/" + dxvkWrapper + ".txz", windowsDir, onExtractFileListener);
             }
 
             if (vkd3dWrapper.contains("None")) {
@@ -1631,8 +1621,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     Log.d(TAG, "Applying user-defined VKD3D content profile: " + vkd3dWrapper);
                     contentsManager.applyContent(vkd3dProfile);
                 } else {
-                    Log.d(TAG, "Extracting fallback VKD3D .tzst archive: " + vkd3dWrapper);
-                    TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "dxwrapper/" + vkd3dWrapper + ".tzst", windowsDir, onExtractFileListener);
+                    Log.d(TAG, "Extracting fallback VKD3D .txz archive: " + vkd3dWrapper);
+                    TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, this, "dxwrapper/" + vkd3dWrapper + ".txz", windowsDir, onExtractFileListener);
                 }
             }
 
@@ -1894,9 +1884,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
             if (property.nameAsString().contains("_MESA_DRV_ENGINE_NAME")) {
                 runOnUiThread(() -> frameRating.setRenderer(property.toString()));
-            }
-            if (property.nameAsString().contains("_MESA_DRV_GPU_NAME")) {
-                runOnUiThread(() -> frameRating.setGpuName(property.toString()));
             }
         }
         else if (frameRatingWindowId != -1) {

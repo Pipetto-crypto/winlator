@@ -127,7 +127,7 @@ public class AdrenotoolsManager {
     }
     
     public boolean isFromResources(String adrenotoolsDriverId) {
-        String driver = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
+        String driver = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".txz";
         AssetManager am = mContext.getResources().getAssets();
         InputStream is = null;
         boolean isFromResources = true;
@@ -144,7 +144,7 @@ public class AdrenotoolsManager {
     }
         
     public boolean extractDriverFromResources(String adrenotoolsDriverId) {
-        String src = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
+        String src = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".txz";
         boolean hasExtracted;
 
         File dst = new File(adrenotoolsContentDir, adrenotoolsDriverId);
@@ -153,7 +153,7 @@ public class AdrenotoolsManager {
 
         dst.mkdirs();
         Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
-        hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
+        hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, mContext, src, dst);
 
         if (!hasExtracted)
             dst.delete();

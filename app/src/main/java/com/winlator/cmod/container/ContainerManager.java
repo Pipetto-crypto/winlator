@@ -248,15 +248,6 @@ public class ContainerManager {
             }
             FileUtils.copy(file, dstFile);
         }
-        try {
-            String[] commonDlls = context.getAssets().list("common_dlls/");
-            for (String dllFile : commonDlls) {
-                String assetPath = "common_dlls/"+dllFile;
-                File dstFile = new File(containerDir, ".wine/drive_c/windows/"+dstName+"/"+dllFile);
-                FileUtils.copy(context, assetPath, dstFile);
-            }
-        }
-        catch (IOException e) {}
     }
 
     public boolean extractContainerPatternFile(Container container, String wineVersion, ContentsManager contentsManager, File containerDir, OnExtractFileListener onExtractFileListener) {

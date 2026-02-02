@@ -23,8 +23,8 @@
     </string-array>
     <string-array name="wrapper_graphics_driver_version_entries">
         <item>System</item>
-        <item>v819</item>
-        <item>turnip25.1.0</item>
+        <item>turnip_Oct-12-2025_8g2_patched</item>
+        <item>turnip_Jan-22-2026_8g2_patched</item>
     </string-array>
     <string-array name="audio_driver_entries">
         <item>ALSA</item>
@@ -45,11 +45,10 @@
         <item>None</item>
     </string-array>
     <string-array name="dxvk_version_entries">
-        <item>1.11.1-sarek</item>
         <item>1.10.3-arm64ec-async</item>
         <item>1.10.3</item>
-        <item>2.3.1</item>
-        <item>2.3.1-arm64ec-gplasync</item>
+        <item>2.7.1</item>
+        <item>2.6.2-arm64ec-gplasync</item>
     </string-array>
     <string-array name="dxvk_max_device_memory_entries">
         <item>0 (Default)</item>
@@ -128,13 +127,13 @@
         <item>Native (Windows)</item>
     </string-array>
     <string-array name="box64_version_entries">
-        <item>0.3.7</item>
+        <item>0.4.1</item>
     </string-array>
     <string-array name="wowbox64_version_entries">
-        <item>0.3.7</item>
+        <item>0.4.1</item>
     </string-array>
     <string-array name="fexcore_version_entries">
-        <item>2508</item>
+        <item>2601</item>
     </string-array>
     <string-array name="dinput_mapper_type_entries">
         <item>@string/dinput_legacy</item>
@@ -155,8 +154,8 @@
     </string-array>
     <string-array name="vkd3d_version_entries">
         <item>None</item>
-        <item>2.8</item>
-        <item>2.14.1</item>
+        <item>arm64ec-3.0a</item>
+        <item>proton-3.0b</item>
     </string-array>
     <string-array name="some_lc_all">
         <item>ar_EG</item>

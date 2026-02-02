@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.SystemClock;
+import android.os.CpuUsageInfo;
 import android.util.AttributeSet;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -19,6 +20,7 @@ import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.StringUtils;
+import com.winlator.cmod.core.CPUStatus;
 
 import java.util.HashMap;
 import java.util.Locale;
@@ -28,11 +30,12 @@ public class FrameRating extends FrameLayout implements Runnable {
     private long lastTime = 0;
     private int frameCount = 0;
     private float lastFPS = 0;
-    private String totalRAM = null;
+    private long totalRAM = 0;
     private final TextView tvFPS;
     private final TextView tvRenderer;
-    private final TextView tvGPU;
+    private final TextView tvCPU;
     private final TextView tvRAM;
+    private final TextView tvTMP;
     private final TextView tvPOWER;
     private HashMap graphicsDriverConfig;
     private BroadcastReceiver batteryReceiver;
@@ -53,10 +56,10 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvFPS = view.findViewById(R.id.TVFPS);
         tvRenderer = view.findViewById(R.id.TVRenderer);
         tvRenderer.setText("OpenGL");
-        tvGPU = view.findViewById(R.id.TVGPU);
-        tvGPU.setText(GPUInformation.getRenderer(graphicsDriverConfig.get("version").toString(), context));
+        tvCPU = view.findViewById(R.id.TVCPU);
         tvRAM = view.findViewById(R.id.TVRAM);
         tvPOWER = view.findViewById(R.id.TVPOWER);
+        tvTMP = view.findViewById(R.id.TVTMP);
         totalRAM = getTotalRAM();
         this.graphicsDriverConfig = graphicsDriverConfig;
         IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
@@ -65,24 +68,37 @@ public class FrameRating extends FrameLayout implements Runnable {
         addView(view);
     }
     
-    private String getTotalRAM() {
-        String totalRAM = "";
+    private long getTotalRAM() {
         ActivityManager activityManager = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
         activityManager.getMemoryInfo(memoryInfo);
-        totalRAM = StringUtils.formatBytes(memoryInfo.totalMem);
-        return totalRAM;
+        return memoryInfo.totalMem;
     }
     
-    private String getAvailableRAM() {
+    private float getAvailableRAM() {
         String availableRAM = "";
         ActivityManager activityManager = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
         ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
         activityManager.getMemoryInfo(memoryInfo);
-        long usedMem = memoryInfo.totalMem - memoryInfo.availMem;
-        availableRAM = StringUtils.formatBytes(usedMem, false);
-        return availableRAM;
+        float usedMem = memoryInfo.totalMem - memoryInfo.availMem;
+        return usedMem;
     }
+
+    private void readCPUAvalByHPM(){
+        short[] clockSpeeds = CPUStatus.getCurrentClockSpeeds();
+        int totalClockSpeed = 0;
+        short maxClockSpeed = 0;
+
+        for (int i = 0; i < clockSpeeds.length; i++) {
+            short clockSpeed = CPUStatus.getMaxClockSpeed(i);
+            totalClockSpeed += clockSpeeds[i];
+            maxClockSpeed = (short)Math.max(maxClockSpeed, clockSpeed);
+        }
+        int avgClockSpeed = totalClockSpeed / clockSpeeds.length;
+        tvCPU.setText(String.format("%.2f%%", ((float)avgClockSpeed/maxClockSpeed)*100.0f ));
+        tvTMP.setText( CPUStatus.getCpuTemperature() + "°C");
+    }
+
 
     private class BatteryLevelReceiver extends BroadcastReceiver {
 
@@ -104,13 +120,9 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRenderer.setText(renderer);
     }
 
-    public void setGpuName (String gpuName) {
-        tvGPU.setText(gpuName);
-    }
 
     public void reset() {
         tvRenderer.setText("OpenGL");
-        tvGPU.setText(GPUInformation.getRenderer(graphicsDriverConfig.get("version").toString(), context));
     }
 
     public void update() {
@@ -129,8 +141,9 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void run() {
         if (getVisibility() == GONE) setVisibility(View.VISIBLE);
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
-        tvRAM.setText(getAvailableRAM() + " GB Used / " + totalRAM + " Total");
+        tvRAM.setText(String.format("%.2f%%", (getAvailableRAM()/totalRAM)*100 ));
         tvPOWER.setText(getPower());
+        readCPUAvalByHPM();
     }
 
     @Override

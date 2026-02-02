@@ -15,4 +15,10 @@ public abstract class CPUStatus {
         int maxFreq = FileUtils.readInt("/sys/devices/system/cpu/cpu"+cpuIndex+"/cpufreq/cpuinfo_max_freq");
         return (short)(maxFreq / 1000);
     }
+
+    public static float getCpuTemperature() {
+        String cpuTempFile = "/sys/class/thermal/thermal_zone0/temp";
+        int temperature = FileUtils.readInt(cpuTempFile);
+        return temperature / 1000;
+    }
 }
