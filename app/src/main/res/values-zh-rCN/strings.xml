@@ -76,7 +76,7 @@
     <string name="offscreen_rendering_mode">离屏渲染模式</string>
     <string name="strict_shader_math">着色器开关</string>
     <string name="video_memory_size">显存大小</string>
-    <string name="show_fps">显示帧数</string>
+    <string name="show_fps">显示HUD</string>
     <string name="none">无</string>
     <string name="custom_text">自定义文本</string>
     <string name="icon">图标</string>
@@ -700,4 +700,9 @@
     <string name="rename">重命名</string>
     <string name="add_to_desktop">添加快捷方式</string>
     <string name="information">详情</string>
+    <string name="enable_sdl2">兼容SDL2</string>
+    <string name="help_sdl2"><![CDATA[
+        跨平台多媒体开发库，主要用于提供对<i><b>图形、声音、输入设备（键盘、鼠标、游戏手柄等）</b></i>的底层硬件访问<br/><br/>
+        解决一部分游戏，比如：哈迪斯，手柄无法识别问题。
+    ]]></string>
 </resources>

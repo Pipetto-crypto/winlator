@@ -24,6 +24,7 @@ import com.winlator.cmod.core.CPUStatus;
 
 import java.util.HashMap;
 import java.util.Locale;
+import java.util.Date;
 
 public class FrameRating extends FrameLayout implements Runnable {
     private Context context;
@@ -37,6 +38,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final TextView tvRAM;
     private final TextView tvTMP;
     private final TextView tvPOWER;
+    private final TextView tvTIME;
     private HashMap graphicsDriverConfig;
     private BroadcastReceiver batteryReceiver;
     private int voltage = 0;
@@ -60,11 +62,12 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRAM = view.findViewById(R.id.TVRAM);
         tvPOWER = view.findViewById(R.id.TVPOWER);
         tvTMP = view.findViewById(R.id.TVTMP);
+        tvTIME = view.findViewById(R.id.TVTIME);
         totalRAM = getTotalRAM();
         this.graphicsDriverConfig = graphicsDriverConfig;
-        IntentFilter filter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
+        IntentFilter batteryFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         batteryReceiver = new BatteryLevelReceiver();
-        context.registerReceiver(batteryReceiver , filter);
+        context.registerReceiver(batteryReceiver , batteryFilter);
         addView(view);
     }
     
@@ -116,6 +119,15 @@ public class FrameRating extends FrameLayout implements Runnable {
         return String.format("%.1fW (%d%%)", power,capacity );
     }
 
+    private void setTimeString(){
+        // 获取当前时间
+        long currentTimeMillis = System.currentTimeMillis();
+        Date date = new Date(currentTimeMillis);
+        String hour = String.format("%tH",date);
+        String minute = String.format("%tM",date);
+        tvTIME.setText(hour+":"+minute);
+    }
+
     public void setRenderer(String renderer) {
         tvRenderer.setText(renderer);
     }
@@ -144,6 +156,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRAM.setText(String.format("%.2f%%", (getAvailableRAM()/totalRAM)*100 ));
         tvPOWER.setText(getPower());
         readCPUAvalByHPM();
+        setTimeString();
     }
 
     @Override

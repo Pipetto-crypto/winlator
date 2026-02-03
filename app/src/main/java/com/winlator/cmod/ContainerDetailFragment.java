@@ -350,7 +350,7 @@ public class ContainerDetailFragment extends Fragment {
         AppUtils.setSpinnerSelectionFromValue(sMIDISoundFont, isEditMode() ? container.getMIDISoundFont() : "");
 
         final CheckBox cbShowFPS = view.findViewById(R.id.CBShowFPS);
-        cbShowFPS.setChecked(isEditMode() && container.isShowFPS());
+        cbShowFPS.setChecked(isEditMode() ? container.isShowFPS():true);
 
         final CheckBox cbFullscreenStretched = view.findViewById(R.id.CBFullscreenStretched);
         cbFullscreenStretched.setChecked(isEditMode() && container.isFullscreenStretched());
@@ -363,6 +363,7 @@ public class ContainerDetailFragment extends Fragment {
         final View btHelpXInput = view.findViewById(R.id.BTXInputHelp);
         final View btHelpDInput = view.findViewById(R.id.BTDInputHelp);
         final Spinner SDInputType = view.findViewById(R.id.SDInputType);
+        final View BTSDL2Help = view.findViewById(R.id.BTSDL2Help);
 
         // Check if we are in edit mode to set input type accordingly
         int inputType = isEditMode() ? container.getInputType() : WinHandler.DEFAULT_INPUT_TYPE;
@@ -387,9 +388,10 @@ public class ContainerDetailFragment extends Fragment {
 
         btHelpXInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_xinput));
         btHelpDInput.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_dinput));
+        BTSDL2Help.setOnClickListener(v -> AppUtils.showHelpBox(context, v, R.string.help_sdl2));
 
         final CheckBox cbSdl2Toggle = view.findViewById(R.id.CBSdl2Toggle);
-        cbSdl2Toggle.setChecked(isEditMode() && container.getEnvVars().contains("SDL_XINPUT_ENABLED=1"));
+        cbSdl2Toggle.setChecked(isEditMode()?container.getEnvVars().contains("SDL_XINPUT_ENABLED=1"):true);
 
         final EditText etLC_ALL = view.findViewById(R.id.ETlcall);
         Locale systemLocal = Locale.getDefault();
@@ -410,7 +412,7 @@ public class ContainerDetailFragment extends Fragment {
 
         final Spinner sStartupSelection = view.findViewById(R.id.SStartupSelection);
         byte previousStartupSelection = isEditMode() ? container.getStartupSelection() : -1;
-        sStartupSelection.setSelection(previousStartupSelection != -1 ? previousStartupSelection : Container.STARTUP_SELECTION_ESSENTIAL);
+        sStartupSelection.setSelection(previousStartupSelection != -1 ? previousStartupSelection : Container.STARTUP_SELECTION_AGGRESSIVE);
 
         final Spinner sBox64Preset = view.findViewById(R.id.SBox64Preset);
         Box64PresetManager.loadSpinner("box64", sBox64Preset, isEditMode() ? container.getBox64Preset() : preferences.getString("box64_preset", Box64Preset.COMPATIBILITY));
@@ -980,7 +982,7 @@ public class ContainerDetailFragment extends Fragment {
                     fexcoreFL.setVisibility(View.VISIBLE);
                     sEmulator.setEnabled(true);
                     sEmulator64.setSelection(0);
-                    if (!isEditMode()) sEmulator.setSelection(0);
+                    if (!isEditMode()) sEmulator.setSelection(1);
                 }
                 else {
                     fexcoreFL.setVisibility(View.GONE);

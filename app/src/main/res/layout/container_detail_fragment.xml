@@ -686,12 +686,27 @@
                                 style="@style/HelpButton"
                                 android:layout_gravity="center" />
                         </LinearLayout>
-
-                        <CheckBox
-                            android:id="@+id/CBSdl2Toggle"
-                            android:layout_width="wrap_content"
+                        <LinearLayout
+                            android:layout_width="match_parent"
                             android:layout_height="wrap_content"
-                            android:text="Enable SDL2 Compatibility" />
+                            android:orientation="horizontal"
+                            android:layout_marginTop="8dp">
+
+                            <CheckBox
+                                android:id="@+id/CBSdl2Toggle"
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="@string/enable_sdl2" />
+
+
+
+                            <ImageView
+                                android:id="@+id/BTSDL2Help"
+                                style="@style/HelpButton"
+                                android:layout_gravity="center" />
+                        </LinearLayout>
+
+                        
 
 
                     </LinearLayout>
