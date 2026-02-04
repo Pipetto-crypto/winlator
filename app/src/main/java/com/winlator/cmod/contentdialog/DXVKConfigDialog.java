@@ -267,6 +267,7 @@ public class DXVKConfigDialog extends ContentDialog {
             int firstDashIndex = entryName.indexOf('-');
             itemList.add(entryName.substring(firstDashIndex + 1));
         }
+        Log.d("originalItems",itemList+"");
 
         for (int i = 0; i < itemList.size(); i++) {
             if (itemList.get(i).contains("arm64ec") && !isARM64EC)
