@@ -57,8 +57,6 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
 
     @Override
     public synchronized void onPause() {
-        EditText text = findViewById(R.id.XRTextInput);
-        text.removeTextChangedListener(this);
         super.onPause();
     }
 
@@ -67,11 +65,6 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
         super.onResume();
         instance = this;
         mouseSpeed = PreferenceManager.getDefaultSharedPreferences(this).getFloat("cursor_speed", 1.0f);
-
-        EditText text = findViewById(R.id.XRTextInput);
-        text.setVisibility(View.VISIBLE);
-        text.getEditableText().clear();
-        text.addTextChangedListener(this);
     }
 
     @Override
@@ -88,35 +81,6 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
 
     @Override
     public synchronized void afterTextChanged(Editable e) {
-        XServer server = instance.getXServer();
-        EditText text = findViewById(R.id.XRTextInput);
-        String s = text.getEditableText().toString();
-        if (s.length() > lastText.length()) {
-            lastText = s;
-            KeyEvent[] events = chars.getEvents(new char[]{s.charAt(s.length() - 1)});
-            if (events != null) {
-                for (KeyEvent keyEvent : events) {
-                    server.keyboard.onKeyEvent(keyEvent);
-                    sleep(50);
-                }
-            }
-        } else {
-            lastText = s;
-            server.keyboard.onKeyEvent(new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DEL));
-            sleep(50);
-            server.keyboard.onKeyEvent(new KeyEvent(KeyEvent.ACTION_UP, KeyEvent.KEYCODE_DEL));
-        }
-        if (s.isEmpty()) {
-            resetText();
-        }
-    }
-
-    private synchronized void resetText() {
-        EditText text = findViewById(R.id.XRTextInput);
-        text.removeTextChangedListener(this);
-        text.getEditableText().clear();
-        text.getEditableText().append(" ");
-        text.addTextChangedListener(this);
     }
 
     public static XrActivity getInstance() {
@@ -260,9 +224,7 @@ public class XrActivity extends XServerDisplayActivity implements TextWatcher {
                 instance.runOnUiThread(() -> {
                     isSBS = false;
                     isImmersive = false;
-                    instance.resetText();
                     AppUtils.showKeyboard(instance);
-                    instance.findViewById(R.id.XRTextInput).requestFocus();
                 });
             }
 

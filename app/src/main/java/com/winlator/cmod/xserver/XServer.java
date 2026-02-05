@@ -11,7 +11,7 @@ import com.winlator.cmod.xserver.extensions.Extension;
 import com.winlator.cmod.xserver.extensions.MITSHMExtension;
 import com.winlator.cmod.xserver.extensions.PresentExtension;
 import com.winlator.cmod.xserver.extensions.SyncExtension;
-
+import android.util.Log;
 import java.nio.charset.Charset;
 import java.util.EnumMap;
 import java.util.concurrent.locks.ReentrantLock;
@@ -185,8 +185,21 @@ public class XServer {
     }
 
     public void injectKeyRelease(XKeycode xKeycode) {
-        try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+        XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE);
+        try {
             keyboard.setKeyRelease(xKeycode.id);
+            if(lock!=null){
+                lock.close();
+            }
+        } catch (Throwable th){
+            if (lock != null) {
+                try {
+                    lock.close();
+                } catch (Throwable th2) {
+                    th.addSuppressed(th2);
+                }
+            }
+            throw th;
         }
     }
 

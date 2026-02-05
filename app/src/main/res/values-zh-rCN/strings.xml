@@ -19,6 +19,8 @@
     <string name="removing_container">正在移除容器...</string>
     <string name="duplicating_container">复制容器中...</string>
     <string name="installing_system_files">正在安装系统文件...</string>
+    <string name="installing_wine_files">正在安装兼容层文件...</string>
+    <string name="installing_drivers_files">正在安装驱动文件...</string>
     <string name="updating_system_files">正在更新系统文件...</string>
     <string name="starting_up">启动中...</string>
     <string name="unable_to_install_system_files">无法安装系统文件</string>

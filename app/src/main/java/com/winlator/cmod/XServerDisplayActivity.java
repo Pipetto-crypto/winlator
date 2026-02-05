@@ -1569,7 +1569,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-
+        Log.i("KeyEvent1",event.getAction()+","+event.getKeyCode());
         // Handle the PlayStation or Xbox Home button to open the drawer
         if (event.getAction() == KeyEvent.ACTION_DOWN) {
             if (event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_MODE || event.getKeyCode() == KeyEvent.KEYCODE_HOME || event.getKeyCode() == KeyEvent.KEYCODE_BUTTON_SELECT) {
@@ -1577,10 +1577,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 return true;
             }
         }
-
-        // Fallback to existing input handling
-        return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event)) ||
-                (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+        return !(this.inputControlsView.onKeyEvent(event) || this.winHandler.onKeyEvent(event) || !this.xServer.keyboard.onKeyEvent(event)) || (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
+        // // Fallback to existing input handling
+        // return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event)) ||
+        //         (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
     }
 
     public InputControlsView getInputControlsView() {

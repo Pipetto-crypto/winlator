@@ -43,22 +43,46 @@ public abstract class ImageFsInstaller {
         }
     }
 
-    public static void installWineFromAssets(final MainActivity activity) {
+    public static void installWineFromAssets(final MainActivity activity, DownloadProgressDialog dialog) {
         String[] versions = activity.getResources().getStringArray(R.array.wine_entries);
         File rootDir = ImageFs.find(activity).getRootDir();
+        activity.runOnUiThread(() -> {
+            dialog.setText(R.string.installing_wine_files);
+            dialog.setProgress(0);
+        });
+        int index = 0;
         for (String version : versions) {
+            AtomicLong totalSizeRef = new AtomicLong();
             File outFile = new File(rootDir, "/opt/" + version);
+            final byte compressionRatio = (byte) (version.equals("proton-9.0-arm64ec")? 11:13);
+            final long contentLength = (long)(FileUtils.getSize(activity, version + ".txz") * (100.0f / compressionRatio));
             outFile.mkdirs();
-            TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, activity, version + ".txz", outFile);
+            int finalIndex = index;
+            TarCompressorUtils.extract(TarCompressorUtils.Type.XZ, activity, version + ".txz", outFile,(file, size) -> {
+                if (size > 0) {
+                    long totalSize = totalSizeRef.addAndGet(size);
+                    activity.runOnUiThread(() -> dialog.setProgress((int)((float)((float)(finalIndex +((float)totalSize / contentLength)) / versions.length) * 100)));
+                }
+                return file;
+            });
+            index++;
         }
     }
 
-    public static void installDriversFromAssets(final MainActivity activity) {
+    public static void installDriversFromAssets(final MainActivity activity, DownloadProgressDialog dialog) {
         AdrenotoolsManager adrenotoolsManager = new AdrenotoolsManager(activity);
         String[] adrenotoolsAssetDrivers = activity.getResources().getStringArray(R.array.wrapper_graphics_driver_version_entries);
-
-        for (String driver : adrenotoolsAssetDrivers)
+        activity.runOnUiThread(() -> {
+            dialog.setText(R.string.installing_drivers_files);
+            dialog.setProgress(0);
+        });
+        int index = 0;
+        for (String driver : adrenotoolsAssetDrivers){
             adrenotoolsManager.extractDriverFromResources(driver);
+            index++;
+            int finalIndex = index;
+            activity.runOnUiThread(() -> dialog.setProgress((int)(((float) finalIndex / adrenotoolsAssetDrivers.length) * 100)));
+        }
     }
 
     public static void installFromAssets(final MainActivity activity) {
@@ -86,8 +110,8 @@ public abstract class ImageFsInstaller {
             });
 
             if (success) {
-                installWineFromAssets(activity);
-                installDriversFromAssets(activity);
+                installWineFromAssets(activity,dialog);
+                installDriversFromAssets(activity,dialog);
                 imageFs.createImgVersionFile(LATEST_VERSION);
                 resetContainerImgVersions(activity);
             }

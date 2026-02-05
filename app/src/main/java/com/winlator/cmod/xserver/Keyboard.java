@@ -1,12 +1,13 @@
 package com.winlator.cmod.xserver;
 
 import android.view.KeyEvent;
-
+import android.view.KeyCharacterMap;
 import androidx.collection.ArraySet;
 
 import com.winlator.cmod.inputcontrols.ExternalController;
-
+import android.util.Log;
 import java.util.ArrayList;
+import android.os.Build;
 
 public class Keyboard {
     public static final byte KEYSYMS_PER_KEYCODE = 2;
@@ -19,6 +20,7 @@ public class Keyboard {
     private final ArraySet<Byte> pressedKeys = new ArraySet<>();
     private final ArrayList<OnKeyboardListener> onKeyboardListeners = new ArrayList<>();
     private final XServer xServer;
+    private static final KeyCharacterMap chars = KeyCharacterMap.load(KeyCharacterMap.VIRTUAL_KEYBOARD);
 
     public interface OnKeyboardListener {
         void onKeyPress(byte keycode, int keysym);
@@ -92,33 +94,57 @@ public class Keyboard {
             onKeyboardListeners.get(i).onKeyRelease(keycode);
         }
     }
-
-    public boolean onKeyEvent(KeyEvent event) {
-        if (ExternalController.isGameController(event.getDevice())) return false;
-
+    private boolean injectKeyEvent(KeyEvent event){
         int action = event.getAction();
         int keyCode = event.getKeyCode();
-
-        if (keyCode == KeyEvent.KEYCODE_TAB || keyCode == KeyEvent.KEYCODE_ESCAPE) {
-            if (action == KeyEvent.ACTION_DOWN) {
+        XKeycode xKeycode = keycodeMap[keyCode];
+        if (xKeycode == null) return false;
+        if(Build.BRAND.equals("Xiaomi")&&keyCode==KeyEvent.KEYCODE_SPACE){
+             xServer.injectKeyPress(xKeycode, event.getUnicodeChar());
+             sleep(50);
+             xServer.injectKeyRelease(xKeycode);
+             return true;
+        }
+        if (action == KeyEvent.ACTION_DOWN) {
+            if (keyCode == KeyEvent.KEYCODE_TAB || keyCode == KeyEvent.KEYCODE_ESCAPE){
                 xServer.injectKeyPress(keycodeMap[keyCode]);
                 return true; // Consume the event to prevent default focus change
-            } else if (action == KeyEvent.ACTION_UP) {
+            }
+            boolean shiftPressed = event.isShiftPressed() || keyCode == KeyEvent.KEYCODE_AT || keyCode == KeyEvent.KEYCODE_STAR || keyCode == KeyEvent.KEYCODE_POUND || keyCode == KeyEvent.KEYCODE_PLUS;
+            if (shiftPressed) xServer.injectKeyPress(XKeycode.KEY_SHIFT_L);
+            xServer.injectKeyPress(xKeycode, xKeycode != XKeycode.KEY_ENTER ? event.getUnicodeChar() : 0);
+        }
+        if (action == KeyEvent.ACTION_UP) {
+            if (keyCode == KeyEvent.KEYCODE_TAB || keyCode == KeyEvent.KEYCODE_ESCAPE){
                 xServer.injectKeyRelease(keycodeMap[keyCode]);
                 return true; // Consume the event to prevent default focus change
             }
-        } else if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP) {
-            XKeycode xKeycode = keycodeMap[keyCode];
-            if (xKeycode == null) return false;
+            xServer.injectKeyRelease(XKeycode.KEY_SHIFT_L);
+            xServer.injectKeyRelease(xKeycode);
+        }
+        return true;
+    }
 
-            if (action == KeyEvent.ACTION_DOWN) {
-                boolean shiftPressed = event.isShiftPressed() || keyCode == KeyEvent.KEYCODE_AT || keyCode == KeyEvent.KEYCODE_STAR || keyCode == KeyEvent.KEYCODE_POUND || keyCode == KeyEvent.KEYCODE_PLUS;
-                if (shiftPressed) xServer.injectKeyPress(XKeycode.KEY_SHIFT_L);
-                xServer.injectKeyPress(xKeycode, xKeycode != XKeycode.KEY_ENTER ? event.getUnicodeChar() : 0);
-            } else if (action == KeyEvent.ACTION_UP) {
-                xServer.injectKeyRelease(XKeycode.KEY_SHIFT_L);
-                xServer.injectKeyRelease(xKeycode);
-            }
+    public boolean onKeyEvent(KeyEvent event) {
+        if (ExternalController.isGameController(event.getDevice())) return false;
+        int action = event.getAction();
+        int keyCode = event.getKeyCode();
+        Log.i("KeyEvent",action+","+keyCode);
+        if (action == KeyEvent.ACTION_MULTIPLE){
+            String s = event.getCharacters();
+            KeyEvent[] events = chars.getEvents(s.toCharArray());
+            if (events != null) {
+                 for (KeyEvent keyEvent : events) {
+                    Boolean isInject = injectKeyEvent(keyEvent);
+                     if(!isInject){
+                        return false;
+                     }
+                 }
+                 return true;
+             }
+             return true;
+        } else if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP){
+            return injectKeyEvent(event);
         }
         return true;
     }
@@ -364,5 +390,12 @@ public class Keyboard {
 
     public static boolean isModifierSticky(byte keycode) {
         return keycode == XKeycode.KEY_CAPS_LOCK.id || keycode == XKeycode.KEY_NUM_LOCK.id;
+    }
+    private static void sleep(int ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -60,6 +60,9 @@ public class DownloadProgressDialog {
         }
         dialog.show();
     }
+    public void setText(int textResId){
+        if (textResId > 0) ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
+    }
 
     public void setProgress(int progress) {
         if (dialog == null) return;

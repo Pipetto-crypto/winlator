@@ -126,7 +126,7 @@ android {
         // We’re preserving Winlator’s request to keep targetSdkVersion at 28
         targetSdkVersion 28
         versionCode 20
-        versionName "7.1.4x-cmod"
+        versionName "1.2"
 
         // External native build from Winlator
         externalNativeBuild {
@@ -200,7 +200,7 @@ dependencies {
     implementation 'com.google.android.material:material:1.4.0'
     implementation 'com.github.luben:zstd-jni:1.5.2-3@aar'
     implementation 'org.tukaani:xz:1.7'
-    implementation 'org.apache.commons:commons-compress:1.20'
+    implementation 'org.apache.commons:commons-compress:1.27.1'
     implementation 'androidx.activity:activity-ktx:1.4.0'
     implementation 'androidx.fragment:fragment-ktx:1.4.0'
     implementation files('libs/MidiSynth/MidiSynth.jar')
