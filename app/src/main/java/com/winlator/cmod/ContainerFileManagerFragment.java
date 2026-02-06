@@ -139,22 +139,29 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
         Context context = getContext();
          try {
             String displayName = FileUtils.getBasename(file.name);
-            String unixPath = file.toFile().getAbsolutePath();
+            File peFile = file.toFile();
+            String unixPath = peFile.getAbsolutePath();
             File shortcutsDir = container.getDesktopDir();
-            ImageFs imageFs = ImageFs.find(context);
-            if (!shortcutsDir.exists()) shortcutsDir.mkdirs();
-            File desktopFile = new File(shortcutsDir, displayName + ".desktop");
-            Log.d("unixPath",unixPath);
-            try (PrintWriter writer = new PrintWriter(new FileWriter(desktopFile))) {
-                writer.println("[Desktop Entry]");
-                writer.println("Name=" + displayName);
-                writer.println("Exec=env WINEPREFIX=" + "\"" + imageFs.wineprefix + "\"" + " wine " + unixPath);
-                writer.println("Type=Application");
-                writer.println("Icon=wine");
-                writer.println("container_id:" + container.id);
-                writer.close();
+            Bitmap bitmap = PEParser.extractIcon(peFile);
+            String rootPath = container.getRootDir().getPath();
+            File shortcutArtDir = new File(rootPath, "/.local/share/applications/");
+            if (!shortcutArtDir.exists()) shortcutArtDir.mkdirs();
+            File shortcutArt = new File(shortcutArtDir, displayName + ".png");
+            if (FileUtils.saveBitmapToFile(bitmap, shortcutArt)){
+                if (!shortcutsDir.exists()) shortcutsDir.mkdirs();
+                File desktopFile = new File(shortcutsDir, displayName + ".desktop");
+                Log.d("unixPath",shortcutsDir.getAbsolutePath());
+                try (PrintWriter writer = new PrintWriter(new FileWriter(desktopFile))) {
+                    writer.println("[Desktop Entry]");
+                    writer.println("Name=" + displayName);
+                    writer.println("Exec=env WINEPREFIX=\"/home/xuser/.wine\" wine \"" + unixPath + "\"");
+                    writer.println("Type=Application");
+                    writer.println("Icon="+shortcutArt.getAbsolutePath());
+                    writer.println("container_id:" + container.id);
+                    writer.close();
+                }
+                AppUtils.showToast(context, R.string.file_added_to_desktop);
             }
-            AppUtils.showToast(context, R.string.file_added_to_desktop);
         } catch (Exception e) {
             e.printStackTrace();
         }

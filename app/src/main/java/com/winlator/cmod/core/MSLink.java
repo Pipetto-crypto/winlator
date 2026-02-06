@@ -36,7 +36,16 @@ public abstract class MSLink {
     }
 
     private static int charToHexDigit(char chr) {
-        return chr >= 'A' ? chr - 'A' + 10 : chr - '0';
+        if (chr >= '0' && chr <= '9') {
+            return chr - '0';
+        }
+        if (chr >= 'A' && chr <= 'F') {
+            return chr - 'A' + 10;
+        }
+        if (chr >= 'a' && chr <= 'f') {
+            return chr - 'a' + 10;
+        }
+        return 0;
     }
 
     private static byte twoCharsToByte(char chr1, char chr2) {
@@ -89,7 +98,7 @@ public abstract class MSLink {
     private static String readNullTerminatedString(ByteBuffer data) {
         byte[] bytes = new byte[256];
         int i = 0;
-        while (true) {
+        while (i < 256 && data.hasRemaining()) {
             byte value = data.get();
             if (value == 0) {
                 return new String(Arrays.copyOf(bytes, i));
@@ -97,6 +106,7 @@ public abstract class MSLink {
             bytes[i] = value;
             i++;
         }
+        return new String(Arrays.copyOf(bytes, i));
     }
 
     private static byte[] generateStringData(String str) {
@@ -210,24 +220,24 @@ public abstract class MSLink {
 
             if (StringData.length > 0){
                 os.write(StringData);
-                os.close();
-                return true;
-            } 
+            }
+            return true;
         }
         catch (IOException e) {
             e.printStackTrace();
             return false;
         }
-        return false;
     }
 
     public static String parseFilePath(File lnkFile) {
         String filePath = "";
+        FileInputStream fis = null;
+        DataInputStream dis = null;
         try {
             int linkFlags, linkInfoStart;
-            FileInputStream fis = new FileInputStream(lnkFile);
+            fis = new FileInputStream(lnkFile);
             byte[] bytes = new byte[(int) lnkFile.length()];
-            DataInputStream dis = new DataInputStream(fis);
+            dis = new DataInputStream(fis);
             dis.readFully(bytes);
             ByteBuffer data = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN);
             linkFlags = data.getInt(0x14);
@@ -245,11 +255,25 @@ public abstract class MSLink {
             if (localBasePathOffset > 0) {
                 filePath = StringUtils.fromANSIString(data, linkInfoStart + localBasePathOffset);
             }
-            dis.close();
-            fis.close();
         }
         catch (IOException e) {
             e.printStackTrace();
+        }
+        finally {
+            try {
+                if (dis != null) {
+                    dis.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+            try {
+                if (fis != null) {
+                    fis.close();
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
 
         return filePath;
@@ -261,26 +285,36 @@ public abstract class MSLink {
         ImageFs imageFs = ImageFs.find(context);
 
         File desktopFile = new File(lnkFilePath.substring(0, lnkFilePath.lastIndexOf(".")) + ".desktop");
+        FileOutputStream fos = null;
+        PrintWriter pw = null;
         try {
-            FileOutputStream fos = new FileOutputStream(desktopFile);
-            PrintWriter pw = new PrintWriter(fos);
+            fos = new FileOutputStream(desktopFile);
+            pw = new PrintWriter(fos);
             pw.write("[Desktop Entry]\n");
             pw.write("Name=" + lnkFile.getName().substring(0, lnkFile.getName().lastIndexOf(".")) + "\n");
             pw.write("Exec=env WINEPREFIX=" + "\"" + imageFs.wineprefix + "\"" + " wine " + filePath + "\n");
             pw.write("Type=Application\n");
             pw.write("StartupNotify=True\n");
-            pw.close();
-            fos.close();
+            pw.flush();
         }
         catch (IOException e) {
+            e.printStackTrace();
+        }
+        finally {
+            if (pw != null) {
+                pw.close();
+            }
+            if (fos != null) {
+                try {
+                    fos.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
         }
     }
 
     public static Options extractLinkInfo(File linkFile) throws IOException {
-        boolean z;
-        int iAbs;
-        byte[] bytes;
-        String str;
         byte[] bytes2 = FileUtils.read(linkFile);
         if (bytes2 == null) {
             return null;
@@ -302,25 +336,21 @@ public abstract class MSLink {
             byte[] prefixOfArchive = {50, 0, 0, 0, 0, 0};
             while (IDListSize > 2) {
                 short ItemIDSize = data.getShort();
+                // Validate ItemIDSize to prevent negative array size or OOM
+                if (ItemIDSize < 2 || ItemIDSize > 1024 * 1024) {
+                    break;
+                }
                 byte[] ItemData = new byte[ItemIDSize - 2];
                 data.get(ItemData);
                 if (ArrayUtils.startsWith(prefixOfDirectory, ItemData)) {
                     String filename = StringUtils.fromANSIString(Arrays.copyOfRange(ItemData, 12, ItemData.length));
                     StringBuilder sb = new StringBuilder();
                     sb.append(path);
-                    if (path.isEmpty()) {
-                        bytes = bytes2;
-                        str = "";
-                    } else {
-                        bytes = bytes2;
-                        str = "\\";
-                    }
-                    sb.append(str);
+                    sb.append(path.isEmpty() ? "" : "\\");
                     sb.append(filename);
                     path = sb.toString();
                     isDirectory = true;
                 } else {
-                    bytes = bytes2;
                     if (ArrayUtils.startsWith(prefixOfArchive, ItemData)) {
                         String filename2 = StringUtils.fromANSIString(Arrays.copyOfRange(ItemData, 12, ItemData.length));
                         StringBuilder sb2 = new StringBuilder();
@@ -334,7 +364,6 @@ public abstract class MSLink {
                     }
                 }
                 IDListSize = (short) (IDListSize - ItemIDSize);
-                bytes2 = bytes;
             }
             data.getShort();
         }
@@ -360,8 +389,9 @@ public abstract class MSLink {
             }
         }
         if (!driveLetter.matches("[A-Za-z]:\\\\?")) {
-            z = true;
+            // Invalid drive letter format, do nothing
         } else {
+            int iAbs;
             if (!driveLetter.endsWith("\\")) {
                 driveLetter = driveLetter + "\\";
             }
@@ -371,15 +401,13 @@ public abstract class MSLink {
             linkInfo.targetPath = driveLetter + path;
             linkInfo.isDirectory = isDirectory;
             if (IconIndex != 0) {
-                z = true;
                 iAbs = Math.abs(IconIndex) + 1;
             } else {
-                z = true;
                 iAbs = -1;
             }
             linkInfo.iconIndex = iAbs;
         }
-        boolean isUnicode = (LinkFlags & 128) != 0 ? z : false;
+        boolean isUnicode = (LinkFlags & 128) != 0;
         if ((LinkFlags & 4) != 0) {
             readStringData(data, isUnicode);
         }

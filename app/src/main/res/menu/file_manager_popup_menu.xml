@@ -29,8 +29,7 @@
         android:icon="@drawable/icon_shortcut"
         android:id="@+id/menu_item_add_desktop"
         android:title="@string/add_to_desktop"
-        android:iconTint="?attr/colorAccent"
-        android:visible="false"/>
+        android:iconTint="?attr/colorAccent"/>
     <item
         android:icon="@drawable/icon_popup_menu_info"
         android:id="@+id/menu_item_info"
