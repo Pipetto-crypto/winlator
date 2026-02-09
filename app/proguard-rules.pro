@@ -98,5 +98,15 @@
 -dontwarn sun.security.x509.X509CertInfo
 -dontwarn sun.util.logging.PlatformLogger$Level
 -dontwarn sun.util.logging.PlatformLogger
+-dontwarn java.lang.invoke.MethodHandleProxies
+-dontwarn java.lang.reflect.AnnotatedType
+-dontwarn org.objectweb.asm.AnnotationVisitor
+-dontwarn org.objectweb.asm.Attribute
+-dontwarn org.objectweb.asm.ClassReader
+-dontwarn org.objectweb.asm.ClassVisitor
+-dontwarn org.objectweb.asm.FieldVisitor
+-dontwarn org.objectweb.asm.Label
+-dontwarn org.objectweb.asm.MethodVisitor
+-dontwarn org.objectweb.asm.Type
 -keep class android.support.multidex.** {*;}
 -keep class com.github.luben.zstd.** {*;}
