@@ -97,6 +97,9 @@ public abstract class MSBitmap {
         }
         ByteBuffer pixels = ByteBuffer.allocate(width * height2 * 4);
         if (bitCount == 32) {
+            int bytesPerPixel = 4;
+            int rowStride = (width * bytesPerPixel + 3) & ~3;
+            int padding = rowStride - width * bytesPerPixel;
             int i = data.position();
             for (int y = height2 - 1; y >= 0; y--) {
                 int line = invertY ? y : (height2 - 1) - y;
@@ -118,10 +121,13 @@ public abstract class MSBitmap {
                     x++;
                     i = i5;
                 }
-                i += width % 4;
+                i += padding;
             }
         } else {
             if (bitCount == 24) {
+                int bytesPerPixel = 3;
+                int rowStride = (width * bytesPerPixel + 3) & ~3;
+                int padding = rowStride - width * bytesPerPixel;
                 int i6 = data.position();
                 for (int y2 = height2 - 1; y2 >= 0; y2--) {
                     int line2 = invertY ? y2 : (height2 - 1) - y2;
@@ -137,13 +143,16 @@ public abstract class MSBitmap {
                         pixels.put(j2 + 2, b2);
                         pixels.put(j2 + 1, g2);
                         pixels.put(j2 + 0, r3);
-                        pixels.put(j2 + 3, (byte) -1);
+                        pixels.put(j2 + 3, (byte) 255);
                         x2++;
                         i6 = i9;
                     }
-                    i6 += width % 4;
+                    i6 += padding;
                 }
             } else if (bitCount <= 8) {
+                int bytesPerPixel = 1;
+                int rowStride = (width * bytesPerPixel + 3) & ~3;
+                int padding = rowStride - width * bytesPerPixel;
                 int colorTableOffset = data.position();
                 int colorTableSize = (int) (Math.pow(2.0d, bitCount) * 4.0d);
                 int y3 = height2 - 1;
@@ -161,11 +170,11 @@ public abstract class MSBitmap {
                         pixels.put(j3 + 2, b3);
                         pixels.put(j3 + 1, g3);
                         pixels.put(j3 + 0, r4);
-                        pixels.put(j3 + 3, (byte) -1);
+                        pixels.put(j3 + 3, (byte) 255);
                         x3++;
                         colorIndex = i10;
                     }
-                    colorIndex += width % 4;
+                    colorIndex += padding;
                     y3--;
                 }
             }

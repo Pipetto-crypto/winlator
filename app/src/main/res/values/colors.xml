@@ -55,7 +55,7 @@
     <color name="design_dark_default_color_on_surface">#ffffffff</color>
     <color name="design_dark_default_color_primary">#ffba86fc</color>
     <color name="design_dark_default_color_primary_dark">#ff000000</color>
-    <color name="design_dark_default_color_primary_variant">#ff3700b3</color>
+    <color name="design_dark_default_color_primary_variant">#3700b3</color>
     <color name="design_dark_default_color_secondary">#ff03dac6</color>
     <color name="design_dark_default_color_secondary_variant">#ff03dac6</color>
     <color name="design_dark_default_color_surface">#ff121212</color>
@@ -67,8 +67,8 @@
     <color name="design_default_color_on_secondary">#ff000000</color>
     <color name="design_default_color_on_surface">#ff000000</color>
     <color name="design_default_color_primary">#ff6200ee</color>
-    <color name="design_default_color_primary_dark">#ff3700b3</color>
-    <color name="design_default_color_primary_variant">#ff3700b3</color>
+    <color name="design_default_color_primary_dark">#000000</color>
+    <color name="design_default_color_primary_variant">#607d8b</color>
     <color name="design_default_color_secondary">#ff03dac6</color>
     <color name="design_default_color_secondary_variant">#ff018786</color>
     <color name="design_default_color_surface">#ffffffff</color>

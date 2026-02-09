@@ -651,7 +651,7 @@
     <string name="vkbasalt_sharpness_effects">锐化效果（C自适应锐化/D动态锐化）</string>
     <string name="vkbasalt_sharpness_level">锐化强度</string>
     <string name="vkbasalt_sharpness_denoise">锐化降噪</string>
-    <string name="shutdown">关机</string>
+    <string name="shutdown">正在退出</string>
     <string name="disable_mouse">禁用鼠标</string>
     <string name="no_items_to_display_saves">从您的容器中选择一个存档文件目录进行注册，即可开始！</string>
     <string name="failed_create_directories_for_save">无法创建存档目录!</string>
