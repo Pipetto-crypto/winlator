@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Stack;
 import android.util.Log;
+import com.winlator.cmod.core.FileUtils;
 
 /* loaded from: classes.dex */
 public class PEParser {
@@ -157,7 +158,7 @@ public class PEParser {
                     filePosition4 += inStream.read(sectionHeader.array());
                     sectionHeader.get(nameBytes);
                     String name = StringUtils.fromANSIString(nameBytes);
-                    if (!name.equals(".rsrc")) {
+                    if (!name.equals(".rsrc")&&!name.equals(".RSRC")) {
                         i2 = (byte) (i2 + 1);
                         i = 0;
                     } else {
@@ -228,9 +229,9 @@ public class PEParser {
                         iconData.getInt();
                         int clrUsed = iconData.getInt();
                         
-                        // Skip unsupported formats: non-8-bit or compressed images with no palette
-                        boolean isUnsupported = (bitCount != 8) || (compression != 0 || clrUsed != 0);
-                        
+                        // Skip unsupported formats: 8-bit or 32-bit uncompressed images
+                        // boolean isUnsupported = (bitCount != 8&& bitCount != 24 && bitCount != 32) || (compression != 0 || clrUsed != 0);
+                        boolean isUnsupported = (bitCount != 8&& bitCount != 24 && bitCount != 32) || (compression != 0);
                         if (!isUnsupported) {
                             if (iconIndex < 0) {
                                 if (largeIcon == (bmpWidth >= 32)) {

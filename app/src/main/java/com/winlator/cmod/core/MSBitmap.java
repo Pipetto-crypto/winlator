@@ -121,7 +121,6 @@ public abstract class MSBitmap {
                 i += width % 4;
             }
         } else {
-            byte r2 = -1;
             if (bitCount == 24) {
                 int i6 = data.position();
                 for (int y2 = height2 - 1; y2 >= 0; y2--) {
@@ -164,13 +163,10 @@ public abstract class MSBitmap {
                         pixels.put(j3 + 0, r4);
                         pixels.put(j3 + 3, (byte) -1);
                         x3++;
-                        r2 = -1;
                         colorIndex = i10;
-                        byteBuffer = data;
                     }
                     colorIndex += width % 4;
                     y3--;
-                    byteBuffer = data;
                 }
             }
         }

@@ -138,6 +138,7 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
         
         Context context = getContext();
          try {
+            ImageFs imageFs = ImageFs.find(context);
             String displayName = FileUtils.getBasename(file.name);
             File peFile = file.toFile();
             String unixPath = peFile.getAbsolutePath();
@@ -150,11 +151,10 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
             if (FileUtils.saveBitmapToFile(bitmap, shortcutArt)){
                 if (!shortcutsDir.exists()) shortcutsDir.mkdirs();
                 File desktopFile = new File(shortcutsDir, displayName + ".desktop");
-                Log.d("unixPath",unixPath);
                 try (PrintWriter writer = new PrintWriter(new FileWriter(desktopFile))) {
                     writer.println("[Desktop Entry]");
                     writer.println("Name=" + displayName);
-                    writer.println("Exec=env WINEPREFIX=\"/home/xuser/.wine\" wine \"" + unixPath + "\"");
+                    writer.println("Exec=env WINEPREFIX=" + "\"" + imageFs.wineprefix + "\"" + " wine " + unixPath);
                     writer.println("Type=Application");
                     writer.println("Icon=" + displayName);
                     writer.println("container_id:" + container.id);
