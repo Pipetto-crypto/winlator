@@ -129,24 +129,10 @@ public class Keyboard {
         if (ExternalController.isGameController(event.getDevice())) return false;
         int action = event.getAction();
         int keyCode = event.getKeyCode();
-        Log.i("KeyEvent",action+","+keyCode);
-        if (action == KeyEvent.ACTION_MULTIPLE){
-            String s = event.getCharacters();
-            KeyEvent[] events = chars.getEvents(s.toCharArray());
-            if (events != null) {
-                 for (KeyEvent keyEvent : events) {
-                    Boolean isInject = injectKeyEvent(keyEvent);
-                     if(!isInject){
-                        return false;
-                     }
-                 }
-                 return true;
-             }
-             return true;
-        } else if (action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP){
+        if(action == KeyEvent.ACTION_DOWN || action == KeyEvent.ACTION_UP){
             return injectKeyEvent(event);
         }
-        return true;
+        return KeyInput.handleAndroidKeyEvent(xServer,event);
     }
 
     private static XKeycode[] createKeycodeMap() {
