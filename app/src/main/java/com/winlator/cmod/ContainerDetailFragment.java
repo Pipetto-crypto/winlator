@@ -608,7 +608,16 @@ public class ContainerDetailFragment extends Fragment {
     }
 
     private void saveWineRegistryKeys(View view) {
+        File systemRegFile = new File(container.getRootDir(), ".wine/system.reg");
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
+        try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
+             registryEditor.setStringValue("Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64", "Version", "v14.44.35211.00");
+             registryEditor.setDwordValue("Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64", "Bld", 35211);
+             registryEditor.setDwordValue("Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64", "Installed", 1);
+             registryEditor.setDwordValue("Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64", "Major", 14);
+             registryEditor.setDwordValue("Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64", "Minor", 44);
+             registryEditor.setDwordValue("Software\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64", "Rbld", 0);
+        }
         try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
             Spinner sMouseWarpOverride = view.findViewById(R.id.SMouseWarpOverride);
             registryEditor.setStringValue("Software\\Wine\\DirectInput", "MouseWarpOverride", sMouseWarpOverride.getSelectedItem().toString().toLowerCase(Locale.ENGLISH));
