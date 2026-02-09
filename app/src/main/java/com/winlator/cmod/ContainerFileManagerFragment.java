@@ -144,19 +144,19 @@ public class ContainerFileManagerFragment extends BaseFileManagerFragment<FileIn
             File shortcutsDir = container.getDesktopDir();
             Bitmap bitmap = PEParser.extractIcon(peFile);
             String rootPath = container.getRootDir().getPath();
-            File shortcutArtDir = new File(rootPath, "/.local/share/applications/");
+            File shortcutArtDir = container.getIconsDir(32);
             if (!shortcutArtDir.exists()) shortcutArtDir.mkdirs();
             File shortcutArt = new File(shortcutArtDir, displayName + ".png");
             if (FileUtils.saveBitmapToFile(bitmap, shortcutArt)){
                 if (!shortcutsDir.exists()) shortcutsDir.mkdirs();
                 File desktopFile = new File(shortcutsDir, displayName + ".desktop");
-                Log.d("unixPath",shortcutsDir.getAbsolutePath());
+                Log.d("unixPath",unixPath);
                 try (PrintWriter writer = new PrintWriter(new FileWriter(desktopFile))) {
                     writer.println("[Desktop Entry]");
                     writer.println("Name=" + displayName);
                     writer.println("Exec=env WINEPREFIX=\"/home/xuser/.wine\" wine \"" + unixPath + "\"");
                     writer.println("Type=Application");
-                    writer.println("Icon="+shortcutArt.getAbsolutePath());
+                    writer.println("Icon=" + displayName);
                     writer.println("container_id:" + container.id);
                     writer.close();
                 }
