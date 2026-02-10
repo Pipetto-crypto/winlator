@@ -15,11 +15,11 @@
         android:layout_width="50dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical|left">
 
         <TextView
             android:id="@+id/TVRenderer"
-            android:layout_width="wrap_content"
+            android:layout_width="50dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:textStyle="bold"
@@ -32,7 +32,7 @@
         android:layout_width="85dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical|left">
 
         <TextView
             android:layout_width="wrap_content"
@@ -61,7 +61,7 @@
         android:layout_width="85dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical|left">
 
         <TextView
             android:layout_width="wrap_content"
@@ -90,7 +90,7 @@
         android:layout_width="85dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical|left">
 
         <TextView
             android:layout_width="wrap_content"
@@ -119,7 +119,7 @@
         android:layout_width="105dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical|left">
 
         <TextView
             android:layout_width="wrap_content"
@@ -147,7 +147,7 @@
         android:layout_width="70dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical|left">
 
         <TextView
             android:layout_width="wrap_content"
@@ -175,7 +175,7 @@
         android:layout_width="35dp"
         android:layout_height="wrap_content"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical|left">
 
         <TextView
             android:layout_width="wrap_content"

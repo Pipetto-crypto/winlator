@@ -5,9 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.SystemClock;
-import android.os.CpuUsageInfo;
 import android.util.AttributeSet;
-import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.FrameLayout;
@@ -16,14 +14,13 @@ import android.os.BatteryManager;
 import android.content.BroadcastReceiver;
 import com.winlator.cmod.R;
 
-import com.winlator.cmod.container.Container;
-import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.core.StringUtils;
 import com.winlator.cmod.core.CPUStatus;
 
 import java.util.HashMap;
 import java.util.Locale;
+import java.text.SimpleDateFormat;
 import java.util.Date;
 
 public class FrameRating extends FrameLayout implements Runnable {
@@ -42,6 +39,12 @@ public class FrameRating extends FrameLayout implements Runnable {
     private HashMap graphicsDriverConfig;
     private BroadcastReceiver batteryReceiver;
     private int voltage = 0;
+    private final BatteryManager batteryManager;
+    private final ActivityManager activityManager;
+    private final ActivityManager.MemoryInfo memoryInfo;
+    private short maxClockSpeed;
+    private final SimpleDateFormat timeFormat;
+    private final StringBuilder timeStringBuilder = new StringBuilder(5);
 
     public FrameRating(Context context, HashMap graphicsDriverConfig) {
         this(context, graphicsDriverConfig ,null);
@@ -63,43 +66,48 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvPOWER = view.findViewById(R.id.TVPOWER);
         tvTMP = view.findViewById(R.id.TVTMP);
         tvTIME = view.findViewById(R.id.TVTIME);
-        totalRAM = getTotalRAM();
         this.graphicsDriverConfig = graphicsDriverConfig;
+        timeFormat = new SimpleDateFormat("HH:mm", Locale.getDefault());
+        batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
+        activityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        memoryInfo = new ActivityManager.MemoryInfo();
+        activityManager.getMemoryInfo(memoryInfo);
+        totalRAM = memoryInfo.totalMem;
+        maxClockSpeed = calculateMaxClockSpeed();
         IntentFilter batteryFilter = new IntentFilter(Intent.ACTION_BATTERY_CHANGED);
         batteryReceiver = new BatteryLevelReceiver();
         context.registerReceiver(batteryReceiver , batteryFilter);
         addView(view);
     }
-    
-    private long getTotalRAM() {
-        ActivityManager activityManager = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
-        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
-        activityManager.getMemoryInfo(memoryInfo);
-        return memoryInfo.totalMem;
+
+    private short calculateMaxClockSpeed() {
+        int numProcessors = Runtime.getRuntime().availableProcessors();
+        short maxSpeed = 0;
+        for (int i = 0; i < numProcessors; i++) {
+            short cpuMaxSpeed = CPUStatus.getMaxClockSpeed(i);
+            if (cpuMaxSpeed > maxSpeed) {
+                maxSpeed = cpuMaxSpeed;
+            }
+        }
+        return maxSpeed;
     }
-    
+
     private float getAvailableRAM() {
-        String availableRAM = "";
-        ActivityManager activityManager = (ActivityManager)context.getSystemService(Context.ACTIVITY_SERVICE);
-        ActivityManager.MemoryInfo memoryInfo = new ActivityManager.MemoryInfo();
         activityManager.getMemoryInfo(memoryInfo);
-        float usedMem = memoryInfo.totalMem - memoryInfo.availMem;
-        return usedMem;
+        return memoryInfo.totalMem - memoryInfo.availMem;
     }
 
     private void readCPUAvalByHPM(){
         short[] clockSpeeds = CPUStatus.getCurrentClockSpeeds();
         int totalClockSpeed = 0;
-        short maxClockSpeed = 0;
+        int length = clockSpeeds.length;
 
-        for (int i = 0; i < clockSpeeds.length; i++) {
-            short clockSpeed = CPUStatus.getMaxClockSpeed(i);
+        for (int i = 0; i < length; i++) {
             totalClockSpeed += clockSpeeds[i];
-            maxClockSpeed = (short)Math.max(maxClockSpeed, clockSpeed);
         }
-        int avgClockSpeed = totalClockSpeed / clockSpeeds.length;
-        tvCPU.setText(String.format("%.2f%%", ((float)avgClockSpeed/maxClockSpeed)*100.0f ));
-        tvTMP.setText( CPUStatus.getCpuTemperature() + "°C");
+        int avgClockSpeed = totalClockSpeed / length;
+        tvCPU.setText(String.format(Locale.ENGLISH, "%.2f%%", ((float)avgClockSpeed/maxClockSpeed)*100.0f ));
+        tvTMP.setText(String.format(Locale.ENGLISH, "%.0f°C", CPUStatus.getCpuTemperature()));
     }
 
 
@@ -112,20 +120,16 @@ public class FrameRating extends FrameLayout implements Runnable {
     }
     
     private String getPower(){
-        BatteryManager batteryManager = (BatteryManager) context.getSystemService(Context.BATTERY_SERVICE);
-        double current = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) / 1000000.0;//安培
-        double power = voltage * current;//瓦特
+        double current = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CURRENT_NOW) / 1000000.0;
+        double power = voltage * current;
         int capacity = batteryManager.getIntProperty(BatteryManager.BATTERY_PROPERTY_CAPACITY);
-        return String.format("%.1fW (%d%%)", power,capacity );
+        return String.format(Locale.ENGLISH, "%.1fW (%d%%)", power, capacity);
     }
 
     private void setTimeString(){
-        // 获取当前时间
-        long currentTimeMillis = System.currentTimeMillis();
-        Date date = new Date(currentTimeMillis);
-        String hour = String.format("%tH",date);
-        String minute = String.format("%tM",date);
-        tvTIME.setText(hour+":"+minute);
+        timeStringBuilder.setLength(0);
+        timeStringBuilder.append(timeFormat.format(new Date()));
+        tvTIME.setText(timeStringBuilder);
     }
 
     public void setRenderer(String renderer) {
@@ -153,7 +157,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     public void run() {
         if (getVisibility() == GONE) setVisibility(View.VISIBLE);
         tvFPS.setText(String.format(Locale.ENGLISH, "%.1f", lastFPS));
-        tvRAM.setText(String.format("%.2f%%", (getAvailableRAM()/totalRAM)*100 ));
+        tvRAM.setText(String.format(Locale.ENGLISH, "%.2f%%", (getAvailableRAM()/totalRAM)*100.0f ));
         tvPOWER.setText(getPower());
         readCPUAvalByHPM();
         setTimeString();
