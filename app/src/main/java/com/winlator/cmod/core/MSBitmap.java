@@ -8,6 +8,8 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
+import android.graphics.Matrix;
 import android.util.Log;
 
 public abstract class MSBitmap {
@@ -83,6 +85,7 @@ public abstract class MSBitmap {
     }
 
     public static Bitmap decodeBuffer(int width, int height, int bitCount, ByteBuffer data) {
+        Log.d("bitCount",bitCount+"");
         int height2;
         ByteBuffer byteBuffer = data;
         if (width == 0 || height == 0) {
@@ -96,6 +99,8 @@ public abstract class MSBitmap {
             invertY = false;
         }
         ByteBuffer pixels = ByteBuffer.allocate(width * height2 * 4);
+        boolean useDithering = bitCount <= 8;
+        int[] prevError = useDithering ? new int[width * 3] : null;
         if (bitCount == 32) {
             int bytesPerPixel = 4;
             int rowStride = (width * bytesPerPixel + 3) & ~3;
@@ -113,6 +118,20 @@ public abstract class MSBitmap {
                     byte r = byteBuffer.get(i3);
                     int i5 = i4 + 1;
                     byte a = byteBuffer.get(i4);
+
+                    // 使用预乘alpha使图像更清晰
+                    int alpha = a & 0xFF;
+                    if (alpha == 0) {
+                        // 完全透明，保持原样
+                    } else if (alpha == 255) {
+                        // 完全不透明，使用原色
+                    } else {
+                        // 预乘alpha处理，改善边缘透明效果
+                        r = (byte) ((r & 0xFF) * alpha / 255);
+                        g = (byte) ((g & 0xFF) * alpha / 255);
+                        b = (byte) ((b & 0xFF) * alpha / 255);
+                    }
+
                     int j = (line * width * 4) + (x * 4);
                     pixels.put(j + 2, b);
                     pixels.put(j + 1, g);
@@ -163,13 +182,48 @@ public abstract class MSBitmap {
                     while (x3 < width) {
                         int i10 = colorIndex + 1;
                         int colorIndex2 = Byte.toUnsignedInt(byteBuffer.get(colorIndex)) * 4;
-                        byte b3 = byteBuffer.get(colorTableOffset + colorIndex2 + 0);
-                        byte g3 = byteBuffer.get(colorTableOffset + colorIndex2 + 1);
-                        byte r4 = byteBuffer.get(colorTableOffset + colorIndex2 + 2);
+                        int rawR = Byte.toUnsignedInt(byteBuffer.get(colorTableOffset + colorIndex2 + 2));
+                        int rawG = Byte.toUnsignedInt(byteBuffer.get(colorTableOffset + colorIndex2 + 1));
+                        int rawB = Byte.toUnsignedInt(byteBuffer.get(colorTableOffset + colorIndex2 + 0));
                         int j3 = (line3 * width * 4) + (x3 * 4);
-                        pixels.put(j3 + 2, b3);
-                        pixels.put(j3 + 1, g3);
-                        pixels.put(j3 + 0, r4);
+                        if (useDithering && prevError != null && x3 < width) {
+                            int errorOffset = x3 * 3;
+                            rawR += prevError[errorOffset];
+                            rawG += prevError[errorOffset + 1];
+                            rawB += prevError[errorOffset + 2];
+                        }
+                        int ditheredR = Math.min(255, Math.max(0, rawR));
+                        int ditheredG = Math.min(255, Math.max(0, rawG));
+                        int ditheredB = Math.min(255, Math.max(0, rawB));
+                        if (useDithering && prevError != null) {
+                            int errorOffset = x3 * 3;
+                            int errR = rawR - ditheredR;
+                            int errG = rawG - ditheredG;
+                            int errB = rawB - ditheredB;
+                            if (x3 + 1 < width) {
+                                prevError[errorOffset + 3] += (errR * 7) >> 4;
+                                prevError[errorOffset + 4] += (errG * 7) >> 4;
+                                prevError[errorOffset + 5] += (errB * 7) >> 4;
+                            }
+                            if (x3 > 0) {
+                                prevError[errorOffset - 3] += (errR * 3) >> 4;
+                                prevError[errorOffset - 2] += (errG * 3) >> 4;
+                                prevError[errorOffset - 1] += (errB * 3) >> 4;
+                            }
+                            if (x3 + 1 < width) {
+                                prevError[errorOffset + 3] += (errR * 5) >> 4;
+                                prevError[errorOffset + 4] += (errG * 5) >> 4;
+                                prevError[errorOffset + 5] += (errB * 5) >> 4;
+                            }
+                            if (x3 > 0 && x3 + 1 < width) {
+                                prevError[errorOffset + 3] += (errR * 1) >> 4;
+                                prevError[errorOffset + 4] += (errG * 1) >> 4;
+                                prevError[errorOffset + 5] += (errB * 1) >> 4;
+                            }
+                        }
+                        pixels.put(j3 + 2, (byte) ditheredB);
+                        pixels.put(j3 + 1, (byte) ditheredG);
+                        pixels.put(j3 + 0, (byte) ditheredR);
                         pixels.put(j3 + 3, (byte) 255);
                         x3++;
                         colorIndex = i10;
@@ -180,6 +234,8 @@ public abstract class MSBitmap {
             }
         }
         Bitmap bitmap = Bitmap.createBitmap(width, height2, Bitmap.Config.ARGB_8888);
+        bitmap.setHasAlpha(true);
+        bitmap.setPremultiplied(true);
         bitmap.copyPixelsFromBuffer(pixels);
         return bitmap;
     }

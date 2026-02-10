@@ -18,6 +18,7 @@ import java.util.Iterator;
 import java.util.Stack;
 import android.util.Log;
 import com.winlator.cmod.core.FileUtils;
+import com.winlator.cmod.win32.MSIcon;
 
 /* loaded from: classes.dex */
 public class PEParser {
@@ -263,6 +264,15 @@ public class PEParser {
         ImageResourceDirectory rootDirectory;
         if (!this.peFile.isFile() || (rootDirectory = readImageResourceDirectory()) == null) {
             return null;
+        }
+        File parentFile = this.peFile.getParentFile();
+        File icoFile = new File(parentFile, FileUtils.getBasename(this.peFile.getPath()) + ".ico");
+        Log.d("icoFile",parentFile.getPath());
+        if(icoFile.exists()){
+            Bitmap bitmap3 = MSIcon.decodeFile(icoFile);
+            if (bitmap3 != null) {
+                return bitmap3;
+            }
         }
         ArrayList<ImageResourceDataEntry> dataEntries = new ArrayList<>();
         Stack<ImageResourceDirectory> stack = new Stack<>();

@@ -402,7 +402,6 @@ public class ShortcutsFragment extends Fragment {
 
     private void addShortcutToScreen(Shortcut shortcut) {
         ShortcutManager shortcutManager = getSystemService(requireContext(), ShortcutManager.class);
-        Log.d("isRequestPinShortcutSupported",(shortcutManager != null && shortcutManager.isRequestPinShortcutSupported())+"");
         if (shortcutManager != null && shortcutManager.isRequestPinShortcutSupported()){
             ShortcutInfo pinShortcutInfo = buildScreenShortCut(shortcut.name, shortcut.name, shortcut.container.id,shortcut.file.getPath(), Icon.createWithBitmap(shortcut.icon), shortcut.getExtra("uuid"));
             Intent pinnedShortcutCallbackIntent =
@@ -410,11 +409,8 @@ public class ShortcutsFragment extends Fragment {
             PendingIntent successCallBack = PendingIntent.getBroadcast(requireContext(),0,pinnedShortcutCallbackIntent,PendingIntent.FLAG_IMMUTABLE);
             boolean result = shortcutManager.requestPinShortcut(pinShortcutInfo, successCallBack.getIntentSender());
             if (result) {
-                // 请求成功，系统会显示确认对话框
                 AppUtils.showToast(getContext(), R.string.add_shortcut_success);
             } else {
-                // 设备不支持或用户已禁用此功能
-                Log.d("result","dsadasdsa");
                 showAllFilesAccessDialog();
             }
         } else {
