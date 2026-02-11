@@ -30,9 +30,9 @@ public class KeyInput {
                     keySym |= 16777216;
                 }
                 xServer.injectKeyPress(stubKeyCode[index], keySym);
-                sleep(50);
+                sleep(10);
                 xServer.injectKeyRelease(stubKeyCode[index]);
-                sleep(50);
+                sleep(10);
                 handled = true;
             }
         }

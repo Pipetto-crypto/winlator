@@ -171,6 +171,11 @@ public class Window extends XResource {
         return property != null && property.data.get(0) == 1;
     }
 
+    public boolean isSurface() {
+        Property property = getProperty(Atom.getId("_NET_WM_SURFACE"));
+        return property != null && property.data.get(0) == 1;
+    }
+
     public long getHandle() {
         Property property = getProperty(Atom.getId("_NET_WM_HWND"));
         return property != null ? property.getLong(0) : 0;

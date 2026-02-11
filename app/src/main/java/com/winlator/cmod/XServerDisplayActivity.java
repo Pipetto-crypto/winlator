@@ -5,6 +5,7 @@ import static com.winlator.cmod.core.AppUtils.showToast;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
@@ -29,9 +30,9 @@ import android.view.ViewGroup;
 import android.widget.ArrayAdapter;
 import android.widget.CheckBox;
 import android.widget.FrameLayout;
+import android.widget.EditText;
 import android.widget.Spinner;
 import android.widget.TextView;
-
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
@@ -310,7 +311,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         drawerLayout = findViewById(R.id.DrawerLayout);
         drawerLayout.setOnApplyWindowInsetsListener((view, windowInsets) -> windowInsets.replaceSystemWindowInsets(0, 0, 0, 0));
         drawerLayout.setDrawerLockMode(DrawerLayout.LOCK_MODE_LOCKED_CLOSED);
-
         NavigationView navigationView = findViewById(R.id.NavigationView);
 
         if (isDarkMode) {
@@ -487,7 +487,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     preloaderDialog.closeOnUiThread();
                     winStarted[0] = true;
                 }
-                    
                 if (frameRatingWindowId == window.id) frameRating.update();
             }
            
@@ -811,7 +810,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         final int id = item.getItemId();
         switch (id) {
             case R.id.main_menu_keyboard:
-                AppUtils.showKeyboard(this);
+                AppUtils.showKeyboard(XServerDisplayActivity.this);
                 drawerLayout.closeDrawers();
                 break;
             case R.id.main_menu_input_controls:
@@ -1578,9 +1577,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
         }
         return !(this.inputControlsView.onKeyEvent(event) || this.winHandler.onKeyEvent(event) || !this.xServer.keyboard.onKeyEvent(event)) || (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
-        // // Fallback to existing input handling
-        // return (!inputControlsView.onKeyEvent(event) && !winHandler.onKeyEvent(event) && xServer.keyboard.onKeyEvent(event)) ||
-        //         (!ExternalController.isGameController(event.getDevice()) && super.dispatchKeyEvent(event));
     }
 
     public InputControlsView getInputControlsView() {
