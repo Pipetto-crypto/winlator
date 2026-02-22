@@ -48,10 +48,9 @@ jobs:
         id: meta
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-          echo "VERSION=$(grep versionName app/build.gradle.kts \
-            | cut -d '=' -f2 \
-            | tr -d '"' \
-            | xargs)" >> $GITHUB_ENV
+          echo "VERSION=$(grep versionName app/build.gradle \
+            | head -1 \
+            | sed 's/.*"\(.*\)".*/\1/')" >> $GITHUB_ENV
           echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - name: Build Debug APK
@@ -60,9 +59,14 @@ jobs:
       - name: Build Release APK
         run: ./gradlew assembleRelease --stacktrace
 
+      - name: Rename Debug APK
+        run: |
+          mv app/build/outputs/apk/debug/app-debug.apk \
+             app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
+
       - name: Rename Release APK
         run: |
-          mv app/build/outputs/apk/release/app-release-unsigned.apk \
+          mv app/build/outputs/apk/release/app-release.apk \
              app/build/outputs/apk/release/${{ env.APK_NAME }}.apk
 
       - name: List Output Files
@@ -74,11 +78,28 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APK_NAME }}-debug-${{ env.VERSION }}-${{ env.SHORT_SHA }}
-          path: app/build/outputs/apk/debug/app-debug.apk
-          retention-days: 7
+          path: app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.APK_NAME }}-release-${{ env.VERSION }}-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/release/${{ env.APK_NAME }}.apk
+
+      - name: Create Release
+        if: github.event_name == 'push' && github.ref == 'refs/heads/winlator_bionic'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
+          name: "${{ env.APK_NAME }} v${{ env.VERSION }}"
+          body: |
+            ### Build Info
+            - Build Date: ${{ env.BUILD_DATE }}
+            - Commit: ${{ env.SHORT_SHA }}
+          files: |
+            app/build/outputs/apk/release/${{ env.APK_NAME }}.apk
+            app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
