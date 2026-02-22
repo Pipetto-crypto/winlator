@@ -65,13 +65,11 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
-          name: "${{ env.APK_NAME }} v${{ env.VERSION }}"
+          name: "CMoD-AnTuTu"
           body: |
             ## CMoD-AnTuTu v${{ env.VERSION }}
-            
             ### Build Info
             - Build Date: ${{ env.BUILD_DATE }}
-            - Commit: ${{ env.SHORT_SHA }}
           files: |
             app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
           draft: false
