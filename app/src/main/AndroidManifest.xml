@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools"  android:sharedUserId="com.termux">
+    xmlns:tools="http://schemas.android.com/tools"
+    android:sharedUserId="com.termux">
 
-    <!-- Declare features that might be needed -->
     <uses-feature
         android:glEsVersion="0x00020000"
         android:required="true" />
@@ -20,7 +20,6 @@
         android:name="oculus.software.overlay_keyboard"
         android:required="false" />
 
-    <!-- Permissions (unique, no duplicates) -->
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
@@ -36,7 +35,6 @@
     <uses-permission
         android:name="android.permission.WRITE_SECURE_SETTINGS"
         tools:ignore="ProtectedPermissions" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="AnTuTu Benchmark"
@@ -51,7 +49,6 @@
         android:supportsRtl="true"
         tools:ignore="DataExtractionRules,GoogleAppIndexingWarning">
 
-        <!-- Main activity -->
         <activity
             android:name="com.winlator.cmod.MainActivity"
             android:theme="@style/AppTheme.Dark"
@@ -68,7 +65,6 @@
             android:name="com.winlator.cmod.BigPictureActivity"
             android:theme="@style/Theme.AppCompat"
             android:exported="false" />
-
 
         <activity
             android:name="com.winlator.cmod.XServerDisplayActivity"
@@ -121,7 +117,6 @@
             </intent-filter>
         </receiver>
 
-        <!-- FileProvider for sharing files -->
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="com.antutu.ABenchMark.tileprovider"
@@ -132,7 +127,6 @@
                 android:resource="@xml/file_paths" />
         </provider>
 
-        <!-- Provider for Winlator’s DocumentProvider or similar usage -->
         <provider
             android:name=".core.WinlatorFilesProvider"
             android:authorities="com.antutu.ABenchMark.core.WinlatorFilesProvider"
@@ -156,7 +150,6 @@
         <meta-data
             android:name="android.allow_multiple_resumed_activities"
             android:value="true" />
-        >
 
     </application>
 </manifest>
