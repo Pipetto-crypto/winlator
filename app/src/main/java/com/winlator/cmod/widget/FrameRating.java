@@ -72,7 +72,6 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         addView(view);
 
-        // تقليل الشفافية لعدم تغطية المحتوى
         view.setAlpha(0.75f);
     }
 
@@ -210,8 +209,6 @@ public class FrameRating extends FrameLayout implements Runnable {
         int cores = getCPUCoreCount();
         tvCPUUsage.setText(String.format(Locale.ENGLISH, "%.0f%% | %d MHz | %d Cores", cpuUsage, cpuFreq, cores));
         updateCPUColor(cpuUsage);
-
-
 
         // RAM
         tvRAM.setText(getUsedRAM() + " / " + totalRAM);
