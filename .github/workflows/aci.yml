@@ -38,7 +38,7 @@ jobs:
 
         echo "CHANGELOG<<EOF" >> $GITHUB_ENV
         echo "## Upstream (Pipetto) Latest Commits" >> $GITHUB_ENV
-        git log --pretty=format:"- %s" upstream/winlator_bionic -1 >> $GITHUB_ENV
+        git log --pretty=format:"- %s" upstream/winlator_bionic -2 >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
         echo "EOF" >> $GITHUB_ENV
 
