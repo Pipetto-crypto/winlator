@@ -10,10 +10,11 @@ on:
 env:
   JAVA_VERSION: '17'
   GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
+  APK_NAME: "CMoD-AnTuTu"
 
 jobs:
   build:
-    name: Build Debug APK
+    name: Build APK
     runs-on: ubuntu-latest
 
     steps:
@@ -43,9 +44,6 @@ jobs:
       - name: Grant Gradle Permissions
         run: chmod +x gradlew
 
-      - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
-
       - name: Extract Build Metadata
         id: meta
         run: |
@@ -56,11 +54,31 @@ jobs:
             | xargs)" >> $GITHUB_ENV
           echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
-      - name: List Output Files
-        run: ls -lh app/build/outputs/apk/debug/
+      - name: Build Debug APK
+        run: ./gradlew assembleDebug --stacktrace
 
-      - name: Upload APK Artifact
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --stacktrace
+
+      - name: Rename Release APK
+        run: |
+          mv app/build/outputs/apk/release/app-release-unsigned.apk \
+             app/build/outputs/apk/release/${{ env.APK_NAME }}.apk
+
+      - name: List Output Files
+        run: |
+          ls -lh app/build/outputs/apk/debug/
+          ls -lh app/build/outputs/apk/release/
+
+      - name: Upload Debug APK
         uses: actions/upload-artifact@v4
         with:
-          name: Winlator-${{ env.VERSION }}-${{ env.SHORT_SHA }}
+          name: ${{ env.APK_NAME }}-debug-${{ env.VERSION }}-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 7
+
+      - name: Upload Release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.APK_NAME }}-release-${{ env.VERSION }}-${{ env.SHORT_SHA }}
+          path: app/build/outputs/apk/release/${{ env.APK_NAME }}.apk
