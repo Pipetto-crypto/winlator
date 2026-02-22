@@ -143,6 +143,11 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
+    // Disable PNG crunching to fix corrupted PNG compilation errors
+    aaptOptions {
+        cruncherEnabled = false
+    }
+
     signingConfigs {
         debug {
             storeFile file('testkey_untrusted.jks')
