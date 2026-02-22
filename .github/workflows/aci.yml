@@ -24,27 +24,30 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build with Gradle
-      run: ./gradlew assembleDebug
-
     - name: "Get Short SHA"
       run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
 
     - name: "Get Version"
-      run: echo "VERSION=$(echo $(cat app/build.gradle.kts | grep versionName | cut -d "=" -f 2 | sed "s/\"//g"))" >> $GITHUB_ENV
+      run: echo "VERSION=$(grep versionName app/build.gradle | head -1 | sed 's/.*"\(.*\)".*/\1/')" >> $GITHUB_ENV
+
+    - name: Build with Gradle
+      run: ./gradlew assembleDebug
+
+    - name: Rename APK
+      run: mv app/build/outputs/apk/debug/app-debug.apk app/build/outputs/apk/debug/CMoD-AnTuTu.apk
 
     - name: Attach release in action
       uses: actions/upload-artifact@v4
       with:
-       name: Winlator CMOD apk
-       path: ./app/build/outputs/apk/debug/app-debug.apk
+       name: CMoD-AnTuTu-${{ env.VERSION }}
+       path: ./app/build/outputs/apk/debug/CMoD-AnTuTu.apk
 
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
         name: "CMoD-AnTuTu"
-        files: ./app/build/outputs/apk/debug/app-debug.apk
+        files: ./app/build/outputs/apk/debug/CMoD-AnTuTu.apk
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
