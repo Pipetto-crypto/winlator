@@ -73,13 +73,7 @@
             android:textColor="#AB47BC"
             android:textSize="10sp" />
 
-        <TextView
-            android:id="@+id/TVGPUUsage"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginStart="6dp"
-            android:textColor="#AB47BC"
-            android:textSize="10sp" />
+
     </LinearLayout>
 
     <!-- CPU Row -->
@@ -132,4 +126,5 @@
             android:textSize="10sp" />
     </LinearLayout>
 </LinearLayout>
+
 
