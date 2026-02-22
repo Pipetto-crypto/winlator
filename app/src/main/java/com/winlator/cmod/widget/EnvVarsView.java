@@ -45,9 +45,12 @@ public class EnvVarsView extends FrameLayout {
         {"WINE_NEW_MEDIASOURCE", "CHECKBOX", "0", "1"},
         {"GALLIUM_HUD", "SELECT_MULTIPLE", "simple", "fps", "frametime"},
         {"WINEDLLOVERRIDES", "SELECT_MULTIPLE_SEMICOLON",
-            "winemenubuilder.exe=d", "dxgi=n,b", "vulkan-1=n,b",
-            "d3d11=n,b", "d3d12=n,b", "winmm=n,b", "version=n,b",
-            "mscoree=n,b", "msvcp140=n,b"},
+            "winemenubuilder.exe=d",
+            "dxgi=n,b", "vulkan-1=n,b",
+            "d3d8=n,b", "d3d9=n,b", "d3d10core=n,b", "d3d11=n,b", "d3d12=n,b",
+            "dinput=n,b", "dinput8=n,b",
+            "winmm=n,b", "xaudio2_7=n,b",
+            "version=n,b", "mscoree=n,b", "msvcp140=n,b"},
         {"DXVK_HDR", "CHECKBOX", "0", "1"},
         {"DXVK_CONFIG_FILE", "TEXT"},
         {"VKD3D_SHADER_MODEL", "TEXT"},
@@ -263,3 +266,4 @@ public class EnvVarsView extends FrameLayout {
     }
 
 }
+
