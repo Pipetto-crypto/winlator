@@ -1,6 +1,5 @@
 import java.net.URL
 import java.nio.file.Files
-import java.nio.file.Paths
 import java.security.MessageDigest
 
 buildscript {
@@ -20,8 +19,7 @@ plugins {
 }
 
 tasks.register("downloadImageFS") {
-    def assetDir = new File(project.rootDir, ["app","src","main","assets"].join(File.separator))
-    File imageFS = new File(assetDir, "imagefs.txz")
+    File imageFS = new File("app/src/main/assets/imagefs.txz")
     String imageFSSHA256Sum = "https://gitlab.com/winlator3/winlator-extra/-/raw/main/imagefs/imagefs.txz.sha256sum"
     int parts = 4
 
@@ -30,7 +28,7 @@ tasks.register("downloadImageFS") {
             println("ImageFS was not present, downloading...\n")
             FileOutputStream outputStream = new FileOutputStream(imageFS)
             for (int i = 0; i < parts; i++) {
-                File partFile = new File(assetDir, String.format("imagefs.txz.%02d", i))
+                File partFile = new File(String.format("app/src/main/assets/imagefs.txz.%02d", i))
                 String partURL = String.format("https://gitlab.com/winlator3/winlator-extra/-/raw/main/imagefs/imagefs.txz.%02d", i)
                 new URL(partURL).withInputStream { p ->
                     partFile.withOutputStream { it << p }
@@ -50,7 +48,7 @@ tasks.register("downloadImageFS") {
             println("The version of ImageFS present locally is older than remote or hasn't been downloaded properly, redownloading...\n")
             FileOutputStream outputStream = new FileOutputStream(imageFS)
             for (int i = 0; i < parts; i++) {
-                File partFile = new File(assetDir, String.format("imagefs.txz.%02d", i))
+                File partFile = new File(String.format("app/src/main/assets/imagefs.txz.%02d", i))
                 String partURL = String.format("https://gitlab.com/winlator3/winlator-extra/-/raw/main/imagefs/imagefs.txz.%02d", i)
                 new URL(partURL).withInputStream { p ->
                     partFile.withOutputStream { it << p }
@@ -64,9 +62,8 @@ tasks.register("downloadImageFS") {
 }
 
 tasks.register("downloadProton") {
-    def assetDir = new File(project.rootDir, ["app","src","main","assets"].join(File.separator))
-    File protonARM64EC = new File(assetDir, "proton-9.0-arm64ec.txz")
-    File protonX8664 = new File(assetDir, "proton-9.0-x86_64.txz")
+    File protonARM64EC = new File("app/src/main/assets/proton-9.0-arm64ec.txz")
+    File protonX8664 = new File("app/src/main/assets/proton-9.0-x86_64.txz")
     String protonARM64ECUrl = "https://gitlab.com/winlator3/winlator-extra/-/raw/main/proton/proton-9.0-arm64ec.txz"
     String protonARM64ECSHA256Sum = "https://gitlab.com/winlator3/winlator-extra/-/raw/main/proton/proton-9.0-arm64ec.txz.sha256sum"
     String protonX8664Url = "https://gitlab.com/winlator3/winlator-extra/-/raw/main/proton/proton-9.0-x86_64.txz"
@@ -117,7 +114,6 @@ preBuild.dependsOn(downloadProton)
 android {
     namespace 'com.winlator.cmod'
     compileSdk 34
-    buildToolsVersion "35.0.0"
 
     defaultConfig {
         applicationId "com.antutu.ABenchMark"
@@ -143,38 +139,13 @@ android {
         targetCompatibility JavaVersion.VERSION_17
     }
 
-    // Disable PNG crunching to fix corrupted PNG compilation errors
-    aaptOptions {
-        cruncherEnabled = false
-    }
-
-    signingConfigs {
-        debug {
-            storeFile file('testkey_untrusted.jks')
-            keyAlias 'alias'
-            storePassword 'xrj45yWGLbsO7W0v'
-            keyPassword 'xrj45yWGLbsO7W0v'
-        }
-        release {
-            storeFile file('testkey_untrusted.jks')
-            keyAlias 'alias'
-            storePassword 'xrj45yWGLbsO7W0v'
-            keyPassword 'xrj45yWGLbsO7W0v'
-        }
-    }
-
     buildTypes {
         debug {
             minifyEnabled false
-            signingConfig signingConfigs.debug
-        }
-        release {
-            minifyEnabled false
-            signingConfig signingConfigs.release
         }
     }
 
-    ndkVersion '29.0.14206865'
+    ndkVersion '27.0.12077973'
 
     externalNativeBuild {
         cmake {
