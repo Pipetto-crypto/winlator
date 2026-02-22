@@ -60,18 +60,18 @@ jobs:
           name: ${{ env.APK_NAME }}-${{ env.VERSION }}-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
 
-      - name: Create Release
-        if: github.event_name == 'push' && github.ref == 'refs/heads/winlator_bionic'
-        uses: softprops/action-gh-release@v2
-        with:
-          tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
-          name: "CMoD-AnTuTu"
-          body: |
+#      - name: Create Release
+#        if: github.event_name == 'push' && github.ref == 'refs/heads/winlator_bionic'
+#        uses: softprops/action-gh-release@v2
+#        with:
+#          tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
+#          name: "CMoD-AnTuTu"
+#          body: |
             
 
-          files: |
-            app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
-          draft: false
-          prerelease: false
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+#          files: |
+#            app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
+#          draft: false
+#          prerelease: false
+#        env:
+#          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
