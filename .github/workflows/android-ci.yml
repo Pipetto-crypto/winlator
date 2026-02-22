@@ -9,7 +9,6 @@ on:
 
 env:
   JAVA_VERSION: '17'
-  GRADLE_OPTS: "-Dorg.gradle.daemon=false -Dorg.gradle.parallel=true"
   APK_NAME: "CMoD-AnTuTu"
 
 jobs:
@@ -23,7 +22,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           submodules: recursive
-          fetch-depth: 0
 
       - name: Setup JDK ${{ env.JAVA_VERSION }}
         uses: actions/setup-java@v4
@@ -32,20 +30,10 @@ jobs:
           distribution: 'temurin'
           cache: gradle
 
-      - name: Install System Dependencies
-        run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y --no-install-recommends \
-            libgl1 \
-            libglu1-mesa \
-            libc6 \
-            lib32z1
-
       - name: Grant Gradle Permissions
         run: chmod +x gradlew
 
       - name: Extract Build Metadata
-        id: meta
         run: |
           echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
           echo "VERSION=$(grep versionName app/build.gradle \
@@ -54,37 +42,23 @@ jobs:
           echo "BUILD_DATE=$(date +'%Y-%m-%d')" >> $GITHUB_ENV
 
       - name: Build Debug APK
-        run: ./gradlew assembleDebug --stacktrace
+        run: ./gradlew assembleDebug
 
-      - name: Build Release APK
-        run: ./gradlew assembleRelease --stacktrace
-
-      - name: Rename Debug APK
+      - name: Rename APK
         run: |
           mv app/build/outputs/apk/debug/app-debug.apk \
              app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
 
-      - name: Rename Release APK
-        run: |
-          mv app/build/outputs/apk/release/app-release.apk \
-             app/build/outputs/apk/release/${{ env.APK_NAME }}.apk
-
       - name: List Output Files
         run: |
           ls -lh app/build/outputs/apk/debug/
-          ls -lh app/build/outputs/apk/release/
+          ls -la app/src/main/assets
 
-      - name: Upload Debug APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.APK_NAME }}-debug-${{ env.VERSION }}-${{ env.SHORT_SHA }}
+          name: ${{ env.APK_NAME }}-${{ env.VERSION }}-${{ env.SHORT_SHA }}
           path: app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
-
-      - name: Upload Release APK
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.APK_NAME }}-release-${{ env.VERSION }}-${{ env.SHORT_SHA }}
-          path: app/build/outputs/apk/release/${{ env.APK_NAME }}.apk
 
       - name: Create Release
         if: github.event_name == 'push' && github.ref == 'refs/heads/winlator_bionic'
@@ -93,11 +67,12 @@ jobs:
           tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
           name: "${{ env.APK_NAME }} v${{ env.VERSION }}"
           body: |
+            ## CMoD-AnTuTu v${{ env.VERSION }}
+            
             ### Build Info
             - Build Date: ${{ env.BUILD_DATE }}
             - Commit: ${{ env.SHORT_SHA }}
           files: |
-            app/build/outputs/apk/release/${{ env.APK_NAME }}.apk
             app/build/outputs/apk/debug/${{ env.APK_NAME }}.apk
           draft: false
           prerelease: false
