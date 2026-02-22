@@ -71,6 +71,8 @@ public class FrameRating extends FrameLayout implements Runnable {
         totalRAM = getTotalRAM();
 
         addView(view);
+
+        view.setAlpha(0.75f);
     }
 
     private String getCPUModel() {
@@ -208,8 +210,8 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvCPUUsage.setText(String.format(Locale.ENGLISH, "%.0f%% | %d MHz | %d Cores", cpuUsage, cpuFreq, cores));
         updateCPUColor(cpuUsage);
 
-        // GPU
-        tvGPUUsage.setText(tvGPU.getText());
+        // GPU Usage
+        tvGPUUsage.setText("");
 
         // RAM
         tvRAM.setText(getUsedRAM() + " / " + totalRAM);
