@@ -1,140 +1,135 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="wrap_content"
     android:orientation="vertical"
-    android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:background="#CC000000"
+    android:padding="6dp">
 
+    <!-- FPS Row -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="2dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginLeft="10dp"
-        android:gravity="center_vertical"
-        android:background="#33000000">
+        android:orientation="horizontal">
 
         <TextView
+            android:id="@+id/TVFPSLabel"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textStyle="bold"
-            android:textSize="12dp"
-            android:text="FPS:"
-            android:textColor="#0277bd"
-            android:includeFontPadding="false"
-            android:maxLines="1"
-            android:layout_marginRight="5dp" />
+            android:text="FPS: "
+            android:textColor="#00E676"
+            android:textSize="12sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/TVFPS"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textStyle="bold"
-            android:textSize="12dp"
-            android:text="0"
-            android:textColor="#ffffff"
-            android:includeFontPadding="false"
-            android:maxLines="1" />
+            android:text="0.0"
+            android:textColor="#00E676"
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </LinearLayout>
+
+    <!-- Renderer Row -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="2dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginLeft="10dp"
-        android:gravity="center_vertical"
-        android:background="#33000000">
+        android:orientation="horizontal">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textStyle="bold"
-            android:textSize="12dp"
-            android:text="Renderer:"
-            android:textColor="#fc0303"
-            android:includeFontPadding="false"
-            android:maxLines="1"
-            android:layout_marginRight="5dp" />
+            android:text="API: "
+            android:textColor="#42A5F5"
+            android:textSize="10sp" />
 
         <TextView
             android:id="@+id/TVRenderer"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textStyle="bold"
-            android:textSize="12dp"
-            android:textColor="#ffffff"
-            android:includeFontPadding="false"
-            android:maxLines="1" />
+            android:text="OpenGL"
+            android:textColor="#42A5F5"
+            android:textSize="10sp" />
     </LinearLayout>
+
+    <!-- GPU Row -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="2dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginLeft="10dp"
-        android:gravity="center_vertical"
-        android:background="#33000000">
+        android:orientation="horizontal">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textStyle="bold"
-            android:textSize="12dp"
-            android:text="GPU:"
-            android:textColor="#5c23a6"
-            android:includeFontPadding="false"
-            android:maxLines="1"
-            android:layout_marginRight="5dp" />
+            android:text="GPU: "
+            android:textColor="#AB47BC"
+            android:textSize="10sp" />
 
         <TextView
             android:id="@+id/TVGPU"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textStyle="bold"
-            android:textSize="12dp"
-            android:textColor="#ffffff"
-            android:includeFontPadding="false"
-            android:maxLines="1" />
+            android:textColor="#AB47BC"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/TVGPUUsage"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="6dp"
+            android:textColor="#AB47BC"
+            android:textSize="10sp" />
     </LinearLayout>
+
+    <!-- CPU Row -->
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:orientation="horizontal"
-        android:padding="2dp"
-        android:layout_marginTop="2dp"
-        android:layout_marginLeft="10dp"
-        android:gravity="center_vertical"
-        android:background="#33000000">
+        android:orientation="horizontal">
 
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textStyle="bold"
-            android:textSize="12dp"
-            android:text="RAM:"
-            android:textColor="#23a6a4"
-            android:includeFontPadding="false"
-            android:maxLines="1"
-            android:layout_marginRight="5dp" />
+            android:text="CPU: "
+            android:textColor="#FF7043"
+            android:textSize="10sp" />
+
+        <TextView
+            android:id="@+id/TVCPU"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FF7043"
+            android:textSize="10sp" />
+    </LinearLayout>
+
+    <!-- CPU Usage Row -->
+    <TextView
+        android:id="@+id/TVCPUUsage"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:textColor="#00E676"
+        android:textSize="10sp" />
+
+    <!-- RAM Row -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="RAM: "
+            android:textColor="#26C6DA"
+            android:textSize="10sp" />
 
         <TextView
             android:id="@+id/TVRAM"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:textStyle="bold"
-            android:textSize="12dp"
-            android:textColor="#ffffff"
-            android:includeFontPadding="false"
-            android:maxLines="1" />
+            android:textColor="#26C6DA"
+            android:textSize="10sp" />
     </LinearLayout>
+
 </LinearLayout>
