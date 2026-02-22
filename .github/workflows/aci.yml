@@ -54,15 +54,15 @@ jobs:
        name: CMoD-AnTuTu-${{ env.VERSION }}
        path: ./app/build/outputs/apk/debug/CMoD-AnTuTu.apk
 
-#    - name: Create Release
-#      uses: softprops/action-gh-release@v2
-#      with:
-#        tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
-#        name: "CMoD-AnTuTu"
-#        body: ${{ env.CHANGELOG }}
-#        files: ./app/build/outputs/apk/debug/CMoD-AnTuTu.apk
-#      env:
-#        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
+        name: "CMoD-AnTuTu"
+        body: ${{ env.CHANGELOG }}
+        files: ./app/build/outputs/apk/debug/CMoD-AnTuTu.apk
+        env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     - name: "List files"
       run: |
