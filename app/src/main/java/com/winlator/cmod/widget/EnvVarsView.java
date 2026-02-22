@@ -54,7 +54,8 @@ public class EnvVarsView extends FrameLayout {
         {"DXVK_HDR", "CHECKBOX", "0", "1"},
         {"DXVK_CONFIG_FILE", "TEXT"},
         {"VKD3D_SHADER_MODEL", "TEXT"},
-        {"VKD3D_LOG_FILE", "TEXT"}
+        {"VKD3D_LOG_FILE", "TEXT"},
+        {"WRAPPER_BLITZ", "CHECKBOX", "0", "1"}
     };
     private final LinearLayout container;
     private final TextView emptyTextView;
@@ -266,4 +267,5 @@ public class EnvVarsView extends FrameLayout {
     }
 
 }
+
 
