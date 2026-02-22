@@ -10,11 +10,9 @@ buildscript {
         gradlePluginPortal()
     }
     dependencies {
-        // Adjust Gradle plugin versions if needed
         classpath 'com.android.tools.build:gradle:8.8.0'
         classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:1.9.0'
     }
-
 }
 
 plugins {
@@ -118,50 +116,31 @@ preBuild.dependsOn(downloadProton)
 
 android {
     namespace 'com.winlator.cmod'
-    // Keep compileSdk from your current config. If you want to match Termux-X11, you could set to 34.
     compileSdk 34
     buildToolsVersion "35.0.0"
 
     defaultConfig {
         applicationId "com.antutu.ABenchMark"
         minSdkVersion 26
-        // We’re preserving Winlator’s request to keep targetSdkVersion at 28
         targetSdkVersion 28
 
         versionCode 20
         versionName "7.1.4x-cmod"
 
-        // External native build from Winlator
         externalNativeBuild {
             cmake {
                 cppFlags ''
             }
         }
 
-        // You originally only did arm64-v8a. If you want multi-ABI splits, see below.
         ndk {
             abiFilters 'arm64-v8a'
         }
     }
 
-
-    // Java versions: Winlator uses Java 17, Termux-X11 used 1.9
-    // Using 17 is typically fine (covers 1.9 features).
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
-    }
-
-    // Keep Winlator’s buildTypes
-    buildTypes {
-        debug {
-            minifyEnabled false
-            signingConfig signingConfigs.debug
-        }
-        release {
-            minifyEnabled false
-            signingConfig signingConfigs.release
-        }
     }
 
     signingConfigs {
@@ -179,6 +158,17 @@ android {
         }
     }
 
+    buildTypes {
+        debug {
+            minifyEnabled false
+            signingConfig signingConfigs.debug
+        }
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
     ndkVersion '29.0.14206865'
 
     externalNativeBuild {
@@ -187,7 +177,6 @@ android {
         }
     }
 
-    // If you want to be sure modern JNI packaging is used:
     packagingOptions {
         jniLibs {
             useLegacyPackaging = true
@@ -196,7 +185,6 @@ android {
 }
 
 dependencies {
-    // Winlator’s dependencies
     implementation 'androidx.appcompat:appcompat:1.4.0'
     implementation 'androidx.preference:preference:1.2.1'
     implementation 'com.google.android.material:material:1.4.0'
