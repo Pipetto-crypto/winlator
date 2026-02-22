@@ -37,10 +37,6 @@ jobs:
         git fetch upstream winlator_bionic || true
 
         echo "CHANGELOG<<EOF" >> $GITHUB_ENV
-        echo "## CMoD Changes" >> $GITHUB_ENV
-        git log --pretty=format:"- %s (%an)" $(git describe --tags --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)..HEAD -- . ':!.github' >> $GITHUB_ENV
-        echo "" >> $GITHUB_ENV
-        echo "" >> $GITHUB_ENV
         echo "## Upstream (Pipetto) Latest Commits" >> $GITHUB_ENV
         git log --pretty=format:"- %s" upstream/winlator_bionic -10 >> $GITHUB_ENV
         echo "" >> $GITHUB_ENV
@@ -62,7 +58,7 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: v${{ env.VERSION }}-${{ env.SHORT_SHA }}
-        name: "CMoD-AnTuTu v${{ env.VERSION }}"
+        name: "CMoD-AnTuTu"
         body: ${{ env.CHANGELOG }}
         files: ./app/build/outputs/apk/debug/CMoD-AnTuTu.apk
       env:
