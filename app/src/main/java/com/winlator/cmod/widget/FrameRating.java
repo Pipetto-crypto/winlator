@@ -33,7 +33,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private final TextView tvRAM;
     private final TextView tvCPU;
     private final TextView tvCPUUsage;
-    private final TextView tvGPUUsage;
+
     private HashMap graphicsDriverConfig;
 
     // CPU usage tracking
@@ -62,7 +62,7 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRAM = view.findViewById(R.id.TVRAM);
         tvCPU = view.findViewById(R.id.TVCPU);
         tvCPUUsage = view.findViewById(R.id.TVCPUUsage);
-        tvGPUUsage = view.findViewById(R.id.TVGPUUsage);
+
 
         // Set initial values
         tvRenderer.setText("OpenGL");
@@ -72,6 +72,7 @@ public class FrameRating extends FrameLayout implements Runnable {
 
         addView(view);
 
+        // تقليل الشفافية لعدم تغطية المحتوى
         view.setAlpha(0.75f);
     }
 
@@ -210,10 +211,10 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvCPUUsage.setText(String.format(Locale.ENGLISH, "%.0f%% | %d MHz | %d Cores", cpuUsage, cpuFreq, cores));
         updateCPUColor(cpuUsage);
 
-        // GPU Usage
-        tvGPUUsage.setText("");
+
 
         // RAM
         tvRAM.setText(getUsedRAM() + " / " + totalRAM);
     }
 }
+
