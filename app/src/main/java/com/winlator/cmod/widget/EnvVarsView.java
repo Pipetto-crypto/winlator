@@ -43,7 +43,15 @@ public class EnvVarsView extends FrameLayout {
         {"PULSE_LATENCY_MSEC", "NUMBER"},
         {"WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER", "CHECKBOX", "0", "1"},
         {"WINE_NEW_MEDIASOURCE", "CHECKBOX", "0", "1"},
-        {"GALLIUM_HUD", "SELECT_MULTIPLE", "simple", "fps", "frametime"}
+        {"GALLIUM_HUD", "SELECT_MULTIPLE", "simple", "fps", "frametime"},
+        {"WINEDLLOVERRIDES", "SELECT_MULTIPLE_SEMICOLON",
+            "winemenubuilder.exe=d", "dxgi=n,b", "vulkan-1=n,b",
+            "d3d11=n,b", "d3d12=n,b", "winmm=n,b", "version=n,b",
+            "mscoree=n,b", "msvcp140=n,b"},
+        {"DXVK_HDR", "CHECKBOX", "0", "1"},
+        {"DXVK_CONFIG_FILE", "TEXT"},
+        {"VKD3D_SHADER_MODEL", "TEXT"},
+        {"VKD3D_LOG_FILE", "TEXT"}
     };
     private final LinearLayout container;
     private final TextView emptyTextView;
@@ -202,13 +210,15 @@ public class EnvVarsView extends FrameLayout {
                 applyDarkTheme(spinner); // Apply dark theme
                 getValueCallback = () -> spinner.getSelectedItem().toString();
                 break;
+            case "SELECT_MULTIPLE_SEMICOLON":
             case "SELECT_MULTIPLE":
                 final MultiSelectionComboBox comboBox = itemView.findViewById(R.id.MultiSelectionComboBox);
                 comboBox.setItems(Arrays.copyOfRange(knownEnvVar, 2, knownEnvVar.length));
-                comboBox.setSelectedItems(value.split(","));
+                comboBox.setSelectedItems(value.split(type.equals("SELECT_MULTIPLE_SEMICOLON") ? ";" : ","));
                 comboBox.setVisibility(VISIBLE);
                 // applyDarkTheme(comboBox); // Implement if required for custom views
-                getValueCallback = comboBox::getSelectedItemsAsString;
+                final String separator = type.equals("SELECT_MULTIPLE_SEMICOLON") ? ";" : ",";
+                getValueCallback = () -> comboBox.getSelectedItemsAsString(separator);
                 break;
             case "TEXT":
                 EditText editText = itemView.findViewById(R.id.EditText);
@@ -253,4 +263,3 @@ public class EnvVarsView extends FrameLayout {
     }
 
 }
-
