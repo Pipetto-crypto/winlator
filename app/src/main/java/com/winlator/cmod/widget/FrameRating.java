@@ -175,6 +175,8 @@ public class FrameRating extends FrameLayout implements Runnable {
     }
 
     public void setGpuName(String gpuName) {
+    
+        if (gpuName == null || gpuName.equals(tvGPU.getText().toString())) return;
         tvGPU.setText(gpuName);
     }
 
@@ -214,4 +216,3 @@ public class FrameRating extends FrameLayout implements Runnable {
         tvRAM.setText(getUsedRAM() + " / " + totalRAM);
     }
 }
-
