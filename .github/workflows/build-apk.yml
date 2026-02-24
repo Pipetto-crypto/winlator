@@ -45,5 +45,5 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: winlator-bionic-debug-apk
+          name: winlator-bionic-nightly-apk
           path: path: app/build/outputs/apk/release/*.apk
