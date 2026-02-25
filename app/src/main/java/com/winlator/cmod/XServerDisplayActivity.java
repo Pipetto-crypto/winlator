@@ -1535,7 +1535,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         envVars.put("WRAPPER_EXTENSION_BLACKLIST", blacklistedExtensions);
 
         String gpuName = graphicsDriverConfig.get("gpuName");
-        if (!gpuName.equals("Device")) {
+        String dxvkVersion = dxwrapperConfig.get("version");
+        if (!gpuName.equals("Device") && !dxvkVersion.equals("1.11.1-sarek")) {
             envVars.put("WRAPPER_DEVICE_NAME", gpuName);
             envVars.put("WRAPPER_DEVICE_ID", WineD3DConfigDialog.getDeviceIdFromGPUName(this, gpuName));
             envVars.put("WRAPPER_VENDOR_ID", WineD3DConfigDialog.getVendorIdFromGPUName(this, gpuName));
@@ -1660,6 +1661,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             String dxvkWrapper = dxwrapper.split(";")[0];
             String vkd3dWrapper = dxwrapper.split(";")[1];
             String ddrawrapper = dxwrapper.split(";")[2];
+            
             ContentProfile dxvkProfile = contentsManager.getProfileByEntryName(dxvkWrapper);
             if (dxvkProfile != null) {
                 Log.d(TAG, "Applying user-defined DXVK content profile: " + dxvkWrapper);
