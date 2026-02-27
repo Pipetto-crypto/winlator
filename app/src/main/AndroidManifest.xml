@@ -1,8 +1,5 @@
-<?xml version="1.0" encoding="utf-8"?>
-<manifest
-    xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/tools">
-
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.winlator">
     <uses-feature
         android:glEsVersion="0x00020000"
         android:required="true" />
@@ -19,40 +16,29 @@
         android:name="oculus.software.overlay_keyboard"
         android:required="false" />
 
-    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE"/>
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE"/>
-    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE"/>
     <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
     <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE"/>
-    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT" />
-    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />
-    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
-    <uses-permission
-        android:name="android.permission.WRITE_SECURE_SETTINGS"
-        tools:ignore="ProtectedPermissions" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
+    <uses-permission android:name="android.permission.VIBRATE"/>
+    <uses-permission android:name="com.android.launcher.permission.INSTALL_SHORTCUT"/>
 
     <application
-        android:label="Winlator CMOD"
         android:icon="@mipmap/ic_launcher"
-        android:roundIcon="@mipmap/ic_launcher_round"
         android:theme="@style/AppTheme"
         android:appCategory="game"
         android:isGame="true"
-        android:allowBackup="false"
+        android:extractNativeLibs="true"
         android:allowAudioPlaybackCapture="true"
-        android:hardwareAccelerated="true"
-        android:supportsRtl="true"
-        tools:ignore="DataExtractionRules,GoogleAppIndexingWarning">
+        android:label="@string/app_name">
 
-        <activity
-            android:name="com.winlator.cmod.MainActivity"
-            android:theme="@style/AppTheme.Dark"
-            android:screenOrientation="sensor"
+        <activity android:name="com.winlator.MainActivity"
+            android:theme="@style/AppTheme"
             android:exported="true"
+            android:screenOrientation="sensor"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
@@ -60,29 +46,23 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name="com.winlator.cmod.BigPictureActivity"
-            android:theme="@style/Theme.AppCompat"
-            android:exported="false" />
-
-        <activity
-            android:name="com.winlator.cmod.XServerDisplayActivity"
+        <activity android:name="com.winlator.XServerDisplayActivity"
+            android:exported="false"
             android:theme="@style/AppThemeFullscreen"
             android:launchMode="singleTask"
             android:supportsPictureInPicture="true"
-            android:screenOrientation="sensorLandscape"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|smallestScreenSize|density|navigation"
-            android:exported="true" />
+            android:screenOrientation="sensorLandscape" />
 
         <activity
-            android:name="com.winlator.cmod.XrActivity"
-            android:theme="@style/AppThemeFullscreen"
+            android:name="com.winlator.XrActivity"
+            android:configChanges="density|orientation|screenSize|keyboard|keyboardHidden|uiMode"
+            android:exported="true"
             android:launchMode="singleTask"
             android:resizeableActivity="false"
             android:screenOrientation="landscape"
             android:process=":vr_process"
-            android:configChanges="density|orientation|screenSize|keyboard|keyboardHidden|uiMode"
-            android:exported="true">
+            android:theme="@style/AppThemeFullscreen">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="com.oculus.intent.category.VR" />
@@ -90,45 +70,19 @@
             </intent-filter>
         </activity>
 
-        <activity
-            android:name="com.winlator.cmod.ControlsEditorActivity"
-            android:theme="@style/AppThemeFullscreen"
-            android:screenOrientation="sensorLandscape"
-            android:exported="false" />
-
-        <activity
-            android:name="com.winlator.cmod.ExternalControllerBindingsActivity"
-            android:theme="@style/AppTheme"
-            android:screenOrientation="sensor"
-            android:exported="false" />
-
-        <activity
-            android:name=".saves.CustomFilePickerActivity"
-            android:theme="@style/AppTheme"
-            android:screenOrientation="sensor"
-            android:exported="false" />
-
-        <receiver
-            android:name=".ShortcutBroadcastReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.antutu.ABenchMark.SHORTCUT_ADDED" />
-            </intent-filter>
-        </receiver>
-
-        <provider
-            android:name="androidx.core.content.FileProvider"
-            android:authorities="com.antutu.ABenchMark.tileprovider"
+        <activity android:name="com.winlator.ControlsEditorActivity"
             android:exported="false"
-            android:grantUriPermissions="true">
-            <meta-data
-                android:name="android.support.FILE_PROVIDER_PATHS"
-                android:resource="@xml/file_paths" />
-        </provider>
+            android:theme="@style/AppThemeFullscreen"
+            android:screenOrientation="sensor" />
+
+        <activity android:name="com.winlator.ExternalControllerBindingsActivity"
+            android:theme="@style/AppTheme"
+            android:exported="false"
+            android:screenOrientation="sensor" />
 
         <provider
             android:name=".core.WinlatorFilesProvider"
-            android:authorities="com.antutu.ABenchMark.core.WinlatorFilesProvider"
+            android:authorities="com.winlator.core.WinlatorFilesProvider"
             android:exported="true"
             android:grantUriPermissions="true"
             android:permission="android.permission.MANAGE_DOCUMENTS">
@@ -137,11 +91,22 @@
             </intent-filter>
         </provider>
 
+        <!-- X11 Activity (Termux-X11 style) -->
         <activity
-            android:name=".restore.RestoreActivity"
-            android:process=":restore_process"
-            android:theme="@style/Theme.AppCompat.Light.NoActionBar"
-            android:exported="true" />
+            android:name=".X11Activity"
+            android:taskAffinity=".X11Activity"
+            android:supportsPictureInPicture="true"
+            android:configChanges="fontScale|orientation|screenSize|keyboard|keyboardHidden|layoutDirection|locale|mcc|mnc|navigation|screenLayout|touchscreen|uiMode|smallestScreenSize|density"
+            android:resizeableActivity="true"
+            android:windowSoftInputMode="stateHidden"
+            android:exported="true">
+            <intent-filter>
+                <category android:name="android.intent.category.SECONDARY_HOME" />
+            </intent-filter>
+            <meta-data
+                android:name="android.app.shortcuts"
+                android:resource="@xml/shortcuts" />
+        </activity>
 
         <meta-data
             android:name="com.samsung.android.multidisplay.keep_process_alive"
@@ -152,4 +117,3 @@
 
     </application>
 </manifest>
-
