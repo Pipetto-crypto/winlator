@@ -533,17 +533,20 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             @Override
             public void onMapWindow(Window window) {
                 // Log the class name of the mapped window
-                Log.d("XServerDisplayActivity", "onMapWindow: Detected window className: " + window.getClassName());
+                Log.d("XServerDisplayActivity", "onMapWindow: Mapping window: " + window.getClassName());
                 assignTaskAffinity(window);
             }
 
             @Override
             public void onModifyWindowProperty(Window window, Property property) {
+                String name = (property != null) ? property.nameAsString() : "";
+                Log.d("XServerDisplayActivity", "onModifyWindowProperty: Changed property " + name + " for window " + window.id);
                 changeFrameRatingVisibility(window, property);
             }    
 
             @Override
-            public void onUnmapWindow(Window window) {
+            public void onDestroyWindow(Window window) {
+                Log.d("XServerDisplayActivity", "onDestroyWindow: Destroying window " + window.getClassName());
                 changeFrameRatingVisibility(window, null);
             }
         });
