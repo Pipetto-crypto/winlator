@@ -30,6 +30,7 @@
     <string name="shape">Shape</string>
     <string name="type">Type</string>
     <string name="binding">Binding</string>
+    <string name="binding_secondary">Secondary binding</string>
     <string name="binding_up">Binding Up</string>
     <string name="binding_right">Binding Right</string>
     <string name="binding_down">Binding Down</string>
