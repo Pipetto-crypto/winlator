@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical">
+
+    <ScrollView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content">
+
+        <LinearLayout
+            android:layout_width="300dp"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="12dp">
+
+            <!-- Present Mode -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Present Mode"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:paddingBottom="4dp"/>
+            <Spinner
+                android:id="@+id/SPRendererPresentMode"
+                style="@style/ComboBox"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:spinnerMode="dialog"
+                android:layout_marginBottom="8dp"/>
+
+            <LinearLayout
+                android:id="@+id/GroupDriver"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Renderer Driver"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:paddingBottom="4dp"/>
+                <Spinner
+                    android:id="@+id/SPRendererDriver"
+                    style="@style/ComboBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:spinnerMode="dialog"
+                    android:layout_marginBottom="8dp"/>
+            </LinearLayout>
+
+            <LinearLayout
+                android:id="@+id/GroupFilter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Texture Filter"
+                    android:textAppearance="?android:attr/textAppearanceSmall"
+                    android:paddingBottom="4dp"/>
+                <Spinner
+                    android:id="@+id/SPRendererFilter"
+                    style="@style/ComboBox"
+                    android:layout_width="match_parent"
+                    android:layout_height="40dp"
+                    android:spinnerMode="dialog"/>
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Refresh Rate"
+                android:textAppearance="?android:attr/textAppearanceSmall"
+                android:paddingBottom="4dp"
+                android:layout_marginTop="8dp"/>
+            <Spinner
+                android:id="@+id/SPRendererRefreshRate"
+                style="@style/ComboBox"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:spinnerMode="dialog"/>
+
+            <CheckBox
+                android:id="@+id/CBRendererSwapRB"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="12dp"
+                android:text="Swap red/blue channels" />
+
+        </LinearLayout>
+    </ScrollView>
+</LinearLayout>

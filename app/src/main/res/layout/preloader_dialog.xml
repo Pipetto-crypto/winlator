@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center"
+    android:clickable="false"
+    android:focusable="false">
+
+    <LinearLayout
+        android:id="@+id/LLPreloaderContainer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingTop="18dp"
+        android:paddingBottom="18dp"
+        android:paddingLeft="22dp"
+        android:paddingRight="22dp"
+        android:gravity="center_horizontal"
+        android:layout_gravity="center"
+        android:background="@android:color/transparent">
+
+        <TextView
+            android:id="@+id/TextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="10dp"
+            android:textSize="19sp"
+            android:textColor="@color/colorPrimaryDark" />
+
+        <FrameLayout
+            android:layout_width="72dp"
+            android:layout_height="72dp">
+
+            <com.google.android.material.progressindicator.CircularProgressIndicator
+                android:id="@+id/CircularProgressIndicator"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:indeterminate="true"
+                app:indicatorColor="@color/colorAccent"
+                app:indicatorSize="72dp"
+                app:indicatorInset="0dp"
+                app:indicatorDirectionCircular="clockwise"
+                app:trackColor="#5f5f5f"
+                app:trackThickness="7dp" />
+
+            <TextView
+                android:id="@+id/TVProgress"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:textSize="16sp"
+                android:textColor="@color/colorPrimaryDark" />
+        </FrameLayout>
+
+        <TextView
+            android:id="@+id/TVProgressValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:textColor="@color/colorPrimaryDark"
+            android:textSize="16sp" />
+    </LinearLayout>
+</FrameLayout>

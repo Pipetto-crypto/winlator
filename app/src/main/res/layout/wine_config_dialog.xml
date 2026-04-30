@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="8dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <Spinner
+            android:id="@+id/SWineConfigVersion"
+            style="@style/ComboBox"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:spinnerMode="dropdown" />
+
+        <ImageButton
+            style="@style/ListMenuButton"
+            android:id="@+id/BTWineConfigRemove"
+            android:src="@drawable/icon_popup_menu_remove"
+            android:contentDescription="Remove selected Wine/Proton" />
+
+        <ImageButton
+            style="@style/ListMenuButton"
+            android:id="@+id/BTWineConfigDownload"
+            android:src="@drawable/icon_popup_menu_download"
+            android:contentDescription="Install Wine/Proton content" />
+    </LinearLayout>
+
+</LinearLayout>
