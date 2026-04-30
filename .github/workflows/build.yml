@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
@@ -32,20 +32,8 @@ jobs:
     - name: Build with Gradle
       run: ./gradlew assembleDebug
 
-    - name: Get short SHA
-      run: echo "SHORT_SHA=$(git rev-parse --short HEAD)" >> $GITHUB_ENV
-
-    - name: Get versionName
-      run: |
-        VERSION=$(grep versionName app/build.gradle.kts | cut -d '=' -f2 | tr -d ' "')
-        echo "VERSION=$VERSION" >> $GITHUB_ENV
-
-    - name: Create GitHub Release and upload APK
-      uses: softprops/action-gh-release@v1
+    - name: Upload APK as artifact
+      uses: actions/upload-artifact@v4
       with:
-        tag_name: debug-${{ github.run_number }}
-        name: "Winlator Bionic Debug ${{ github.run_number }}"
-        body: |
-          Commit: ${{ env.SHORT_SHA }}
-          Version: ${{ env.VERSION }}
-        files: app/build/outputs/apk/debug/app-debug.apk
+        name: app-debug
+        path: app/build/outputs/apk/debug/app-debug.apk
