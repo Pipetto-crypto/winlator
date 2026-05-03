@@ -112,7 +112,6 @@ static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
 struct WindowPushConstants {
     float ndcX0, ndcY0, ndcX1, ndcY1;
-    int   swapRB;
     int   effectId;
     float sharpness;
     float resW;
