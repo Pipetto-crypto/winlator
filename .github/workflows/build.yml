@@ -1,7 +1,10 @@
 name: Android CI Bionic
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ "ludashi-3.0" ]
+  pull_request:
+    branches: [ "ludashi-3.0" ]
 
 permissions:
   contents: read
