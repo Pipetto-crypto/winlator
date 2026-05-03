@@ -5,7 +5,6 @@ layout(push_constant) uniform PC {
     float ndcY0;
     float ndcX1;
     float ndcY1;
-    int swapRB;
 } pc;
 
 layout(location = 0) out vec2 fragTexCoord;

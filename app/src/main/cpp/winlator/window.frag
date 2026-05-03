@@ -2,7 +2,6 @@
 layout(binding = 0) uniform sampler2D texSampler;
 layout(push_constant) uniform PC {
     float ndcX0, ndcY0, ndcX1, ndcY1;
-    int   swapRB;
     int   effectId;   
     float sharpness;   
     float resW;
@@ -93,11 +92,13 @@ vec3 applyNatural(vec2 uv) {
 void main() {
     vec2 uv = fragTexCoord;
     vec4 c;
+    
     if      (pc.effectId == 1) c = vec4(applyFSR    (uv, pc.sharpness), 1.0);
     else if (pc.effectId == 2) c = vec4(applyDLS    (uv, pc.sharpness), 1.0);
     else if (pc.effectId == 3) c = vec4(applyCRT    (uv), 1.0);
     else if (pc.effectId == 4) c = vec4(applyHDR    (uv), 1.0);
     else if (pc.effectId == 5) c = vec4(applyNatural(uv), 1.0);
     else                       c = texture(texSampler, uv);
-    outColor = (pc.swapRB != 0) ? c.bgra : c;
+    
+    outColor = c;
 }
