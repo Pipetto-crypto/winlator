@@ -249,7 +249,7 @@ void VulkanRendererContext::createSwapchain() {
     swapchainExt=(caps.currentExtent.width!=0xFFFFFFFF)?caps.currentExtent:VkExtent2D{(uint32_t)surfaceWidth,(uint32_t)surfaceHeight};
     uint32_t fmtN=0; vk_.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,&fmtN,nullptr);
     std::vector<VkSurfaceFormatKHR> fmts(fmtN); vk_.GetPhysicalDeviceSurfaceFormatsKHR(physicalDevice,surface,&fmtN,fmts.data());
-    swapchainFmt = VK_FORMAT_B8G8R8A8_UNORM;
+    swapchainFmt = VK_FORMAT_R8G8B8A8_UNORM;
     uint32_t imgCount=caps.minImageCount+1;
 
     uint32_t pmCount=0;
