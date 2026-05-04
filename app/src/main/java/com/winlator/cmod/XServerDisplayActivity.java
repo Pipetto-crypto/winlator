@@ -853,8 +853,7 @@ if (enableLogs) {
             renderer.setRefreshRateLimit(refreshRateLimit);
             boolean swapRB = shortcut != null ? shortcut.getRendererSwapRB()
                 : (container != null && container.getRendererSwapRB());
-            if (GPUInformation.getRenderer(null, this).contains("Mali")) swapRB = true;
-            renderer.setSwapRB(swapRB);
+     		renderer.setSwapRB(swapRB);
             int sidebarFpsLimit = shortcut != null ? parseIntOrDefault(shortcut.getExtra("sidebarFpsLimit", "0"), 0) : 0;
             renderer.setFpsLimit(Math.max(0, sidebarFpsLimit));
         }
