@@ -518,45 +518,117 @@ bool VulkanRendererContext::createWinTexResources(WinTex& wt, int w, int h) {
 
 bool VulkanRendererContext::importAHBToWinTex(WinTex& wt, AHardwareBuffer* ahb) {
 
-    if (!vk_.GetAndroidHardwareBufferPropertiesANDROID) return false;
-    VkAndroidHardwareBufferFormatPropertiesANDROID fmtP{}; fmtP.sType=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID;
-    VkAndroidHardwareBufferPropertiesANDROID props{}; props.sType=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID; props.pNext=&fmtP;
-    if (vk_.GetAndroidHardwareBufferPropertiesANDROID(device,ahb,&props)!=VK_SUCCESS) return false;
-    AHardwareBuffer_Desc desc{}; AHardwareBuffer_describe(ahb,&desc);
-    bool extFmt=(fmtP.format==VK_FORMAT_UNDEFINED);
-    VkExternalFormatANDROID ef{}; ef.sType=VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID; ef.externalFormat=extFmt?fmtP.externalFormat:0;
-    VkExternalMemoryImageCreateInfo emi{}; emi.sType=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO; emi.handleTypes=VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
-    if (extFmt){ef.pNext=const_cast<void*>(emi.pNext); emi.pNext=&ef;}
-    VkImageCreateInfo ii{}; ii.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO; ii.pNext=&emi; ii.imageType=VK_IMAGE_TYPE_2D;
-    ii.format=extFmt?VK_FORMAT_UNDEFINED:fmtP.format; ii.extent={desc.width,desc.height,1};
-    ii.mipLevels=1; ii.arrayLayers=1; ii.samples=VK_SAMPLE_COUNT_1_BIT; ii.tiling=VK_IMAGE_TILING_OPTIMAL;
-    ii.usage=VK_IMAGE_USAGE_SAMPLED_BIT; ii.sharingMode=VK_SHARING_MODE_EXCLUSIVE; ii.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
-    if (vk_.CreateImage(device,&ii,nullptr,&wt.img)!=VK_SUCCESS) return false;
-    VkImportAndroidHardwareBufferInfoANDROID imp{}; imp.sType=VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID; imp.buffer=ahb;
-    VkMemoryDedicatedAllocateInfo ded{}; ded.sType=VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO; ded.pNext=&imp; ded.image=wt.img;
-    VkMemoryAllocateInfo mai{}; mai.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO; mai.pNext=&ded; mai.allocationSize=props.allocationSize; mai.memoryTypeIndex=findMemType(props.memoryTypeBits,0);
-    if (vk_.AllocateMemory(device,&mai,nullptr,&wt.mem)!=VK_SUCCESS){vk_.DestroyImage(device,wt.img,nullptr);wt.img=VK_NULL_HANDLE;return false;}
+    if (!vk_.GetAndroidHardwareBufferPropertiesANDROID) 
+    	return false;
+    	
+    VkAndroidHardwareBufferFormatPropertiesANDROID fmtP{}; 
+    fmtP.sType=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_FORMAT_PROPERTIES_ANDROID;
+    VkAndroidHardwareBufferPropertiesANDROID props{}; 
+    props.sType=VK_STRUCTURE_TYPE_ANDROID_HARDWARE_BUFFER_PROPERTIES_ANDROID; 
+    props.pNext=&fmtP;
+    if (vk_.GetAndroidHardwareBufferPropertiesANDROID(device,ahb,&props)!=VK_SUCCESS) 
+    	return false;
+    	
+    AHardwareBuffer_Desc desc{}; 
+    AHardwareBuffer_describe(ahb,&desc);
+    
+    VkExternalFormatANDROID ef{}; 
+    ef.sType=VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID; 
+    ef.externalFormat=(swapRB)?VK_FORMAT_R8G8B8A8_UNORM:VK_FORMAT_B8G8R8A8_UNORM;
+    
+    VkExternalMemoryImageCreateInfo emi{}; 
+    emi.sType=VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO; 
+    emi.handleTypes=VK_EXTERNAL_MEMORY_HANDLE_TYPE_ANDROID_HARDWARE_BUFFER_BIT_ANDROID;
+    ef.pNext=const_cast<void*>(emi.pNext); 
+    emi.pNext=&ef;
+    
+    VkImageCreateInfo ii{}; 
+    ii.sType=VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO; 
+    ii.pNext=&emi; ii.imageType=VK_IMAGE_TYPE_2D;
+    ii.format=(swapRB)?VK_FORMAT_R8G8B8A8_UNORM:VK_FORMAT_B8G8R8A8_UNORM; 
+    ii.extent={desc.width,desc.height,1};
+    ii.mipLevels=1; 
+    ii.arrayLayers=1; 
+    ii.samples=VK_SAMPLE_COUNT_1_BIT; 
+    ii.tiling=VK_IMAGE_TILING_OPTIMAL;
+    ii.usage=VK_IMAGE_USAGE_SAMPLED_BIT; 
+    ii.sharingMode=VK_SHARING_MODE_EXCLUSIVE; 
+    ii.initialLayout=VK_IMAGE_LAYOUT_UNDEFINED;
+
+    if (vk_.CreateImage(device,&ii,nullptr,&wt.img)!=VK_SUCCESS) 
+    	return false;
+    	
+    VkImportAndroidHardwareBufferInfoANDROID imp{}; 
+    imp.sType=VK_STRUCTURE_TYPE_IMPORT_ANDROID_HARDWARE_BUFFER_INFO_ANDROID; 
+    imp.buffer=ahb;
+    
+    VkMemoryDedicatedAllocateInfo ded{}; 
+    ded.sType=VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO; 
+    ded.pNext=&imp; 
+    ded.image=wt.img;
+    
+    VkMemoryAllocateInfo mai{}; 
+    mai.sType=VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO; 
+    mai.pNext=&ded; 
+    mai.allocationSize=props.allocationSize; 
+    mai.memoryTypeIndex=findMemType(props.memoryTypeBits,0);
+    if (vk_.AllocateMemory(device,&mai,nullptr,&wt.mem)!=VK_SUCCESS){
+    	vk_.DestroyImage(device,wt.img,nullptr);
+    	wt.img=VK_NULL_HANDLE;
+    	return false;
+    }
+    
     vk_.BindImageMemory(device,wt.img,wt.mem,0);
-    VkExternalFormatANDROID vef{}; vef.sType=VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID; vef.externalFormat=extFmt?fmtP.externalFormat:0;
-    VkImageViewCreateInfo vi{}; vi.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO; vi.pNext=extFmt?&vef:nullptr;
-    vi.image=wt.img; vi.viewType=VK_IMAGE_VIEW_TYPE_2D; vi.format=extFmt?VK_FORMAT_UNDEFINED:fmtP.format;
+    VkExternalFormatANDROID vef{}; 
+    vef.sType=VK_STRUCTURE_TYPE_EXTERNAL_FORMAT_ANDROID; 
+    vef.externalFormat=(swapRB)?VK_FORMAT_R8G8B8A8_UNORM:VK_FORMAT_B8G8R8A8_UNORM;
+
+    VkImageViewCreateInfo vi{}; 
+    vi.sType=VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO; 
+    vi.pNext=&vef;
+    vi.image=wt.img; 
+    vi.viewType=VK_IMAGE_VIEW_TYPE_2D; 
+    vi.format=(swapRB)?VK_FORMAT_R8G8B8A8_UNORM:VK_FORMAT_B8G8R8A8_UNORM;
     vi.components={VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY,VK_COMPONENT_SWIZZLE_IDENTITY};
     vi.subresourceRange={VK_IMAGE_ASPECT_COLOR_BIT,0,1,0,1};
-    if (vk_.CreateImageView(device,&vi,nullptr,&wt.view)!=VK_SUCCESS){destroyWinTex(wt);return false;}
-    VkDescriptorSetAllocateInfo dsai{}; dsai.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO; dsai.descriptorPool=winTexPool; dsai.descriptorSetCount=1; dsai.pSetLayouts=&dsLayout;
+    if (vk_.CreateImageView(device,&vi,nullptr,&wt.view)!=VK_SUCCESS){
+    	destroyWinTex(wt);
+    	return false;
+    }
+    
+    VkDescriptorSetAllocateInfo dsai{}; 
+    dsai.sType=VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO; 
+    dsai.descriptorPool=winTexPool; 
+    dsai.descriptorSetCount=1; 
+    dsai.pSetLayouts=&dsLayout;
     VkResult dsRes = vk_.AllocateDescriptorSets(device,&dsai,&wt.ds);
     if (dsRes==VK_ERROR_OUT_OF_POOL_MEMORY) {
         RLOG_E("importAHBToWinTex: descriptor pool exhausted for AHB texture");
         destroyWinTex(wt);
         return false;
     }
-    if (dsRes!=VK_SUCCESS){destroyWinTex(wt);return false;}
-    VkDescriptorImageInfo dii{}; dii.imageLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; dii.imageView=wt.view; dii.sampler=sampler;
-    VkWriteDescriptorSet wr{}; wr.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; wr.dstSet=wt.ds; wr.dstBinding=0; wr.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; wr.descriptorCount=1; wr.pImageInfo=&dii;
+    if (dsRes!=VK_SUCCESS){
+	    destroyWinTex(wt);
+  		return false;
+  	}
+    VkDescriptorImageInfo dii{}; 
+    dii.imageLayout=VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL; 
+    dii.imageView=wt.view; 
+    dii.sampler=sampler;
+    
+    VkWriteDescriptorSet wr{}; 
+    wr.sType=VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET; 
+    wr.dstSet=wt.ds; 
+    wr.dstBinding=0; 
+    wr.descriptorType=VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; 
+    wr.descriptorCount=1; 
+    wr.pImageInfo=&dii;
     vk_.UpdateDescriptorSets(device,1,&wr,0,nullptr);
     wt.needsTransition = true;
     wt.isAHB=true;
-    wt.w=(int)desc.width; wt.h=(int)desc.height;
+    wt.w=(int)desc.width; 
+    wt.h=(int)desc.height;
+    
     return true;
 }
 
