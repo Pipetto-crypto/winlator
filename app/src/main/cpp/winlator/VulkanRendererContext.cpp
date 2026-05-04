@@ -812,7 +812,7 @@ void VulkanRendererContext::renderLoop() {
 
     while (isRunning) {
         { std::unique_lock<std::mutex> lk(dirtyMutex);
-          dirtyCV.wait(lk,[this]{
+          dirtyCV.wait_for(lk,std::chrono::milliseconds(2),[this]{
               return !isRunning||(!surfaceDetached.load()&&(needsRender.load()||fbResized.load()))||cursorMoved.load(); }); }
         if (!isRunning) break;
 
