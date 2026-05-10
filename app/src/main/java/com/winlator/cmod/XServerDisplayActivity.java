@@ -751,7 +751,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
         startTime = System.currentTimeMillis();
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
-        ProcessHelper.resumeAllWineProcesses();
+
+        if (!isInPictureInPictureMode())
+        	ProcessHelper.resumeAllWineProcesses();
     }
 
     @Override
@@ -771,11 +773,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 environment.onPause();
                 xServerView.onPause();
             }
+            
+            ProcessHelper.pauseAllWineProcesses();
         }
 
         savePlaytimeData();
         handler.removeCallbacks(savePlaytimeRunnable);
-        ProcessHelper.pauseAllWineProcesses();
     }
 
 
