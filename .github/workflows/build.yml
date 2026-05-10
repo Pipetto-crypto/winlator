@@ -2,9 +2,9 @@ name: Android CI Bionic
 
 on:
   push:
-    branches: [ "winlator-bionic" ]
+    branches: [ "winlator_bionic" ]
   pull_request:
-    branches: [ "winlator-bionic" ]
+    branches: [ "winlator_bionic" ]
 
 permissions:
   contents: read
