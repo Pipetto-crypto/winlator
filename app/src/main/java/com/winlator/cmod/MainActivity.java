@@ -53,14 +53,14 @@ import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     public static final @IntRange(from = 1, to = 19) byte CONTAINER_PATTERN_COMPRESSION_LEVEL = 9;
-    public static final byte PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1;
-    public static final byte PERMISSION_POST_NOTIFICATION_REQUEST_CODE = 2;
+    public static final int PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1000;
+    public static final int PERMISSION_POST_NOTIFICATIONS_REQUEST_CODE = 1001;
     public static final byte OPEN_FILE_REQUEST_CODE = 2;
     public static final byte EDIT_INPUT_CONTROLS_REQUEST_CODE = 3;
     public static final byte OPEN_DIRECTORY_REQUEST_CODE = 4;
     public static final byte OPEN_IMAGE_REQUEST_CODE = 5;
     public static final String NOTIFICATION_CHANNEL_ID = "Winlator";
-    public static final int NOTIFICATION_ID = 1;
+    public static final int NOTIFICATION_ID = 100;
     private DrawerLayout drawerLayout;
     public final PreloaderDialog preloaderDialog = new PreloaderDialog(this);
     private boolean editInputControls = false;
@@ -86,18 +86,8 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         super.onCreate(savedInstanceState);
 
         notificationService = new Intent(this, NotificationService.class);
-
-        if (Build.VERSION.SDK_INT >= 33) {
-        	if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
-            	requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, PERMISSION_POST_NOTIFICATION_REQUEST_CODE);
-        }
-
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
         	createNotificationChannel();
-
-		if (Build.VERSION.SDK_INT < 33 || (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
-        	startForegroundService(notificationService);
-        }
 
         // Get shared preferences
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -163,6 +153,7 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             navigationView.setCheckedItem(menuItemId);
 
             if (!requestAppPermissions()) {
+            	startForegroundService(notificationService);
                 ImageFsInstaller.installIfNeeded(this);
             }
 
@@ -188,15 +179,17 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
         if (requestCode == PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 ImageFsInstaller.installIfNeeded(this);
             }
             else finish();
         }
-        else if (requestCode == PERMISSION_POST_NOTIFICATION_REQUEST_CODE) {
+        else if (requestCode == PERMISSION_POST_NOTIFICATIONS_REQUEST_CODE) {
         	if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
         		startForegroundService(notificationService);
+        		requestAppPermissions();
         	}
         }
     }
@@ -221,9 +214,16 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
         boolean hasWritePermission = ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
         boolean hasReadPermission = ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE) == PackageManager.PERMISSION_GRANTED;
         boolean hasManageStoragePermission = Build.VERSION.SDK_INT < Build.VERSION_CODES.R || Environment.isExternalStorageManager();
+        boolean hasPostNotificationPermission = Build.VERSION.SDK_INT < 33 || ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED;
 
-        if (hasWritePermission && hasReadPermission && hasManageStoragePermission) {
+        if (hasWritePermission && hasReadPermission && hasManageStoragePermission && hasPostNotificationPermission) {
             return false; // All permissions are granted
+        }
+
+       	if (!hasPostNotificationPermission) {
+        	String[] permissions = new String[]{ Manifest.permission.POST_NOTIFICATIONS };                                             
+            ActivityCompat.requestPermissions(this, permissions, PERMISSION_POST_NOTIFICATIONS_REQUEST_CODE);
+            return true;
         }
 
         if (!hasWritePermission || !hasReadPermission) {
