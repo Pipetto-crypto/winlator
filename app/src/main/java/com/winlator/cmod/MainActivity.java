@@ -21,6 +21,8 @@ import android.util.Log;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
 
 import androidx.annotation.IntRange;
 import androidx.annotation.NonNull;
@@ -44,6 +46,7 @@ import com.winlator.cmod.core.PreloaderDialog;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.core.WineThemeManager;
 import com.winlator.cmod.xenvironment.ImageFsInstaller;
+import com.winlator.cmod.services.NotificationService;
 
 import java.io.File;
 import java.util.List;
@@ -51,22 +54,50 @@ import java.util.List;
 public class MainActivity extends AppCompatActivity implements NavigationView.OnNavigationItemSelectedListener {
     public static final @IntRange(from = 1, to = 19) byte CONTAINER_PATTERN_COMPRESSION_LEVEL = 9;
     public static final byte PERMISSION_WRITE_EXTERNAL_STORAGE_REQUEST_CODE = 1;
+    public static final byte PERMISSION_POST_NOTIFICATION_REQUEST_CODE = 2;
     public static final byte OPEN_FILE_REQUEST_CODE = 2;
     public static final byte EDIT_INPUT_CONTROLS_REQUEST_CODE = 3;
     public static final byte OPEN_DIRECTORY_REQUEST_CODE = 4;
     public static final byte OPEN_IMAGE_REQUEST_CODE = 5;
+    public static final String NOTIFICATION_CHANNEL_ID = "Winlator";
+    public static final int NOTIFICATION_ID = 1;
     private DrawerLayout drawerLayout;
     public final PreloaderDialog preloaderDialog = new PreloaderDialog(this);
     private boolean editInputControls = false;
     private int selectedProfileId;
+    private Intent notificationService;
     private SharedPreferences sharedPreferences;
     private ContainerManager containerManager;
     private boolean isDarkMode;
+
+    private void createNotificationChannel() {
+    	String name = "Winlator";
+        String description = "Winlator XServer Messages";
+        int importance = NotificationManager.IMPORTANCE_LOW;
+        NotificationChannel channel = new NotificationChannel(NOTIFICATION_CHANNEL_ID, name, importance);
+        channel.setDescription(description);
+        NotificationManager notificationManager = getSystemService(NotificationManager.class);
+        notificationManager.createNotificationChannel(channel);
+    }
 
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        notificationService = new Intent(this, NotificationService.class);
+
+        if (Build.VERSION.SDK_INT >= 33) {
+        	if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED)
+            	requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, PERMISSION_POST_NOTIFICATION_REQUEST_CODE);
+        }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+        	createNotificationChannel();
+
+		if (Build.VERSION.SDK_INT < 33 || (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
+        	startForegroundService(notificationService);
+        }
 
         // Get shared preferences
         SharedPreferences sharedPreferences = PreferenceManager.getDefaultSharedPreferences(this);
@@ -138,12 +169,6 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R && !Environment.isExternalStorageManager()) {
                 showAllFilesAccessDialog();
             }
-
-            if (Build.VERSION.SDK_INT >= 33) {
-                if (ActivityCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED) {
-                    requestPermissions(new String[]{Manifest.permission.POST_NOTIFICATIONS}, 0);
-                }
-            }
         }
     }
 
@@ -168,6 +193,11 @@ public class MainActivity extends AppCompatActivity implements NavigationView.On
                 ImageFsInstaller.installIfNeeded(this);
             }
             else finish();
+        }
+        else if (requestCode == PERMISSION_POST_NOTIFICATION_REQUEST_CODE) {
+        	if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+        		startForegroundService(notificationService);
+        	}
         }
     }
 
