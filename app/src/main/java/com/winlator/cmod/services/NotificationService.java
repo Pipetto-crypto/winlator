@@ -44,7 +44,7 @@ public class NotificationService extends Service {
 	public void onTaskRemoved(Intent rootIntent) {
 		stopForeground(STOP_FOREGROUND_REMOVE);
 		stopSelf();
-		super.onTaskRemoved(rootIntent);
+		android.os.Process.killProcess(android.os.Process.myPid());
 	}
 
 	@Nullable
