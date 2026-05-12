@@ -32,12 +32,6 @@ public abstract class ImageFsInstaller {
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
         for (Container container : manager.getContainers()) {
-            String imgVersion = container.getExtra("imgVersion");
-            String wineVersion = container.getWineVersion();
-            if (!imgVersion.isEmpty() && WineInfo.isMainWineVersion(wineVersion) && Short.parseShort(imgVersion) <= 5) {
-                container.putExtra("wineprefixNeedsUpdate", "t");
-            }
-
             container.putExtra("imgVersion", null);
             container.saveData();
         }
