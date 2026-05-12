@@ -430,7 +430,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         String wmClass = shortcut != null ? shortcut.getExtra("wmClass", "") : "";
         Log.d("XServerDisplayActivity", "Startup wmClass: " + wmClass);
 
-        firstTimeBoot = container.getExtra("appVersion").isEmpty();
+        firstTimeBoot = container.getExtra("imgVersion").isEmpty();
 
         String wineVersion = container.getWineVersion();
         wineInfo = WineInfo.fromIdentifier(this, contentsManager, wineVersion);
@@ -952,13 +952,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void setupWineSystemFiles() {
-        String appVersion = String.valueOf(AppUtils.getVersionCode(this));
         String imgVersion = String.valueOf(imageFs.getVersion());
         boolean containerDataChanged = false;
 
-        if (!container.getExtra("appVersion").equals(appVersion) || !container.getExtra("imgVersion").equals(imgVersion)) {
+        if (!container.getExtra("imgVersion").equals(imgVersion)) {
             applyGeneralPatches(container);
-            container.putExtra("appVersion", appVersion);
             container.putExtra("imgVersion", imgVersion);
             containerDataChanged = true;
         }
