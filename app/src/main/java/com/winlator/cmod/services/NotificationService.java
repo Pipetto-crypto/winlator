@@ -32,6 +32,7 @@ public class NotificationService extends Service {
 			.setContentText("Winlator is running, do not kill or swipe this notification")
 			.setPriority(NotificationCompat.PRIORITY_LOW)
 		 	.setContentIntent(pendingIntent)
+		 	.setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
 		 	.setOngoing(true);
 		 
 		Notification notification = builder.build();
