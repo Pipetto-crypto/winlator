@@ -89,8 +89,6 @@ import java.nio.file.Files;
 
             // Load cover art if available
             loadCoverArt();
-
-            Container.checkObsoleteOrMissingProperties(extraData);
         }
 
         private void loadCoverArt() {

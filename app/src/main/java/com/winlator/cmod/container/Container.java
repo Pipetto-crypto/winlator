@@ -422,7 +422,6 @@ public class Container {
     public void loadData(JSONObject data) throws JSONException {
         wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
         dxwrapperConfig = "";
-        checkObsoleteOrMissingProperties(data);
 
         for (Iterator<String> it = data.keys(); it.hasNext(); ) {
             String key = it.next();
@@ -477,7 +476,6 @@ public class Container {
                     break;
                 case "extraData" : {
                     JSONObject extraData = data.getJSONObject(key);
-                    checkObsoleteOrMissingProperties(extraData);
                     setExtraData(extraData);
                     break;
                 }
@@ -517,67 +515,7 @@ public class Container {
             }
         }
     }
-
-    public static void checkObsoleteOrMissingProperties(JSONObject data) {
-        try {
-            if (data.has("dxcomponents")) {
-                data.put("wincomponents", data.getString("dxcomponents"));
-                data.remove("dxcomponents");
-            }
-
-            if (data.has("dxwrapper")) {
-                String dxwrapper = data.getString("dxwrapper");
-                if (dxwrapper.equals("original-wined3d")) {
-                    data.put("dxwrapper", DEFAULT_DXWRAPPER);
-                }
-                else if (dxwrapper.startsWith("d8vk-") || dxwrapper.startsWith("dxvk-")) {
-                    data.put("dxwrapper", dxwrapper);
-                }
-            }
-
-            if (data.has("graphicsDriver")) {
-                String graphicsDriver = data.getString("graphicsDriver");
-                if (graphicsDriver.equals("turnip-zink") || graphicsDriver.equals("turnip")) {
-                    data.put("graphicsDriver", "wrapper");
-                }
-                else if (graphicsDriver.equals("llvmpipe")) {
-                    data.put("graphicsDriver", "wrapper");
-                }
-            }
-
-            if (data.has("envVars") && data.has("extraData")) {
-                JSONObject extraData = data.getJSONObject("extraData");
-                int appVersion = Integer.parseInt(extraData.optString("appVersion", "0"));
-                if (appVersion < 16) {
-                    EnvVars defaultEnvVars = new EnvVars(DEFAULT_ENV_VARS);
-                    EnvVars envVars = new EnvVars(data.getString("envVars"));
-                    for (String name : defaultEnvVars) if (!envVars.has(name)) envVars.put(name, defaultEnvVars.get(name));
-                    data.put("envVars", envVars.toString());
-                }
-            }
-
-            KeyValueSet wincomponents1 = new KeyValueSet(DEFAULT_WINCOMPONENTS);
-            KeyValueSet wincomponents2 = new KeyValueSet(data.getString("wincomponents"));
-            String result = "";
-
-            for (String[] wincomponent1 : wincomponents1) {
-                String value = wincomponent1[1];
-
-                for (String[] wincomponent2 : wincomponents2) {
-                    if (wincomponent1[0].equals(wincomponent2[0])) {
-                        value = wincomponent2[1];
-                        break;
-                    }
-                }
-
-                result += (!result.isEmpty() ? "," : "")+wincomponent1[0]+"="+value;
-            }
-
-            data.put("wincomponents", result);
-        }
-        catch (JSONException e) {}
-    }
-
+    
     public static String getFallbackCPUList() {
         String cpuList = "";
         int numProcessors = Runtime.getRuntime().availableProcessors();
