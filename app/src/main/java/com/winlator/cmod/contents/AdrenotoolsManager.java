@@ -11,10 +11,12 @@ import com.winlator.cmod.container.Container;
 import com.winlator.cmod.container.Shortcut;
 import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.core.DefaultVersion;
+import com.winlator.cmod.core.DownloadProgressDialog;
 import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.GPUInformation;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
+import com.winlator.cmod.core.OnExtractFileListener;
 import com.winlator.cmod.core.TarCompressorUtils;
 import com.winlator.cmod.xenvironment.ImageFs;
 import java.io.File;
@@ -39,6 +41,10 @@ public class AdrenotoolsManager {
         this.adrenotoolsContentDir = new File(mContext.getFilesDir(), "contents/adrenotools");
         if (!adrenotoolsContentDir.exists())
             adrenotoolsContentDir.mkdirs();
+    }
+    
+    public String getAssetPath(String adrenotoolsDriverId) {
+        return "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
     }
         
     public String getLibraryName(String adrenoToolsDriverId) {
@@ -154,6 +160,24 @@ public class AdrenotoolsManager {
         dst.mkdirs();
         Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
         hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst);
+
+        if (!hasExtracted)
+            dst.delete();
+
+        return hasExtracted;
+    }
+    
+    public boolean extractDriverFromResources(String adrenotoolsDriverId, OnExtractFileListener listener) {
+        String src = "graphics_driver/adrenotools-" + adrenotoolsDriverId + ".tzst";
+        boolean hasExtracted;
+
+        File dst = new File(adrenotoolsContentDir, adrenotoolsDriverId);
+        if (dst.exists())
+            return true;
+
+        dst.mkdirs();
+        Log.d("AdrenotoolsManager", "Extracting " + src + " to " + dst.getAbsolutePath());
+        hasExtracted = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, mContext, src, dst, listener);
 
         if (!hasExtracted)
             dst.delete();

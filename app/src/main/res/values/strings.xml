@@ -19,6 +19,8 @@
     <string name="removing_container">Removing Container…</string>
     <string name="duplicating_container">Duplicating Container…</string>
     <string name="installing_system_files">Installing System Files…</string>
+    <string name="installing_wine_files">Installing Wine Files...</string>
+    <string name="installing_drivers_files">Installing System Driver Files...</string>
     <string name="updating_system_files">Updating System Files…</string>
     <string name="starting_up">Starting up…</string>
     <string name="unable_to_install_system_files">Unable to install system files</string>

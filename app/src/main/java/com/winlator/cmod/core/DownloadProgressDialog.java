@@ -76,6 +76,11 @@ public class DownloadProgressDialog {
         }
         catch (Exception e) {}
     }
+    
+    public void setMessage(int textResId) {
+        if (textResId > 0) 
+            ((TextView)dialog.findViewById(R.id.TextView)).setText(textResId);
+    }
 
     public void closeOnUiThread() {
         activity.runOnUiThread(this::close);
