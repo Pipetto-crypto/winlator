@@ -10,6 +10,7 @@ import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 
+import android.os.PowerManager;
 import androidx.annotation.Nullable;
 import androidx.core.app.NotificationCompat;
 import androidx.core.app.ServiceCompat;
@@ -19,6 +20,7 @@ import com.winlator.cmod.MainActivity;
 
 public class NotificationService extends Service {
     private static boolean isRunning = false;
+    public static PowerManager.WakeLock wakeLock = null;
     
     public static boolean isRunning() {
         return isRunning;
@@ -45,6 +47,9 @@ public class NotificationService extends Service {
 		startForeground(MainActivity.NOTIFICATION_ID, notification);
         
         isRunning = true;
+        
+        PowerManager powerManager = (PowerManager) getSystemService(POWER_SERVICE);
+        wakeLock = powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "NotificationService::KeepAlive");
 
 		return START_NOT_STICKY;
 	}
@@ -54,6 +59,7 @@ public class NotificationService extends Service {
 		stopForeground(STOP_FOREGROUND_REMOVE);
 		stopSelf();
         isRunning = false;
+        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
 		android.os.Process.killProcess(android.os.Process.myPid());
 	}
     
@@ -61,6 +67,7 @@ public class NotificationService extends Service {
     public void onDestroy() {
         super.onDestroy();
         isRunning = false;
+        if (wakeLock != null && wakeLock.isHeld()) wakeLock.release();
     }
 
 	@Nullable

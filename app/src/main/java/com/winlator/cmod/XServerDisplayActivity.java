@@ -730,11 +730,18 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (!isInPictureInPictureMode())
         	ProcessHelper.resumeAllWineProcesses();
+            
+        if (NotificationService.wakeLock != null && NotificationService.wakeLock.isHeld())  
+            NotificationService.wakeLock.release();
     }
 
     @Override
     public void onPause() {
         super.onPause();
+        
+        if (NotificationService.wakeLock != null && !NotificationService.wakeLock.isHeld())
+            NotificationService.wakeLock.acquire();
+            
         boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
 
         if (gyroEnabled) {
