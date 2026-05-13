@@ -18,6 +18,12 @@ import com.winlator.cmod.R;
 import com.winlator.cmod.MainActivity;
 
 public class NotificationService extends Service {
+    private static boolean isRunning = false;
+    
+    public static boolean isRunning() {
+        return isRunning;
+    }
+    
 	@Override
 	public void onCreate() {
 		super.onCreate();
@@ -37,6 +43,8 @@ public class NotificationService extends Service {
 		 
 		Notification notification = builder.build();
 		startForeground(MainActivity.NOTIFICATION_ID, notification);
+        
+        isRunning = true;
 
 		return START_NOT_STICKY;
 	}
@@ -45,8 +53,15 @@ public class NotificationService extends Service {
 	public void onTaskRemoved(Intent rootIntent) {
 		stopForeground(STOP_FOREGROUND_REMOVE);
 		stopSelf();
+        isRunning = false;
 		android.os.Process.killProcess(android.os.Process.myPid());
 	}
+    
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        isRunning = false;
+    }
 
 	@Nullable
 	@Override

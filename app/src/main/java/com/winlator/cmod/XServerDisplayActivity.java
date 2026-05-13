@@ -87,6 +87,7 @@ import com.winlator.cmod.renderer.effects.ColorEffect;
 import com.winlator.cmod.renderer.effects.FXAAEffect;
 import com.winlator.cmod.renderer.effects.NTSCCombinedEffect;
 import com.winlator.cmod.renderer.effects.ToonEffect;
+import com.winlator.cmod.services.NotificationService;
 import com.winlator.cmod.widget.FrameRating;
 import com.winlator.cmod.widget.InputControlsView;
 import com.winlator.cmod.widget.LogView;
@@ -564,6 +565,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Check if a profile is defined by the shortcut
         String controlsProfile = shortcut != null ? shortcut.getExtra("controlsProfile", "") : "";
+        
+        if (!NotificationService.isRunning()) {
+            Intent notificationService = new Intent(this, NotificationService.class);
+            startForegroundService(notificationService);
+        }
 		
         Runnable runnable = () -> {
             setupUI();
