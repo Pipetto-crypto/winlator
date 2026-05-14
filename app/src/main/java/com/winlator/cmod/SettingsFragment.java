@@ -305,7 +305,7 @@ public class SettingsFragment extends Fragment {
         etDownloadableContentsURL.setText(preferences.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES));
 
         view.findViewById(R.id.BTReInstallImagefs).setOnClickListener(v -> {
-            ContentDialog.confirm(context, R.string.do_you_want_to_reinstall_imagefs, () -> ImageFsInstaller.installFromAssets((MainActivity) getActivity()));
+            ContentDialog.confirm(context, R.string.do_you_want_to_reinstall_imagefs, () -> ImageFsInstaller.installFromAssets((MainActivity) getActivity(), null));
         });
 
         view.findViewById(R.id.BTConfirm).setOnClickListener((v) -> {

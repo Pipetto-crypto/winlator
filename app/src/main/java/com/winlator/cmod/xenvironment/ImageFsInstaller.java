@@ -28,6 +28,10 @@ import java.util.concurrent.atomic.AtomicLong;
 
 public abstract class ImageFsInstaller {
     public static final byte LATEST_VERSION = 21;
+    
+    public abstract interface onInstallationFinish {
+        public void call();
+    }
 
     private static void resetContainerImgVersions(Context context) {
         ContainerManager manager = new ContainerManager(context);
@@ -82,7 +86,7 @@ public abstract class ImageFsInstaller {
          }   
     }
 
-    public static void installFromAssets(final MainActivity activity) {
+    public static void installFromAssets(final MainActivity activity, onInstallationFinish callback) {
         AppUtils.keepScreenOn(activity);
         ImageFs imageFs = ImageFs.find(activity);
         File rootDir = imageFs.getRootDir();
@@ -91,6 +95,7 @@ public abstract class ImageFsInstaller {
 
         final DownloadProgressDialog dialog = new DownloadProgressDialog(activity);
         dialog.show(R.string.installing_system_files);
+        
         Executors.newSingleThreadExecutor().execute(() -> {
             clearRootDir(rootDir);
             final byte compressionRatio = 22;
@@ -115,12 +120,19 @@ public abstract class ImageFsInstaller {
             else AppUtils.showToast(activity, R.string.unable_to_install_system_files);
             
             dialog.closeOnUiThread();
+            activity.runOnUiThread(() -> {if (callback != null) callback.call();});
         });
     }
 
-    public static void installIfNeeded(final MainActivity activity) {
+    public static boolean installIfNeeded(final MainActivity activity, onInstallationFinish callback) {
         ImageFs imageFs = ImageFs.find(activity);
-        if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION) installFromAssets(activity);
+        
+        if (!imageFs.isValid() || imageFs.getVersion() < LATEST_VERSION) {
+            installFromAssets(activity, callback);
+            return true;
+        }    
+        
+        return false;
     }
 
     private static void clearOptDir(File optDir) {
