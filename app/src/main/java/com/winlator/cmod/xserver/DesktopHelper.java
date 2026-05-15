@@ -14,13 +14,6 @@ public abstract class DesktopHelper {
                 updateFocusedWindow(xServer);
             }
         });
-
-        xServer.windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
-            @Override
-            public void onMapWindow(Window window) {
-                setFocusedWindow(xServer, window);
-            }
-        });
     }
 
     private static void updateFocusedWindow(XServer xServer) {
@@ -30,20 +23,9 @@ public abstract class DesktopHelper {
             if (child == null && focusedWindow != xServer.windowManager.rootWindow) {
                 xServer.windowManager.setFocus(xServer.windowManager.rootWindow, WindowManager.FocusRevertTo.NONE);
             }
-            else if (child != null && child != focusedWindow) {
-                setFocusedWindow(xServer, child);
-            }
         }
     }
-
-    private static void setFocusedWindow(XServer xServer, Window window) {
-        if (window.isApplicationWindow()) {
-            boolean parentIsRoot = window.getParent() == xServer.windowManager.rootWindow;
-            xServer.windowManager.setFocus(window, parentIsRoot ? WindowManager.FocusRevertTo.POINTER_ROOT : WindowManager.FocusRevertTo.PARENT);
-            xServer.getWinHandler().bringToFront(window.getClassName(), window.getHandle());
-        }
-    }
-
+    
     private static void setupXResources(XServer xServer) {
         int atom = Atom.getId("RESOURCE_MANAGER");
         int type = Atom.getId("STRING");
