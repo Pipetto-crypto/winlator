@@ -176,6 +176,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private Runnable configChangedCallback = null;
     private boolean isPaused = false;
     private boolean isRelativeMouseMovement = false;
+    private boolean isSuspendEnabled = true;
 
     // Inside the XServerDisplayActivity class
     private SensorManager sensorManager;
@@ -266,6 +267,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         boolean isOpenWithAndroidBrowser = preferences.getBoolean("open_with_android_browser", false);
         boolean isShareAndroidClipboard = preferences.getBoolean("share_android_clipboard", false);
+        
+        isSuspendEnabled = preferences.getBoolean("pause_resume_wine", true);
 
         // Initialize the WinHandler after context is set up
         winHandler = new WinHandler(this);
@@ -728,7 +731,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         startTime = System.currentTimeMillis();
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
 
-        if (!isInPictureInPictureMode())
+        if (!isInPictureInPictureMode() && isSuspendEnabled)
         	ProcessHelper.resumeAllWineProcesses();
             
         if (NotificationService.wakeLock != null && NotificationService.wakeLock.isHeld())  
@@ -757,7 +760,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 xServerView.onPause();
             }
             
-            ProcessHelper.pauseAllWineProcesses();
+            if (isSuspendEnabled)
+                ProcessHelper.pauseAllWineProcesses();
         }
 
         savePlaytimeData();

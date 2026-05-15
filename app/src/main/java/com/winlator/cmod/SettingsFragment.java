@@ -300,6 +300,9 @@ public class SettingsFragment extends Fragment {
 
         final CheckBox cbShareClipboard = view.findViewById(R.id.CBShareAndroidClipboard);
         cbShareClipboard.setChecked(preferences.getBoolean("share_android_clipboard", false));
+        
+        final CheckBox cbPauseWine = view.findViewById(R.id.CBPauseResumeWine);
+        cbPauseWine.setChecked(preferences.getBoolean("pause_resume_wine", true));
 
         final EditText etDownloadableContentsURL = view.findViewById(R.id.ETDownloadableContentsURL);
         etDownloadableContentsURL.setText(preferences.getString("downloadable_contents_url", ContentsManager.REMOTE_PROFILES));
@@ -325,6 +328,7 @@ public class SettingsFragment extends Fragment {
             editor.putBoolean("enable_file_provider", cbEnableFileProvider.isChecked());
             editor.putBoolean("open_with_android_browser", cbOpenInBrowser.isChecked());
             editor.putBoolean("share_android_clipboard", cbShareClipboard.isChecked());
+            editor.putBoolean("pause_resume_wine", cbPauseWine.isChecked());
 
             editor.putString("downloadable_contents_url", etDownloadableContentsURL.getText().toString());
 

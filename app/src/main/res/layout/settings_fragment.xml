@@ -510,6 +510,14 @@
                             android:layout_gravity="left|center"
                             android:text="@string/share_android_clipboard" />
 
+                        <CheckBox
+                            android:id="@+id/CBPauseResumeWine"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="left|center"
+                            android:text="@string/pause_resume_wine" />
+
+
                         <View style="@style/FieldSeparator" />
 
                         <TextView
