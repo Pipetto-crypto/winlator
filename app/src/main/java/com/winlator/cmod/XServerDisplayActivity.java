@@ -251,14 +251,16 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         AppUtils.hideSystemUI(this);
         AppUtils.keepScreenOn(this);
 
-        android.view.WindowManager.LayoutParams params = getWindow().getAttributes();
-        params.preferredRefreshRate = pickHighestRefreshRate();
-        getWindow().setAttributes(params);
-        
         setContentView(R.layout.xserver_display_activity);
 
         preloaderDialog = new PreloaderDialog(this);
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
+        
+        if (preferences.getBoolean("high_refresh_rate_mode", false)) {
+            android.view.WindowManager.LayoutParams params = getWindow().getAttributes();
+            params.preferredRefreshRate = pickHighestRefreshRate();
+            getWindow().setAttributes(params);
+        }    
 
         cursorLock = preferences.getBoolean("cursor_lock", true);
 

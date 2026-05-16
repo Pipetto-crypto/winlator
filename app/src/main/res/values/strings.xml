@@ -276,6 +276,7 @@
     <string name="options">Options</string>
     <string name="enable_experimental_wow64_mode">Enable experimental WoW64 mode</string>
     <string name="pause_resume_wine">Suspend Wine when app is in background</string>
+    <string name="high_refresh_rate">Enable High Refresh Rate Mode</string>
     <string name="logs">Logs</string>
     <string name="enable_wine_debug">Enable Wine debug</string>
     <string name="enable_box64_logs">Enable Box64 logs</string>
