@@ -512,7 +512,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             @Override
             public void onUpdateWindowContent(Window window) {
                 if (!winStarted[0] && window.isApplicationWindow()) {
-                    xServerView.getRenderer().setCursorVisible(true);
+                    if (!xServer.isSimulateTouchScreen()) xServerView.getRenderer().setCursorVisible(true);
                     preloaderDialog.closeOnUiThread();
                     winStarted[0] = true;
                 }
