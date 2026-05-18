@@ -41,6 +41,7 @@ public class XServer {
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
     private boolean relativeMouseMovement = false;
     private boolean simulateTouchScreen = false;
+    private boolean disableMouse = false;
     private boolean isGrabbed = false;
     private XClient grabbingClient = null;
 
@@ -74,6 +75,15 @@ public class XServer {
 
     public void setSimulateTouchScreen(boolean simulateTouchScreen) {
         this.simulateTouchScreen = simulateTouchScreen;
+    }
+    
+    public void setMouseDisabled(boolean mouseDisabled) {
+        this.disableMouse = mouseDisabled;
+        renderer.setCursorVisible(!mouseDisabled);
+    }
+    
+    public boolean isMouseDisabled() {
+        return this.disableMouse;
     }
 
     public GLRenderer getRenderer() {

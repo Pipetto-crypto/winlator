@@ -1327,6 +1327,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         final CheckBox cbEnableHaptics = dialog.findViewById(R.id.CBEnableHaptics);
         cbEnableHaptics.setChecked(preferences.getBoolean("touchscreen_haptics_enabled", false));
+        
+        final CheckBox cbDisableMouse = dialog.findViewById(R.id.CBDisableMouse);
+        cbDisableMouse.setChecked(xServer.isMouseDisabled());
 
         final Runnable updateProfile = () -> {
             int position = sProfile.getSelectedItemPosition();
@@ -1354,10 +1357,13 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             inputControlsView.setShowTouchscreenControls(cbShowTouchscreenControls.isChecked());
             boolean isTimeoutEnabled = cbEnableTimeout.isChecked();
             boolean isHapticsEnabled = cbEnableHaptics.isChecked();
+            boolean isMouseDisabled = cbDisableMouse.isChecked();
             SharedPreferences.Editor editor = preferences.edit();
             editor.putBoolean("touchscreen_timeout_enabled", isTimeoutEnabled);
             editor.putBoolean("touchscreen_haptics_enabled", isHapticsEnabled);
             editor.apply();
+            
+            xServer.setMouseDisabled(isMouseDisabled);
 
             if (isTimeoutEnabled) {
                 startTouchscreenTimeout(); // Start the timeout functionality if enabled
