@@ -110,6 +110,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         if (shortcut != null) {
             wowbox64Version = shortcut.getExtra("box64Version", shortcut.container.getBox64Version());
+            fexcoreVersion = shortcut.getExtra("fexcoreVersion", shortcut.container.getFEXCoreVersion());
         }
 
         Log.d("GuestProgramLauncherComponent", "box64Version in use: " + wowbox64Version);
