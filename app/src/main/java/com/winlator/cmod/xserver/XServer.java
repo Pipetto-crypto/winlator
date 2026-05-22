@@ -204,8 +204,8 @@ public class XServer {
         extensions.put(BigReqExtension.MAJOR_OPCODE, new BigReqExtension());
         extensions.put(MITSHMExtension.MAJOR_OPCODE, new MITSHMExtension());
         extensions.put(DRI3Extension.MAJOR_OPCODE, new DRI3Extension());
-        extensions.put(PresentExtension.MAJOR_OPCODE, new PresentExtension());
-        extensions.put(SyncExtension.MAJOR_OPCODE, new SyncExtension());
+        extensions.put(PresentExtension.MAJOR_OPCODE, new PresentExtension(this));
+        extensions.put(SyncExtension.MAJOR_OPCODE, new SyncExtension(this));
     }
 
     public <T extends Extension> T getExtension(int opcode) {

@@ -1,10 +1,15 @@
 package com.winlator.cmod.xserver.extensions;
 
-import android.util.SparseBooleanArray;
+import android.util.SparseArray;
 
 import com.winlator.cmod.xconnector.XInputStream;
 import com.winlator.cmod.xconnector.XOutputStream;
+import com.winlator.cmod.xserver.Pixmap;
+import com.winlator.cmod.xserver.Window;
 import com.winlator.cmod.xserver.XClient;
+import com.winlator.cmod.xserver.XResource;
+import com.winlator.cmod.xserver.XResourceManager;
+import com.winlator.cmod.xserver.XServer;
 import com.winlator.cmod.xserver.errors.BadFence;
 import com.winlator.cmod.xserver.errors.BadIdChoice;
 import com.winlator.cmod.xserver.errors.BadImplementation;
@@ -13,9 +18,10 @@ import com.winlator.cmod.xserver.errors.XRequestError;
 
 import java.io.IOException;
 
-public class SyncExtension implements Extension {
+public class SyncExtension implements Extension, XResourceManager.OnResourceLifecycleListener {
     public static final byte MAJOR_OPCODE = -104;
-    private final SparseBooleanArray fences = new SparseBooleanArray();
+    private final SparseArray<SyncFence> fences = new SparseArray<SyncFence>();
+    private XServer xserver;
 
     private static abstract class ClientOpcodes {
         private static final byte CREATE_FENCE = 14;
@@ -23,6 +29,18 @@ public class SyncExtension implements Extension {
         private static final byte RESET_FENCE = 16;
         private static final byte DESTROY_FENCE = 17;
         private static final byte AWAIT_FENCE = 19;
+    }
+    
+    private class SyncFence {
+        int fenceId;
+        int drawableId;
+        boolean triggered;
+    }
+    
+    public SyncExtension(XServer xserver) {
+        this.xserver = xserver;
+        this.xserver.pixmapManager.addOnResourceLifecycleListener(this);
+        this.xserver.windowManager.addOnResourceLifecycleListener(this);
     }
 
     @Override
@@ -47,21 +65,28 @@ public class SyncExtension implements Extension {
 
     public void setTriggered(int id) {
         synchronized (fences) {
-            if (fences.indexOfKey(id) >= 0) fences.put(id, true);
+            if (fences.indexOfKey(id) >= 0) {
+                SyncFence fence = fences.get(id);
+                fence.triggered = true;
+            }
         }
     }
 
     private void createFence(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         synchronized (fences) {
-            inputStream.skip(4);
+            int drawableId = inputStream.readInt();
             int id = inputStream.readInt();
 
             if (fences.indexOfKey(id) >= 0) throw new BadIdChoice(id);
 
             boolean initiallyTriggered = inputStream.readByte() == 1;
             inputStream.skip(3);
-
-            fences.put(id, initiallyTriggered);
+            
+            SyncFence fence = new SyncFence();
+            fence.drawableId = drawableId;
+            fence.fenceId = id;
+            fence.triggered = initiallyTriggered;
+            fences.put(id, fence);
         }
     }
 
@@ -69,7 +94,8 @@ public class SyncExtension implements Extension {
         synchronized (fences) {
             int id = inputStream.readInt();
             if (fences.indexOfKey(id) < 0) throw new BadFence(id);
-            fences.put(id, true);
+            SyncFence fence = fences.get(id);
+            fence.triggered = true;
         }
     }
 
@@ -78,10 +104,10 @@ public class SyncExtension implements Extension {
             int id = inputStream.readInt();
             if (fences.indexOfKey(id) < 0) throw new BadFence(id);
 
-            boolean triggered = fences.get(id);
-            if (!triggered) throw new BadMatch();
-
-            fences.put(id, false);
+            SyncFence fence = fences.get(id);
+            if (!fence.triggered) throw new BadMatch();
+            
+            fence.triggered = false;
         }
     }
 
@@ -108,11 +134,33 @@ public class SyncExtension implements Extension {
             do {
                 for (int id : ids) {
                     if (fences.indexOfKey(id) < 0) throw new BadFence(id);
-                    anyTriggered = fences.get(id);
+                    SyncFence fence = fences.get(id);
+                    anyTriggered = fence.triggered;
                     if (anyTriggered) break;
                 }
             }
             while (!anyTriggered);
+        }
+    }
+    
+    @Override
+    public void onFreeResource(XResource resource) {
+        if (resource instanceof Pixmap) {
+            Pixmap pixmap = (Pixmap) resource;
+            for (int i = 0; i < fences.size(); i++) {
+                int key = fences.keyAt(i);
+                SyncFence fence = fences.get(key);
+                if (fence.drawableId == pixmap.id)
+                    fences.remove(fence.fenceId);
+            }
+        } else if (resource instanceof Window) {
+            Window window = (Window) resource;
+            for (int i = 0; i < fences.size(); i++) {
+                int key = fences.keyAt(i);
+                SyncFence fence = fences.get(key);
+                if (fence.drawableId == window.id) 
+                    fences.remove(fence.fenceId);
+            }
         }
     }
 

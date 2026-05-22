@@ -1,5 +1,6 @@
 package com.winlator.cmod.xserver.extensions;
 
+import android.util.Log;
 import static com.winlator.cmod.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
 import android.util.SparseArray;
@@ -15,6 +16,8 @@ import com.winlator.cmod.xserver.Pixmap;
 import com.winlator.cmod.xserver.Window;
 import com.winlator.cmod.xserver.XClient;
 import com.winlator.cmod.xserver.XLock;
+import com.winlator.cmod.xserver.XResource;
+import com.winlator.cmod.xserver.XResourceManager;
 import com.winlator.cmod.xserver.XServer;
 import com.winlator.cmod.xserver.errors.BadImplementation;
 import com.winlator.cmod.xserver.errors.BadMatch;
@@ -26,13 +29,14 @@ import com.winlator.cmod.xserver.events.PresentIdleNotify;
 
 import java.io.IOException;
 
-public class PresentExtension implements Extension {
+public class PresentExtension implements Extension, XResourceManager.OnResourceLifecycleListener {
     public static final byte MAJOR_OPCODE = -103;
     private static final int FAKE_INTERVAL = 1000000 / 60;
     public enum Kind {PIXMAP, MSC_NOTIFY}
     public enum Mode {COPY, FLIP, SKIP}
     private final SparseArray<Event> events = new SparseArray<>();
     private SyncExtension syncExtension;
+    private XServer xServer;
 
     private static abstract class ClientOpcodes {
         private static final byte QUERY_VERSION = 0;
@@ -45,6 +49,11 @@ public class PresentExtension implements Extension {
         private XClient client;
         private int id;
         private Bitmask mask;
+    }
+    
+    public PresentExtension(XServer xserver) {
+        this.xServer = xserver;
+        this.xServer.windowManager.addOnResourceLifecycleListener(this);
     }
 
     @Override
@@ -167,6 +176,20 @@ public class PresentExtension implements Extension {
                 event.client = client;
                 event.mask = mask;
                 events.put(eventId, event);
+            }
+        }
+    }
+    
+    
+    @Override
+    public void onFreeResource(XResource resource) {
+        if (resource instanceof Window) {
+            Window window = (Window) resource;
+            for (int i = 0; i < events.size(); i++) {
+                int key = events.keyAt(i);
+                Event event = events.get(key);
+                if (event.window == window)
+                    events.remove(event.id);
             }
         }
     }
