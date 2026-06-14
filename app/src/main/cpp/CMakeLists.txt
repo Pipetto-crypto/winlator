@@ -22,6 +22,9 @@ add_library(winlator SHARED
         winlator/xconnector_epoll.c
         winlator/alsa_client.c
         winlator/vulkan.c
+        winlator/renderer/egl.cpp
+        winlator/renderer/renderer_jni.cpp
+        winlator/renderer/shader.cpp
 )
 
 target_compile_options(winlator PRIVATE -Wall -Wextra)

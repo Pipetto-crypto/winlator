@@ -3,7 +3,7 @@ package com.winlator.cmod.xserver;
 import android.util.SparseArray;
 
 import com.winlator.cmod.core.CursorLocker;
-import com.winlator.cmod.renderer.GLRenderer;
+import com.winlator.cmod.widget.XServerView;
 import com.winlator.cmod.winhandler.WinHandler;
 import com.winlator.cmod.xserver.extensions.BigReqExtension;
 import com.winlator.cmod.xserver.extensions.DRI3Extension;
@@ -36,13 +36,13 @@ public class XServer {
     public final GrabManager grabManager;
     public final CursorLocker cursorLocker;
     private SHMSegmentManager shmSegmentManager;
-    private GLRenderer renderer;
     private WinHandler winHandler;
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
     private boolean relativeMouseMovement = false;
     private boolean simulateTouchScreen = false;
     private boolean disableMouse = false;
     private boolean isGrabbed = false;
+    private XServerView xServerView;
     private XClient grabbingClient = null;
 
     public XServer(ScreenInfo screenInfo) {
@@ -77,21 +77,21 @@ public class XServer {
         this.simulateTouchScreen = simulateTouchScreen;
     }
     
+    public void setXServerView(XServerView view) {
+        this.xServerView = view;
+    }
+    
+    public XServerView getXServerView() {
+        return this.xServerView;
+    }
+    
     public void setMouseDisabled(boolean mouseDisabled) {
         this.disableMouse = mouseDisabled;
-        renderer.setCursorVisible(!mouseDisabled);
+        xServerView.setCursorVisible(!mouseDisabled);
     }
     
     public boolean isMouseDisabled() {
         return this.disableMouse;
-    }
-
-    public GLRenderer getRenderer() {
-        return renderer;
-    }
-
-    public void setRenderer(GLRenderer renderer) {
-        this.renderer = renderer;
     }
 
     public WinHandler getWinHandler() {

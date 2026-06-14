@@ -52,7 +52,6 @@ import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.DebugDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
-import com.winlator.cmod.contentdialog.ScreenEffectDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
 import com.winlator.cmod.contents.ContentProfile;
 import com.winlator.cmod.contents.ContentsManager;
@@ -81,12 +80,6 @@ import com.winlator.cmod.math.Mathf;
 import com.winlator.cmod.math.XForm;
 import com.winlator.cmod.midi.MidiHandler;
 import com.winlator.cmod.midi.MidiManager;
-import com.winlator.cmod.renderer.GLRenderer;
-import com.winlator.cmod.renderer.effects.CRTEffect;
-import com.winlator.cmod.renderer.effects.ColorEffect;
-import com.winlator.cmod.renderer.effects.FXAAEffect;
-import com.winlator.cmod.renderer.effects.NTSCCombinedEffect;
-import com.winlator.cmod.renderer.effects.ToonEffect;
 import com.winlator.cmod.services.NotificationService;
 import com.winlator.cmod.widget.FrameRating;
 import com.winlator.cmod.widget.InputControlsView;
@@ -512,7 +505,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             @Override
             public void onUpdateWindowContent(Window window) {
                 if (!winStarted[0] && window.isApplicationWindow()) {
-                    if (!xServer.isSimulateTouchScreen()) xServerView.getRenderer().setCursorVisible(true);
+                    if (!xServer.isSimulateTouchScreen()) xServerView.setCursorVisible(true);
                     preloaderDialog.closeOnUiThread();
                     winStarted[0] = true;
                 }
@@ -727,7 +720,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         if (environment != null) {
-            xServerView.onResume();
             environment.onResume();
         }
         startTime = System.currentTimeMillis();
@@ -759,7 +751,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             // Only pause environment and xServerView if not in PiP mode
             if (environment != null) {
                 environment.onPause();
-                xServerView.onPause();
             }
             
             if (isSuspendEnabled)
@@ -856,7 +847,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @SuppressLint("SourceLockedOrientationActivity")
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
-        final GLRenderer renderer = xServerView.getRenderer();
+        XServerView view = getXServerView();
+        
         switch (item.getItemId()) {
             case R.id.main_menu_keyboard:
                 AppUtils.showKeyboard(this);
@@ -872,7 +864,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 xServer.setRelativeMouseMovement(isRelativeMouseMovement);
                 break;
             case R.id.main_menu_toggle_fullscreen:
-                renderer.toggleFullscreen();
+                view.toggleFullscreen();
                 drawerLayout.closeDrawers();
                 touchpadView.toggleFullscreen();
                 break;
@@ -901,43 +893,16 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                     FrameLayout container = findViewById(R.id.FLXServerDisplay);
                     magnifierView = new MagnifierView(this);
                     magnifierView.setZoomButtonCallback(value -> {
-                        renderer.setMagnifierZoom(Mathf.clamp(renderer.getMagnifierZoom() + value, 1.0f, 3.0f));
-                        magnifierView.setZoomValue(renderer.getMagnifierZoom());
+                        view.setMagnifierZoom(Mathf.clamp(view.getMagnifierZoom() + value, 1.0f, 3.0f));
+                        magnifierView.setZoomValue(view.getMagnifierZoom());
                     });
-                    magnifierView.setZoomValue(renderer.getMagnifierZoom());
+                    magnifierView.setZoomValue(view.getMagnifierZoom());
                     magnifierView.setHideButtonCallback(() -> {
                         container.removeView(magnifierView);
                         magnifierView = null;
                     });
                     container.addView(magnifierView);
                 }
-                drawerLayout.closeDrawers();
-                break;
-            case R.id.main_menu_screen_effects:
-                Log.d("ScreenEffectDialog", "Initializing ScreenEffectDialog");
-                ScreenEffectDialog screenEffectDialog = new ScreenEffectDialog(this);
-                screenEffectDialog.setOnConfirmCallback(() -> {
-                    Log.d("ScreenEffectDialog", "Confirm callback triggered. About to apply effects.");
-                    GLRenderer currentRenderer = xServerView.getRenderer();
-                    ColorEffect colorEffect = (ColorEffect) currentRenderer.getEffectComposer().getEffect(ColorEffect.class);
-                    FXAAEffect fxaaEffect = (FXAAEffect) currentRenderer.getEffectComposer().getEffect(FXAAEffect.class);
-                    CRTEffect crtEffect = (CRTEffect) currentRenderer.getEffectComposer().getEffect(CRTEffect.class);
-                    ToonEffect toonEffect = (ToonEffect) currentRenderer.getEffectComposer().getEffect(ToonEffect.class);
-                    NTSCCombinedEffect ntscEffect = (NTSCCombinedEffect) currentRenderer.getEffectComposer().getEffect(NTSCCombinedEffect.class);
-
-                    // Check if effects are null before applying
-                    Log.d("ScreenEffectDialog", "ColorEffect: " + (colorEffect != null));
-                    Log.d("ScreenEffectDialog", "FXAAEffect: " + (fxaaEffect != null));
-                    Log.d("ScreenEffectDialog", "CRTEffect: " + (crtEffect != null));
-                    Log.d("ScreenEffectDialog", "ToonEffect: " + (toonEffect != null));
-                    Log.d("ScreenEffectDialog", "NTSCCombinedEffect: " + (ntscEffect != null));
-
-                    Log.d("ScreenEffectDialog", "Calling applyEffects()");
-                    screenEffectDialog.applyEffects(colorEffect, currentRenderer, fxaaEffect, crtEffect, toonEffect, ntscEffect);
-                    Log.d("ScreenEffectDialog", "applyEffects() called.");
-                });
-                Log.d("ScreenEffectDialog", "Showing ScreenEffectDialog");
-                screenEffectDialog.show();
                 drawerLayout.closeDrawers();
                 break;
             case R.id.main_menu_logs:
@@ -1160,14 +1125,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private void setupUI() {
         FrameLayout rootView = findViewById(R.id.FLXServerDisplay);
         xServerView = new XServerView(this, xServer);
-        final GLRenderer renderer = xServerView.getRenderer();
-        renderer.setCursorVisible(false);
+        xServerView.setCursorVisible(false);
 
         if (shortcut != null) {
-            renderer.setUnviewableWMClasses("explorer.exe");
+            xServerView.setUnviewableWMClasses("explorer.exe");
         }
+        
+        xServer.setXServerView(xServerView);
 
-        xServer.setRenderer(renderer);
         rootView.addView(xServerView);
 
         globalCursorSpeed = preferences.getFloat("cursor_speed", 1.0f);
@@ -1226,7 +1191,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         if (shouldStretch) {
             // Toggle fullscreen mode based on the final decision
-            renderer.toggleFullscreen();
+            xServerView.toggleFullscreen();
             touchpadView.toggleFullscreen();
         }
 
@@ -1241,7 +1206,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             touchpadView.setSimTouchScreen(simTouchScreen.equals("1"));
         }
 
-        AppUtils.observeSoftKeyboardVisibility(drawerLayout, renderer::setScreenOffsetYRelativeToCursor);
+        AppUtils.observeSoftKeyboardVisibility(drawerLayout, xServerView::setScreenOffsetYRelativeToCursor);
     }
 
 

@@ -152,13 +152,6 @@ public class PresentExtension implements Extension, XResourceManager.OnResourceL
         Window window = client.xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
 
-        if (GPUImage.isSupported() && !mask.isEmpty()) {
-            Drawable content = window.getContent();
-            final Texture oldTexture = content.getTexture();
-            client.xServer.getRenderer().xServerView.queueEvent(oldTexture::destroy);
-            content.setTexture(new GPUImage(content.width, content.height));
-        }
-
         synchronized (events) {
             Event event = events.get(eventId);
             if (event != null) {
