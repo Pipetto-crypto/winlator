@@ -24,6 +24,7 @@ import com.winlator.cmod.xserver.WindowAttributes;
 import com.winlator.cmod.xserver.WindowManager;
 import com.winlator.cmod.xserver.XLock;
 import com.winlator.cmod.xserver.XServer;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
@@ -32,7 +33,232 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
-public class XServerView extends SurfaceView implements SurfaceHolder.Callback, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener, Choreographer.FrameCallback {
+public class XServerView extends SurfaceView implements SurfaceHolder.Callback, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener {
+    static class GLThread extends Thread {
+        private boolean mExited;
+        private boolean mExit;
+        private boolean mHasSurface;
+        private int mWidth;
+        private int mHeight;
+        private boolean mHaveEGLSurface;
+        private boolean mSurfaceChanged;
+        private boolean mRenderComplete;
+        private boolean mRequestRender;
+        private boolean mSurfaceDestroyed;
+        private ArrayList<Runnable> eventQueue = new ArrayList<Runnable>();
+        private XServerView surface;
+        
+        public GLThread(XServerView view) {
+            this.surface = view;
+        }
+        
+        @Override
+        public void run() {
+            try {
+                guardedRun();
+            } catch (InterruptedException e) {
+                
+            }
+        }
+        
+        public void guardedRun() throws InterruptedException {
+            mHaveEGLSurface = false;
+            
+            try {
+                Runnable event = null;
+                boolean exited = false;
+                boolean createEGLSurface = false;
+                boolean destroyEGLSurface  = false;
+                boolean sizeChanged = false;
+                boolean wantNotification = false;
+                int w = 0;
+                int h = 0;
+                
+                while (true) {
+                    synchronized(sGLThreadManager) {
+                        while(true) {
+                            if (mExited)
+                                return;
+                            
+                            if (mExit) {
+                                mExit = false;
+                                exited = true;
+                                destroyEGLSurface = true;
+                                break;
+                            }
+                            
+                            if (!eventQueue.isEmpty()) {
+                                event = eventQueue.remove(0);
+                                break;
+                            }
+                            
+                            if (mSurfaceDestroyed) {
+                                mSurfaceDestroyed = false;
+                                destroyEGLSurface = true;
+                                break;
+                            }
+                            
+                            if(mSurfaceChanged) {
+                                wantNotification = true;
+                                mSurfaceChanged = false;
+                                sizeChanged = true;
+                            }
+                            
+                            if (canDraw()) {
+                                if (!mHaveEGLSurface) {
+                                    createEGLSurface = true;
+                                }
+                                
+                                if (sizeChanged) {
+                                    w = mWidth;
+                                    h = mHeight;
+                                }
+                                
+                                mRequestRender = false;
+                                mRenderComplete = false;
+                                sGLThreadManager.notifyAll();
+                                break;
+                            }
+                            
+                            sGLThreadManager.wait();
+                        }
+                    }    
+                        
+                    if (event != null) {
+                        event.run();
+                        event = null;
+                        continue;
+                    }
+                    
+                    if (exited) {
+                        synchronized(sGLThreadManager) {
+                            mExited = true;
+                        }
+                        exited = false;
+                    }
+                        
+                    if (destroyEGLSurface) {
+                        surface.destroySurface();
+                        synchronized(sGLThreadManager) {
+                            mHaveEGLSurface = false;
+                            mHasSurface = false;
+                            sGLThreadManager.notifyAll();
+                        }
+                            
+                        destroyEGLSurface = false;
+                        continue;
+                    }
+                        
+                    if (createEGLSurface) {
+                        surface.createSurface(surface.getHolder().getSurface());
+                        synchronized(sGLThreadManager) {
+                            mHaveEGLSurface = true;
+                            sGLThreadManager.notifyAll();
+                        }
+                        createEGLSurface = false;
+                    }
+                    
+                    if (sizeChanged) {
+                        surface.surfaceWidth = w;
+                        surface.surfaceHeight = h;
+                        surface.viewTransformation.update(surface.surfaceWidth, surface.surfaceHeight, surface.xServer.screenInfo.width, surface.xServer.screenInfo.height);    
+                        surface.viewportNeedsUpdate = true;
+                        sizeChanged = false;
+                    }
+                        
+                    {
+                        surface.drawFrame();
+                    }
+                    
+                    if (wantNotification) {
+                        synchronized(sGLThreadManager) {
+                            mRenderComplete = true;
+                            wantNotification = false;
+                            sGLThreadManager.notifyAll();
+                        }
+                        wantNotification = false;
+                    }
+                }
+            } catch (InterruptedException e) {}
+        }
+        
+        private boolean canDraw() {
+            return mRequestRender && mHasSurface;
+        }
+        
+        public void requestRenderer() {
+            synchronized(sGLThreadManager) {
+                mRequestRender = true;
+                sGLThreadManager.notifyAll();
+            }
+        }
+        
+        public void queueEvent(Runnable r) {
+            if (r == null)
+                return;
+            synchronized(sGLThreadManager) {
+                eventQueue.add(r);
+                sGLThreadManager.notifyAll();
+            }    
+        }
+        
+        public void surfaceCreated() {
+            synchronized(sGLThreadManager) {
+                mHasSurface = true;
+                sGLThreadManager.notifyAll();
+                try {
+                    while(mHasSurface && !mHaveEGLSurface) sGLThreadManager.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        
+        public void surfaceChanged(int width, int height) {
+            synchronized(sGLThreadManager) {
+                mSurfaceChanged = true;
+                mWidth = width;
+                mHeight = height;
+                sGLThreadManager.notifyAll();
+                try {
+                    while(mHasSurface && mHaveEGLSurface && mRenderComplete) sGLThreadManager.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        
+        public void surfaceDestroyed() {
+            synchronized(sGLThreadManager) {
+                mSurfaceDestroyed = true;
+                sGLThreadManager.notifyAll();
+                try {
+                    while(mHasSurface && mHaveEGLSurface) sGLThreadManager.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+        }
+        
+        public void exit() {
+            synchronized (sGLThreadManager) {
+                mExit = true;
+                try {
+                    while(!mExited) sGLThreadManager.wait();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+            }
+            sGLThreadManager.quit(this);
+        }
+    }
+    
+    static class GLThreadManager {
+        public void quit(GLThread t) {
+            t.exit();
+        }
+    }
+    
     private XServer xServer;
     private Context context;
     private final Drawable rootCursorDrawable;
@@ -50,13 +276,8 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
     private final float[] tmpXForm1 = XForm.getInstance();
     private final float[] tmpXForm2 = XForm.getInstance();
     private boolean cursorVisible = true;
-    private AtomicBoolean surfaceReady = new AtomicBoolean(false);
-    private AtomicBoolean sceneDirty = new AtomicBoolean(false);
-    private AtomicBoolean rendererRequested = new AtomicBoolean(false);
-    private AtomicBoolean positionDirty = new AtomicBoolean(false);
-    private final AtomicReference<Window> pendingWindowPosition = new AtomicReference<>();
-    private Executor renderingThread = Executors.newSingleThreadExecutor();
-    private Handler mHandler = new Handler(Looper.getMainLooper());
+    private static final GLThreadManager sGLThreadManager = new GLThreadManager();
+    private GLThread glThread = new GLThread(this);
     
     public XServerView(Context context, XServer xserver) {
         super(context);
@@ -66,55 +287,22 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
         getHolder().addCallback(this);
         xServer.windowManager.addOnWindowModificationListener(this);
         xServer.pointer.addOnPointerMotionListener(this);
-    }
-    
-    @Override 
-    public void doFrame(long nano) {
-        if (sceneDirty.get()) {
-            queueEvent(() -> updateScene());
-            sceneDirty.set(false);
-        }
-        
-        if (positionDirty.get()) {
-            queueEvent(() -> updateWindowPosition(pendingWindowPosition.getAndSet(null)));
-            positionDirty.set(false);
-        }
-            
-        if (rendererRequested.get() && surfaceReady.get()) {
-            queueEvent(() -> drawFrame());
-            rendererRequested.set(false);
-        }
-        
-        Choreographer.getInstance().postFrameCallback(this);
+        glThread.start();
     }
     
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
-        queueEvent(() -> {
-            createSurface(holder.getSurface());
-            surfaceReady.set(true);
-            mHandler.post(() -> Choreographer.getInstance().postFrameCallback(this));
-        });
+        glThread.surfaceCreated();
     }
     
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
-        queueEvent(() -> {
-            destroySurface();
-            surfaceReady.set(false);
-            mHandler.post(() -> Choreographer.getInstance().removeFrameCallback(this));
-        });
+        glThread.surfaceDestroyed();
     }
     
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        queueEvent(() -> {
-            surfaceWidth = width;
-            surfaceHeight = height;
-            viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height);
-            viewportNeedsUpdate = true;
-            mHandler.post(() -> Choreographer.getInstance().postFrameCallback(this));
-        });
+        glThread.surfaceChanged(width, height);
     }
     
     public void drawFrame() {
@@ -328,19 +516,19 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
 
     @Override
     public void onMapWindow(Window window) {
-        sceneDirty.set(true);
+        queueEvent(() -> updateScene());
         requestRenderer();
     }
 
     @Override
     public void onUnmapWindow(Window window) {
-        sceneDirty.set(true);
+        queueEvent(() -> updateScene());
         requestRenderer();
     }
 
     @Override
     public void onChangeWindowZOrder(Window window) {
-        sceneDirty.set(true);
+        queueEvent(() -> updateScene());
         requestRenderer();
     }
 
@@ -352,12 +540,11 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
     @Override
     public void onUpdateWindowGeometry(final Window window, boolean resized) {
         if (resized) {
-            sceneDirty.set(true);
+            queueEvent(() -> updateScene());
         }
         else {
-        	positionDirty.set(true);
-        	sceneDirty.set(true);
-            pendingWindowPosition.set(window);
+        	queueEvent(() -> updateScene());
+            queueEvent(() -> updateWindowPosition(window));
         }
         requestRenderer();
     }
@@ -375,11 +562,11 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
     }
     
     public void queueEvent(Runnable r) {
-        renderingThread.execute(r);
+        glThread.queueEvent(r);
     }
     
     public void requestRenderer() {
-        rendererRequested.set(true);
+        glThread.requestRenderer();
     }
     
     static {
