@@ -1,6 +1,6 @@
 #include "egl.hpp"
 
-void EGLRenderer::createSurface(ANativeWindow *window) {
+void EGLRenderer::init() {
     EGLBoolean result;
     
     display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
@@ -18,7 +18,6 @@ void EGLRenderer::createSurface(ANativeWindow *window) {
     
     printf("Initialized egl major %d minor %d", major, minor);
     
-    EGLConfig config;
     int num_configs;
     
     const EGLint attrib_list[] = {
@@ -44,15 +43,19 @@ void EGLRenderer::createSurface(ANativeWindow *window) {
     
     eglBindAPI(EGL_OPENGL_ES_API);
     
-    surface = eglCreateWindowSurface(display, config, window, nullptr);
-    if (surface == EGL_NO_SURFACE) {
-        printf("Failed to create window surface");
-        return;
-    }
-    
     context = eglCreateContext(display, config, EGL_NO_CONTEXT, ctx_attrib_list);
     if (context == EGL_NO_CONTEXT) {
         printf("Failed to create egl context");
+        return;
+    }
+}
+
+void EGLRenderer::createSurface(ANativeWindow *window) {
+    EGLBoolean result;
+    
+    surface = eglCreateWindowSurface(display, config, window, nullptr);
+    if (surface == EGL_NO_SURFACE) {
+        printf("Failed to create window surface");
         return;
     }
     
@@ -138,8 +141,8 @@ void EGLRenderer::updateTextureDrawable(int textureId, uint16_t width, uint16_t 
 }
 
 void EGLRenderer::finishRendering() {
-    eglSwapBuffers(display, surface);
     drawableShader->disable();
+    eglSwapBuffers(display, surface);
 }
 
 void EGLRenderer::destroySurface() {
@@ -147,6 +150,9 @@ void EGLRenderer::destroySurface() {
     delete drawableShader;
     eglMakeCurrent(display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     eglDestroySurface(display, surface);
+}
+
+void EGLRenderer::stop() {
     eglDestroyContext(display, context);
     eglTerminate(display);
 }

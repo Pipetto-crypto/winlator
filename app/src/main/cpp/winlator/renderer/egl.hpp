@@ -18,13 +18,16 @@
 class EGLRenderer {
     private:
         EGLDisplay display;
+        EGLConfig config;
         EGLSurface surface;
         EGLContext context;
         DrawableShader *drawableShader;
     
     public:
+        void init();
         void createSurface(ANativeWindow *window);
         void destroySurface();
+        void stop();
         void beginRendering(int width, int height);
         void updateViewport(int x, int y, int width, int height);
         void updateScissor(int active, int x, int y, int width, int height);

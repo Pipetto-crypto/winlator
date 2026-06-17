@@ -11,6 +11,16 @@ Java_com_winlator_cmod_widget_XServerView_createSurface(JNIEnv *env, jobject thi
 }
 
 extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_XServerView_init(JNIEnv *env, jobject thiz) {
+    renderer.init();
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_XServerView_stop(JNIEnv *env, jobject thiz) {
+    renderer.stop();
+}
+
+extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_cmod_widget_XServerView_destroySurface(JNIEnv *env, jobject thiz) {
     renderer.destroySurface();
 }

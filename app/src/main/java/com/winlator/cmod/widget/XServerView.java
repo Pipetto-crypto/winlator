@@ -2,6 +2,7 @@ package com.winlator.cmod.widget;
 
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.view.Choreographer;
 import com.winlator.cmod.R;
 import android.content.Context;
@@ -24,6 +25,7 @@ import com.winlator.cmod.xserver.WindowAttributes;
 import com.winlator.cmod.xserver.WindowManager;
 import com.winlator.cmod.xserver.XLock;
 import com.winlator.cmod.xserver.XServer;
+import dalvik.annotation.optimization.FastNative;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.concurrent.Executor;
@@ -34,13 +36,16 @@ import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class XServerView extends SurfaceView implements SurfaceHolder.Callback, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener {
+    static final String RENDERER_LOG_STRING = "Renderer";
+    
     static class GLThread extends Thread {
         private boolean mExited;
-        private boolean mExit;
         private boolean mHasSurface;
         private int mWidth;
         private int mHeight;
         private boolean mHaveEGLSurface;
+        private boolean mHaveEGLContext;
+        private boolean mWaitingForSurface;
         private boolean mSurfaceChanged;
         private boolean mRenderComplete;
         private boolean mRequestRender;
@@ -63,29 +68,20 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
         
         public void guardedRun() throws InterruptedException {
             mHaveEGLSurface = false;
+            mHaveEGLContext = false;
             
             try {
                 Runnable event = null;
-                boolean exited = false;
                 boolean createEGLSurface = false;
-                boolean destroyEGLSurface  = false;
                 boolean sizeChanged = false;
-                boolean wantNotification = false;
                 int w = 0;
                 int h = 0;
                 
                 while (true) {
                     synchronized(sGLThreadManager) {
                         while(true) {
-                            if (mExited)
+                            if (mExited) 
                                 return;
-                            
-                            if (mExit) {
-                                mExit = false;
-                                exited = true;
-                                destroyEGLSurface = true;
-                                break;
-                            }
                             
                             if (!eventQueue.isEmpty()) {
                                 event = eventQueue.remove(0);
@@ -93,29 +89,43 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
                             }
                             
                             if (mSurfaceDestroyed) {
+                                Log.d(RENDERER_LOG_STRING, "Destroying surface");
+                                surface.destroySurface();
+                                mHaveEGLSurface = false;
+                                mHasSurface = false;
                                 mSurfaceDestroyed = false;
-                                destroyEGLSurface = true;
-                                break;
+                                sGLThreadManager.notifyAll();
                             }
                             
-                            if(mSurfaceChanged) {
-                                wantNotification = true;
+                            if (mSurfaceChanged) {
+                                Log.d(RENDERER_LOG_STRING, "Resizing surface");
                                 mSurfaceChanged = false;
                                 sizeChanged = true;
                             }
                             
-                            if (canDraw()) {
-                                if (!mHaveEGLSurface) {
+                            if (mHasSurface && mWaitingForSurface) {
+                                Log.d(RENDERER_LOG_STRING, "Creating surface");
+                                mWaitingForSurface = false;
+                                sGLThreadManager.notifyAll();
+                            }
+                            
+                            if (readyToDraw()) {
+                                if (!mHaveEGLContext) {
+                                    surface.init();
+                                    mHaveEGLContext = true;
+                                }
+                                
+                                if (mHaveEGLContext && !mHaveEGLSurface) {
                                     createEGLSurface = true;
                                 }
                                 
                                 if (sizeChanged) {
+                                    Log.d(RENDERER_LOG_STRING, "Saving new width and height");
                                     w = mWidth;
                                     h = mHeight;
                                 }
                                 
                                 mRequestRender = false;
-                                mRenderComplete = false;
                                 sGLThreadManager.notifyAll();
                                 break;
                             }
@@ -129,27 +139,9 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
                         event = null;
                         continue;
                     }
-                    
-                    if (exited) {
-                        synchronized(sGLThreadManager) {
-                            mExited = true;
-                        }
-                        exited = false;
-                    }
-                        
-                    if (destroyEGLSurface) {
-                        surface.destroySurface();
-                        synchronized(sGLThreadManager) {
-                            mHaveEGLSurface = false;
-                            mHasSurface = false;
-                            sGLThreadManager.notifyAll();
-                        }
-                            
-                        destroyEGLSurface = false;
-                        continue;
-                    }
                         
                     if (createEGLSurface) {
+                        Log.d(RENDERER_LOG_STRING, "Creating EGLSurface");
                         surface.createSurface(surface.getHolder().getSurface());
                         synchronized(sGLThreadManager) {
                             mHaveEGLSurface = true;
@@ -159,30 +151,36 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
                     }
                     
                     if (sizeChanged) {
+                        Log.d(RENDERER_LOG_STRING, "Applying size changes");
                         surface.surfaceWidth = w;
                         surface.surfaceHeight = h;
-                        surface.viewTransformation.update(surface.surfaceWidth, surface.surfaceHeight, surface.xServer.screenInfo.width, surface.xServer.screenInfo.height);    
+                        surface.viewTransformation.update(w, h, surface.xServer.screenInfo.width, surface.xServer.screenInfo.height);    
                         surface.viewportNeedsUpdate = true;
+                        surface.drawFrame();
+                        synchronized(sGLThreadManager) {
+                            mRenderComplete = true;
+                            sGLThreadManager.notifyAll();
+                        }
                         sizeChanged = false;
                     }
-                        
+                    
                     {
                         surface.drawFrame();
                     }
-                    
-                    if (wantNotification) {
-                        synchronized(sGLThreadManager) {
-                            mRenderComplete = true;
-                            wantNotification = false;
-                            sGLThreadManager.notifyAll();
-                        }
-                        wantNotification = false;
-                    }
                 }
             } catch (InterruptedException e) {}
+            finally {
+                surface.destroySurface();
+                surface.stop();
+            }
         }
         
-        private boolean canDraw() {
+        public boolean ableToDraw() {
+            return mHaveEGLContext && mHaveEGLSurface;
+        }
+
+        
+        private boolean readyToDraw() {
             return mRequestRender && mHasSurface;
         }
         
@@ -204,32 +202,45 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
         
         public void surfaceCreated() {
             synchronized(sGLThreadManager) {
+                Log.d(RENDERER_LOG_STRING, "Calling surfaceCreated");
                 mHasSurface = true;
+                mWaitingForSurface = true;
                 sGLThreadManager.notifyAll();
                 try {
-                    while(mHasSurface && !mHaveEGLSurface) sGLThreadManager.wait();
+                    while(mHasSurface && mWaitingForSurface) sGLThreadManager.wait();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
             }
+            Log.d(RENDERER_LOG_STRING, "surfaceCreated called successfully");
         }
         
         public void surfaceChanged(int width, int height) {
             synchronized(sGLThreadManager) {
+                Log.d(RENDERER_LOG_STRING, "Calling surfaceChanged");
                 mSurfaceChanged = true;
+                mRequestRender = true;
+                mRenderComplete = false;
                 mWidth = width;
                 mHeight = height;
+                
+                if (Thread.currentThread() == this) {
+                    return;
+                }
+
                 sGLThreadManager.notifyAll();
                 try {
-                    while(mHasSurface && mHaveEGLSurface && mRenderComplete) sGLThreadManager.wait();
+                    while(mHasSurface && ableToDraw() && !mRenderComplete) sGLThreadManager.wait();
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
             }
+            Log.d(RENDERER_LOG_STRING, "surfaceChanged called successfully");
         }
         
         public void surfaceDestroyed() {
             synchronized(sGLThreadManager) {
+                Log.d(RENDERER_LOG_STRING, "Calling surfaceDestroyed");
                 mSurfaceDestroyed = true;
                 sGLThreadManager.notifyAll();
                 try {
@@ -237,17 +248,12 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
                 } catch (InterruptedException e) {
                     Thread.currentThread().interrupt();
                 }
-            }
+            }Log.d(RENDERER_LOG_STRING, "surfaceDestroyed called successfully");
         }
         
         public void exit() {
             synchronized (sGLThreadManager) {
-                mExit = true;
-                try {
-                    while(!mExited) sGLThreadManager.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                }
+                mExited = true;
             }
             sGLThreadManager.quit(this);
         }
@@ -255,7 +261,7 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
     
     static class GLThreadManager {
         public void quit(GLThread t) {
-            t.exit();
+            t.interrupt();
         }
     }
     
@@ -572,12 +578,23 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
     static {
         System.loadLibrary("winlator");
     }
-
+    
+    @FastNative
+    public native void init();
+    @FastNative
+    public native void stop();
+    @FastNative
     public native void createSurface(Surface surface);
+    @FastNative
     public native void beginRendering(int width, int height);
+    @FastNative
     public native void updateViewport(int x, int y, int width, int height);
+    @FastNative
     public native void updateScissor(int active, int x, int y, int width, int height);
+    @FastNative
     public native void renderDrawable(int textureId, float[] xform, boolean isFromWindow);
+    @FastNative
     public native void finishRendering();
+    @FastNative
     public native void destroySurface();
 }
