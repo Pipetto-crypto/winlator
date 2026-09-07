@@ -110,17 +110,19 @@ public class ShortcutSettingsDialog extends ContentDialog {
         loadScreenSizeSpinner(getContentView(), shortcut.getExtra("screenSize", shortcut.container.getScreenSize()), isDarkMode);
 
         final Spinner sDisplayDriver = findViewById(R.id.SDisplayDriver);
-        String currentDisplayDriver = shortcut.getExtra("displayDriver", Container.DEFAULT_DISPLAY_DRIVER);
+        String currentDisplayDriver = shortcut.getExtra("displayDriver", shortcut.container.getDisplayDriver());
         AppUtils.setSpinnerSelectionFromIdentifier(sDisplayDriver, currentDisplayDriver);
         
         final View vDisplayDriverConfig = findViewById(R.id.BTDisplayDriverConfig);
         if (StringUtils.parseIdentifier(currentDisplayDriver).equals("displayx")) {
             vDisplayDriverConfig.setVisibility(View.VISIBLE);
             vDisplayDriverConfig.setOnClickListener((v) -> (new DisplayXConfigDialog(vDisplayDriverConfig)).show());
-            vDisplayDriverConfig.setTag(shortcut.getExtra("displayxConfig", DisplayXConfigDialog.DEFAULT_CONFIG));
+            vDisplayDriverConfig.setTag(shortcut.getExtra("displayxConfig", shortcut.container.getDisplayXConfig()));
         }
         else {
-            vDisplayDriverConfig.setVisibility(View.GONE);
+            vDisplayDriverConfig.setVisibility(View.VISIBLE);
+            vDisplayDriverConfig.setOnClickListener((v) -> (new EGLConfigDialog(vDisplayDriverConfig)).show());
+            vDisplayDriverConfig.setTag(shortcut.getExtra("eglConfig", shortcut.container.getEGLConfig()));
         }
         
         sDisplayDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -134,7 +136,9 @@ public class ShortcutSettingsDialog extends ContentDialog {
                     vDisplayDriverConfig.setTag(shortcut.getExtra("displayxConfig", DisplayXConfigDialog.DEFAULT_CONFIG));
                 }
                 else {
-                    vDisplayDriverConfig.setVisibility(View.GONE);
+                    vDisplayDriverConfig.setVisibility(View.VISIBLE);
+                    vDisplayDriverConfig.setOnClickListener((v) -> (new EGLConfigDialog(vDisplayDriverConfig)).show());
+                    vDisplayDriverConfig.setTag(shortcut.getExtra("eglConfig", EGLConfigDialog.DEFAULT_CONFIG));
                 }
             }
 
@@ -413,6 +417,8 @@ public class ShortcutSettingsDialog extends ContentDialog {
                 shortcut.putExtra("displayDriver", displayDriver);
                 if (displayDriver.equals("displayx"))
                     shortcut.putExtra("displayxConfig", vDisplayDriverConfig.getTag().toString());
+                else
+                    shortcut.putExtra("eglConfig", vDisplayDriverConfig.getTag().toString());
                     
                 shortcut.putExtra("graphicsDriver", graphicsDriver);
                 shortcut.putExtra("graphicsDriverConfig", graphicsDriverConfig);

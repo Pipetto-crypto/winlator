@@ -61,6 +61,10 @@ bool EffectComposer::isSuitableForColorSwap(Drawable *drawable) {
     return isColorSwapEnabled() && !drawable->isDirectContent && !drawable->isDisplayX;
 }
 
+bool EffectComposer::isPending() {
+    return this->isOperationPending.load();
+}
+
 VkResult EffectComposer::createInstance() {
     VkResult result;
     
@@ -81,8 +85,8 @@ VkResult EffectComposer::createInstance() {
     createInfo.pApplicationInfo = &appInfo;
     createInfo.enabledExtensionCount = 0;
     createInfo.ppEnabledExtensionNames = nullptr;
-    createInfo.enabledLayerCount = static_cast<uint32_t>(layerNames.size());
-    createInfo.ppEnabledLayerNames = layerNames.data();
+    createInfo.enabledLayerCount = enable_validation ? static_cast<uint32_t>(layerNames.size()) : 0;
+    createInfo.ppEnabledLayerNames = enable_validation ? layerNames.data() : nullptr;
 
     result = vkCreateInstance(&createInfo, nullptr, &instance);
     if (result != VK_SUCCESS) {
@@ -628,15 +632,6 @@ void EffectComposer::destroyComposerTexture(Drawable *drawable) {
 }    
 
 void EffectComposer::swapColors(Drawable *drawable) {
-    vkResetFences(device, 1, &fence);
-    vkResetCommandBuffer(commandBuffer, 0);
-    
-    VkCommandBufferBeginInfo beginInfo{};
-    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
-    beginInfo.pNext = nullptr;
-    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
-    beginInfo.pInheritanceInfo = nullptr;
-    
     VkImageSubresourceRange subresourceRange = {
         .aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
         .baseMipLevel = 0,
@@ -645,7 +640,6 @@ void EffectComposer::swapColors(Drawable *drawable) {
         .layerCount = 1
     };
     
-    vkBeginCommandBuffer(commandBuffer, &beginInfo);
     vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, colorSwapPipeline);
       
     if (drawable->composerTexture->srcPipelineStage != VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT ||
@@ -704,26 +698,11 @@ void EffectComposer::swapColors(Drawable *drawable) {
     vkCmdPushConstants(commandBuffer, pipelineLayout, VK_SHADER_STAGE_COMPUTE_BIT, 0, sizeof(constants), &constants);
     vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_COMPUTE, pipelineLayout, 0, 1, &drawable->composerTexture->vkDescriptorSet, 0, nullptr);
     vkCmdDispatch(commandBuffer, (drawable->width + 15) / 16, (drawable->height + 15) / 16, 1);
-    
-    vkEndCommandBuffer(commandBuffer);
-    
-    VkSubmitInfo submitInfo{};
-    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
-    submitInfo.pNext = nullptr;
-    submitInfo.waitSemaphoreCount = 0;
-    submitInfo.pWaitSemaphores = nullptr;
-    submitInfo.pWaitDstStageMask = nullptr;
-    submitInfo.commandBufferCount = 1;
-    submitInfo.pCommandBuffers = &commandBuffer;
-    submitInfo.signalSemaphoreCount = 0;
-    submitInfo.pSignalSemaphores = nullptr;
-    
-    vkQueueSubmit(queue, 1, &submitInfo, fence);
-    
-    vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
 }
 
 void EffectComposer::apply(Drawable *drawable) {
+    isOperationPending = true;
+    
     if (!drawable->composerTexture) {
         VkResult result = createComposerTexture(drawable);
         if (result != VK_SUCCESS) {
@@ -742,10 +721,39 @@ void EffectComposer::apply(Drawable *drawable) {
         drawable->composerTexture->sizeChanged = false;
     }
     
+    vkWaitForFences(device, 1, &fence, VK_TRUE, UINT64_MAX);
+    vkResetFences(device, 1, &fence);
+    
+    vkResetCommandBuffer(commandBuffer, 0);
+    
+    VkCommandBufferBeginInfo beginInfo{};
+    beginInfo.sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO;
+    beginInfo.pNext = nullptr;
+    beginInfo.flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT;
+    beginInfo.pInheritanceInfo = nullptr;
+    
+    vkBeginCommandBuffer(commandBuffer, &beginInfo);
+    
     if (isSuitableForColorSwap(drawable)) {
         swapColors(drawable);
-        return;
     }    
+    
+    vkEndCommandBuffer(commandBuffer);
+    
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    submitInfo.pNext = nullptr;
+    submitInfo.waitSemaphoreCount = 0;
+    submitInfo.pWaitSemaphores = nullptr;
+    submitInfo.pWaitDstStageMask = nullptr;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &commandBuffer;
+    submitInfo.signalSemaphoreCount = 0;
+    submitInfo.pSignalSemaphores = nullptr;
+    
+    vkQueueSubmit(queue, 1, &submitInfo, fence);
+    
+    isOperationPending = false;
 }
 
 void EffectComposer::init() {

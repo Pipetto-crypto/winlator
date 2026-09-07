@@ -353,7 +353,7 @@ void DisplayX::eventThreadLoop() {
         
         auto lock = eventLock.lock();
         eventLock.wait(lock, [&]{ 
-            return stopped || state != State::NONE || !eventQueue.empty() || cursorUpdate;
+            return stopped || ((state != State::NONE || !eventQueue.empty() || cursorUpdate) && !effectComposer->isPending());
         });
         
         if (stopped) {
@@ -532,7 +532,8 @@ void DisplayX::presentThreadLoop() {
                     pfnASurfaceTransactionSetBuffer(presentTransaction, window->control, drawable->ahb, presentRequest->sync_fence);
                 }
                 
-                if (drawable->isDisplayX || drawable->isDirectContent) pfnASurfaceTransactionSetBufferTransparency(presentTransaction, window->control, ASURFACE_TRANSACTION_TRANSPARENCY_OPAQUE);
+                pfnASurfaceTransactionSetBufferTransparency(presentTransaction, window->control, ASURFACE_TRANSACTION_TRANSPARENCY_OPAQUE);
+                
                 if (drawable->isDisplayX) {
                    completeContext->requests.push_back(std::move(presentRequest));
                    env->CallVoidMethod(xServer->xserverDisplayActivity, cache->updateFrameRating, window->windowObj);
@@ -714,7 +715,7 @@ void DisplayX::destroyWindowControl(Window *window) {
 void DisplayX::mapWindow(Window *window) {
     if (!window->control) return;
     
-    if (!strcmp(window->className.c_str(), windowManager->getUnviewableWMClass().c_str()))
+    if (!windowManager->getUnviewableWMClass().empty() && !strcmp(window->className.c_str(), windowManager->getUnviewableWMClass().c_str()))
         window->enabled = false;
     
     pfnASurfaceTransactionSetVisibility(windowTransaction, window->control, ASURFACE_TRANSACTION_VISIBILITY_SHOW);
@@ -730,8 +731,6 @@ void DisplayX::unmapWindow(Window *window) {
 
 void DisplayX::changeGeometry(Window *window, bool resized) {
     if (!window->control) return;
-    
-    int ret;
     
     if (resized)
         pfnASurfaceTransactionSetBuffer(windowTransaction, window->control, nullptr, -1);

@@ -51,17 +51,18 @@ public class XServer {
     private XServerView xServerView;
     private XClient grabbingClient = null;
 
-    public XServer(ScreenInfo screenInfo, String displayDriver, KeyValueSet displayxConfig) {
+    public XServer(ScreenInfo screenInfo, String displayDriver, KeyValueSet displayConfig) {
         this.screenInfo = screenInfo;
         this.displayDriver = displayDriver;
-        if (isDisplayX()) {
-            String surfaceFormat = displayxConfig.get("surfaceFormat");
+        
+        if (displayConfig != null) {
+            String surfaceFormat = displayConfig.get("surfaceFormat");
             if (surfaceFormat.equals("rgba8"))
                 this.surfaceFormat = HardwareBuffer.RGBA_8888;
             else 
-                this.surfaceFormat = Drawable.HAL_PIXEL_FORMAT_BGRA_8888;        
-        }    
-            
+                this.surfaceFormat = Drawable.HAL_PIXEL_FORMAT_BGRA_8888;    
+        }
+        
         cursorLocker = new CursorLocker(this);
         for (Lockable lockable : Lockable.values()) locks.put(lockable, new ReentrantLock());
 

@@ -40,7 +40,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeInit(JNIEnv *env, jobject thiz, 
     rootWindow->height = env->CallShortMethod(rootWindowObj, cache.windowGetHeight);
     rootWindow->x = env->CallShortMethod(rootWindowObj, cache.windowGetX);
     rootWindow->y = env->CallShortMethod(rootWindowObj, cache.windowGetY);
-    rootWindow->z_order = -1;
+    rootWindow->z_order = INT32_MIN;
     rootWindow->className = "";
     
     auto drawable = std::make_unique<struct Drawable>();
@@ -170,10 +170,15 @@ Java_com_winlator_cmod_widget_XServerView_nativeInit(JNIEnv *env, jobject thiz, 
     displayX.xServer = &xserver;
     displayX.effectComposer = &effectComposer;
     
-    displayX.setPerformanceMode(env->GetBooleanField(context, cache.performanceMode));
-    displayX.setPresentRR(env->GetBooleanField(context, cache.presentRR));
-    displayX.setBackPressure(env->GetBooleanField(context, cache.backPressure));
-    displayX.setPrecisePresentation(env->GetBooleanField(context, cache.precisePresentation));
+    if (xserver.isDisplayX()) {
+        displayX.setPerformanceMode(env->GetBooleanField(context, cache.performanceMode));
+        displayX.setPresentRR(env->GetBooleanField(context, cache.presentRR));
+        displayX.setBackPressure(env->GetBooleanField(context, cache.backPressure));
+        displayX.setPrecisePresentation(env->GetBooleanField(context, cache.precisePresentation));
+    }
+    else {
+        renderer.setTextureFilter(env->GetIntField(context, cache.textureFilter));
+    }
     
     if (xserver.isDisplayX())
         displayX.start();

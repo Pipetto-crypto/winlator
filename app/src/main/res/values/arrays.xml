@@ -26,6 +26,10 @@
         <item>rgba8</item>
         <item>bgra8</item>
     </string-array>    
+    <string-array name="texture_filter_entries">
+        <item>nearest</item>
+        <item>linear</item>
+    </string-array>    
     <string-array name="graphics_driver_entries">
         <item>Wrapper</item>
     </string-array>

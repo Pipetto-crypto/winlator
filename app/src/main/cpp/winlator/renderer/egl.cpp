@@ -324,7 +324,7 @@ void EGLRenderer::renderDrawable(Drawable *drawable, int x, int y, bool isWindow
     if (drawable->glTexture) {
         XForm::set(tmpXForm1, x, y, drawable->width, drawable->height);
         XForm::multiply(tmpXForm1, tmpXForm1, tmpXForm2);
-        renderDrawable(drawable->glTexture.get(), 6, tmpXForm1, isWindow);
+        renderDrawable(drawable->glTexture.get(), 6, tmpXForm1, isWindow, !drawable->isDirectContent && drawable->format == AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM);
     }
 }
 
@@ -444,12 +444,13 @@ void EGLRenderer::createEGLSurface(ANativeWindow *window) {
     glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 }
 
-void EGLRenderer::renderDrawable(GLTexture *texture, int length, float xform[], bool isFromWindow) {
+void EGLRenderer::renderDrawable(GLTexture *texture, int length, float xform[], bool isFromWindow, bool swapColors) {
     glActiveTexture(GL_TEXTURE0);
     glBindTexture(GL_TEXTURE_2D, texture->id);
     glUniform1i(drawableShader->getUniformLoc("texture"), 0);
     glUniform1fv(drawableShader->getUniformLoc("xform"), length, xform);
     glUniform1i(drawableShader->getUniformLoc("is_cursor"), isFromWindow ? 0 : 1);
+    glUniform1i(drawableShader->getUniformLoc("swap_colors"), swapColors ? 1 : 0);
     glDrawArrays(GL_TRIANGLE_STRIP, 0, 4);
     glBindTexture(GL_TEXTURE_2D, 0);
 }
@@ -478,8 +479,8 @@ std::unique_ptr<GLTexture> EGLRenderer::allocateTextureDirect(AHardwareBuffer* h
     
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, textureFilter == TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, textureFilter == TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR);
 
     glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, texture->eglImage);
     if (glGetError() != GL_NO_ERROR) {
@@ -505,8 +506,8 @@ std::unique_ptr<GLTexture> EGLRenderer::allocateTexture(int width, int height) {
 
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, textureFilter == TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, textureFilter == TextureFilter::Nearest ? GL_NEAREST : GL_LINEAR);
 
     glBindTexture(GL_TEXTURE_2D, 0);
     
@@ -575,4 +576,8 @@ void EGLRenderer::destroyEGLSurface() {
 void EGLRenderer::destroyEGLContext() {
     eglDestroyContext(display, context);
     context = EGL_NO_CONTEXT;
+}
+
+void EGLRenderer::setTextureFilter(int textureFilter) {
+    this->textureFilter = static_cast<TextureFilter>(textureFilter);
 }

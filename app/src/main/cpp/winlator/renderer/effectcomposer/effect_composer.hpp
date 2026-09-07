@@ -119,6 +119,8 @@ class EffectComposer {
         bool colorSwapEnabled = false;
         bool initialized = false;
         
+        std::atomic_bool isOperationPending = false;
+        
         VkResult createInstance();
         VkResult pickPhysicalDevice();
         VkResult createDevice();
@@ -134,4 +136,5 @@ class EffectComposer {
         bool isColorSwapEnabled();
         bool isEnabled();
         bool isSuitableForColorSwap(Drawable *drawable);
+        bool isPending();
 };

@@ -1,5 +1,6 @@
 package com.winlator.cmod.xserver.extensions;
 
+import android.animation.Animator;
 import static com.winlator.cmod.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
 import android.util.SparseArray;
@@ -23,6 +24,7 @@ import com.winlator.cmod.xserver.errors.GLXBadContext;
 import com.winlator.cmod.xserver.errors.GLXBadDrawable;
 import com.winlator.cmod.xserver.errors.GLXBadFBConfig;
 import com.winlator.cmod.xserver.errors.GLXBadPixmap;
+import com.winlator.cmod.xserver.errors.GLXBadProfileARB;
 import com.winlator.cmod.xserver.errors.GLXBadWindow;
 import com.winlator.cmod.xserver.errors.GLXError;
 import com.winlator.cmod.xserver.errors.XRequestError;
@@ -35,6 +37,7 @@ public class GLXExtension implements Extension {
     private XServer xserver;
     private FBConfig defaultConfig;
     private FBConfig[] fbConfigs;
+    private ClientInfo clientInfo;
     private SparseArray<GLXContext> glxContexts = new SparseArray<>();
     private SparseArray<GLXPixmap> glxPixmaps = new SparseArray<>();
     private SparseArray<GLXWindow> glxWindows = new SparseArray<>();
@@ -97,10 +100,29 @@ public class GLXExtension implements Extension {
     private static abstract class GLXRenderType {
         private static final int GLX_RGBA_BIT = 0x00000001;
         private static final int GLX_RGBA_TYPE = 0x8014;
+        private static final int GLX_COLOR_INDEX_TYPE = 0x8015;
     }
     
     private static abstract class GLXVisualClass {
         private static final int GLX_TRUE_COLOR = 0x8002;
+    }
+    
+    private static abstract class GLXContextAttribs {
+        private static final int GLX_CONTEXT_MAJOR_VERSION_ARB = 0x2091;
+        private static final int GLX_CONTEXT_MINOR_VERSION_ARB = 0x2092;
+        private static final int GLX_CONTEXT_FLAGS_ARB = 0x2094;
+        private static final int GLX_RENDER_TYPE = 0x8011;
+        private static final int GLX_CONTEXT_PROFILE_MASK_ARB = 0x9126;
+    }
+    
+    private static abstract class GLXContextFlags {
+        private static final int GLX_CONTEXT_DEBUG_BIT_ARB = 0x0001;
+        private static final int GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB = 0x0002;
+    }
+    
+    private static abstract class GLXContextProfile {
+        private static final int GLX_CONTEXT_CORE_PROFILE_BIT_ARB = 0x00000001;
+        private static final int GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB = 0x00000002;
     }
     
     private static abstract class ClientOpcodes {
@@ -118,6 +140,9 @@ public class GLXExtension implements Extension {
         private static final byte GET_DRAWABLE_ATTRIBUTES = 29;
         private static final byte CREATE_WINDOW = 31;
         private static final byte DESTROY_WINDOW = 32;
+        private static final byte CLIENT_INFO_ARB = 33;
+        private static final byte CREATE_CONTEXT_ATTRIBS_ARB = 34;
+        private static final byte CLIENT_INFO_2_ARB = 35;
     }
     
     private class GLXContext {
@@ -128,6 +153,10 @@ public class GLXExtension implements Extension {
         private int renderType;
         private int shareList;
         private boolean isDirect;
+        private int majorGL;
+        private int minorGL;
+        private int flags;
+        private int profileMask;
         
         GLXContext(int id, int visualId, FBConfig fbconfig, int screen, int renderType, int shareList, boolean isDirect) {
             this.id = id;
@@ -137,6 +166,24 @@ public class GLXExtension implements Extension {
             this.renderType = renderType;
             this.shareList = shareList;
             this.isDirect = isDirect;
+            this.majorGL = 1;
+            this.minorGL = 0;
+            this.flags = 0;
+            this.profileMask = GLXContextProfile.GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
+        }
+        
+        GLXContext(int id, int visualId, FBConfig fbconfig, int screen, int renderType, int shareList, boolean isDirect, int majorGL, int minorGL, int flags, int profileMask) {
+            this.id = id;
+            this.visualId = visualId;
+            this.fbconfig = fbconfig;
+            this.screen = screen;
+            this.renderType = renderType;
+            this.shareList = shareList;
+            this.isDirect = isDirect;
+            this.majorGL = majorGL;
+            this.minorGL = minorGL;
+            this.flags = flags;
+            this.profileMask = profileMask;
         }
     }
     
@@ -166,6 +213,34 @@ public class GLXExtension implements Extension {
             this.screen = screen;
             this.fbconfig = fbconfig;
             this.window = window;
+        }
+    }
+    
+    private class ContextVersion {
+        int major;
+        int minor;
+        int flags;
+        
+        ContextVersion(int major, int minor, int flags) {
+            this.major = major;
+            this.minor = minor;
+            this.flags = flags;
+        }
+    }
+    
+    private class ClientInfo {
+        private int majorGLXVersion;
+        private int minorGLXVersion;
+        private String clientGLXExtensions;
+        private String clientGLExtensions;
+        private ArrayList<ContextVersion> contextVersions;
+        
+        ClientInfo(int major, int minor, String clientGLXExtensions, String clientGLExtensions, ArrayList<ContextVersion> contextVersions) {
+            this.majorGLXVersion = major;
+            this.minorGLXVersion = minor;
+            this.clientGLXExtensions = clientGLXExtensions;
+            this.clientGLExtensions = clientGLExtensions;
+            this.contextVersions = contextVersions;
         }
     }
     
@@ -294,7 +369,7 @@ public class GLXExtension implements Extension {
                 returnedString = "1.4 ";
                 break;
             case GLXConstants.GLX_EXTENSIONS:
-                returnedString = "";
+                returnedString = "GLX_ARB_create_context GLX_ARB_create_context_profile ";
                 break;
             default:
                 returnedString = "";
@@ -333,13 +408,121 @@ public class GLXExtension implements Extension {
         }  
     }
     
-    private void getClientInfo(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+    private void setClientInfo(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int majorVersion = inputStream.readInt();
         int minorVersion = inputStream.readInt();
         int clientStringLength = inputStream.readInt();
         String clientExtensions = inputStream.readString8(clientStringLength);
         
-        Log.d("GLXExtension", "Connected client supported OpenGL version " + majorVersion + "." + minorVersion + " ,extensions " + clientExtensions);
+        clientInfo = new ClientInfo(majorVersion, minorVersion, clientExtensions, "", null);
+    }
+    
+    private void setClientInfoARB(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        int majorVersion = inputStream.readInt();
+        int minorVersion = inputStream.readInt();
+        int numContextVersions = inputStream.readInt();
+        int clientGLStringLength = inputStream.readInt();
+        int clientGLXStringLength = inputStream.readInt();
+        
+        ArrayList<ContextVersion> contextVersions = new ArrayList<>();
+        for (int i = 0; i < numContextVersions; i++) {
+            int major = inputStream.readInt();
+            int minor = inputStream.readInt();
+            ContextVersion contextVersion = new ContextVersion(major, minor, 0);
+            contextVersions.add(contextVersion);
+        }
+        
+        String clientGLExtensions = inputStream.readString8(clientGLStringLength);
+        String clientGLXExtensions = inputStream.readString8(clientGLXStringLength);
+        
+        clientInfo = new ClientInfo(majorVersion, minorVersion, clientGLExtensions, clientGLXExtensions, contextVersions);
+    }
+    
+    private void setClientInfo2ARB(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        int majorVersion = inputStream.readInt();
+        int minorVersion = inputStream.readInt();
+        int numContextVersions = inputStream.readInt();
+        int clientGLStringLength = inputStream.readInt();
+        int clientGLXStringLength = inputStream.readInt();
+        
+        ArrayList<ContextVersion> contextVersions = new ArrayList<>();
+        for (int i = 0; i < numContextVersions; i++) {
+            int major = inputStream.readInt();
+            int minor = inputStream.readInt();
+            int flags = inputStream.readInt();
+            ContextVersion contextVersion = new ContextVersion(major, minor, flags);
+            contextVersions.add(contextVersion);
+        }
+        
+        String clientGLExtensions = inputStream.readString8(clientGLStringLength);
+        String clientGLXExtensions = inputStream.readString8(clientGLXStringLength);
+        
+        clientInfo = new ClientInfo(majorVersion, minorVersion, clientGLExtensions, clientGLXExtensions, contextVersions);
+    }
+    
+    private void createContextAttribsARB(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
+        int contextId = inputStream.readInt();
+        int fbconfigId = inputStream.readInt();
+        int screen = inputStream.readInt();
+        int shareList = inputStream.readInt();
+        
+        boolean isDirect = inputStream.readByte() != 0;
+        inputStream.skip(3);
+        
+        int numAttribs = inputStream.readInt();
+        
+        int majorGL = 1;
+        int minorGL = 0;
+        int flags = 0;
+        int renderType = GLXRenderType.GLX_RGBA_TYPE;
+        int profileMask = GLXContextProfile.GLX_CONTEXT_CORE_PROFILE_BIT_ARB;
+        for (int i = 0; i < numAttribs; i++) {
+            int attr = inputStream.readInt();
+            int value = inputStream.readInt();
+            
+            switch(attr) {
+                case GLXContextAttribs.GLX_CONTEXT_MAJOR_VERSION_ARB:
+                    majorGL = value;
+                    break;
+                case GLXContextAttribs.GLX_CONTEXT_MINOR_VERSION_ARB:
+                    minorGL = value;
+                    break;
+                case GLXContextAttribs.GLX_CONTEXT_FLAGS_ARB:
+                    flags = value;
+                    break;
+                case GLXContextAttribs.GLX_RENDER_TYPE:
+                    if (value != GLXRenderType.GLX_COLOR_INDEX_TYPE && value != GLXRenderType.GLX_RGBA_TYPE) throw new BadValue(value);
+                    renderType = value;
+                    break;
+                case GLXContextAttribs.GLX_CONTEXT_PROFILE_MASK_ARB:
+                    if (value == 0) throw new GLXBadProfileARB(value);
+                    if ((value & ~(GLXContextProfile.GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB | GLXContextProfile.GLX_CONTEXT_CORE_PROFILE_BIT_ARB)) != 0) throw new GLXBadProfileARB(value);
+                    if (value != GLXContextProfile.GLX_CONTEXT_CORE_PROFILE_BIT_ARB && value != GLXContextProfile.GLX_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB) throw new GLXBadProfileARB(value);
+                    
+                    profileMask = value;
+                    break;
+                default:
+                     throw new BadValue(attr);
+            }
+        }
+        
+        if (renderType != GLXRenderType.GLX_RGBA_TYPE) throw new BadValue(renderType);
+        
+        FBConfig fbconfig = findFBConfig(fbconfigId);
+        if (fbconfig == null) throw new GLXBadFBConfig(fbconfigId);
+        
+        GLXContext sharedContext = glxContexts.get(shareList);
+        if (sharedContext == null && shareList != 0) throw new GLXBadContext(shareList);
+        
+        if (majorGL > 4 || majorGL < 1) throw new BadMatch();
+        if (majorGL == 1 && (minorGL < 0 || minorGL > 5)) throw new BadMatch();
+        if (majorGL == 2 && (minorGL < 0 || minorGL > 1)) throw new BadMatch();
+        if (majorGL == 3 && (minorGL < 0 || minorGL  > 3)) throw new BadMatch();
+        if (majorGL >= 3 && renderType == GLXRenderType.GLX_COLOR_INDEX_TYPE) throw new BadMatch();
+        if (majorGL < 3 && (flags & GLXContextFlags.GLX_CONTEXT_FORWARD_COMPATIBLE_BIT_ARB) != 0) throw new BadMatch();
+        
+        GLXContext context = new GLXContext(contextId, xserver.drawableManager.getVisual().id, fbconfig, screen, renderType, shareList, isDirect, majorGL, minorGL, flags, profileMask);
+        glxContexts.put(contextId, context);
     }
     
     private void createNewContext(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
@@ -528,8 +711,14 @@ public class GLXExtension implements Extension {
                 getFBConfigs(client, inputStream, outputStream);
                 break;        
             case ClientOpcodes.CLIENT_INFO:
-                getClientInfo(client, inputStream, outputStream);
-                break;      
+                setClientInfo(client, inputStream, outputStream);
+                break;     
+            case ClientOpcodes.CLIENT_INFO_ARB:
+                setClientInfoARB(client, inputStream, outputStream);
+                break;
+            case ClientOpcodes.CLIENT_INFO_2_ARB:
+                setClientInfo2ARB(client, inputStream, outputStream);
+                break;       
             case ClientOpcodes.CREATE_NEW_CONTEXT:
                 createNewContext(client, inputStream, outputStream);
                 break;    
@@ -557,7 +746,11 @@ public class GLXExtension implements Extension {
             case ClientOpcodes.DESTROY_PIXMAP:
                 destroyPixmap(client, inputStream, outputStream);
                 break;
+            case ClientOpcodes.CREATE_CONTEXT_ATTRIBS_ARB:
+                createContextAttribsARB(client, inputStream, outputStream);
+                break;
             default:
+                Log.d("GLXExtension", "Unimpemented opcode " + opcode);
                 throw new BadImplementation();
         }
     }

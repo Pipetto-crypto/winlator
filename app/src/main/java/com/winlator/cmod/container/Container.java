@@ -74,10 +74,11 @@ public class Container {
     private String controllerMapping = new String(new char[XrControllerMapping.values().length]);
     private String box64Version;
     private String emulator;
+    private String displayDriver;
+    private String displayxConfig = "";
+    private String eglConfig = "";
 
     private ContainerManager containerManager;
-
-
 
     public Container(int id) {
         this.id = id;
@@ -273,6 +274,34 @@ public class Container {
     public String getEmulator() {
         return this.emulator;
     }
+    
+    public String getDisplayDriver() {
+        return this.displayDriver;
+    }
+    
+    public void setDisplayDriver(String displayDriver) {
+        this.displayDriver = displayDriver;
+    }
+    
+    public String getDisplayXConfig() {
+        return this.displayxConfig;
+    }
+    
+    public void setDisplayXConfig(String displayXConfig) {
+        this.displayxConfig = displayXConfig;
+    }
+    
+    public String getEGLConfig() {
+        return this.eglConfig;
+    }
+    
+    public void setEGLConfig(String eglConfig) {
+        this.eglConfig = eglConfig;
+    }
+    
+    public boolean isDisplayX() {
+        return this.displayDriver.toLowerCase().equals("displayx");
+    }
 
     public File getRootDir() {
         return rootDir;
@@ -391,11 +420,14 @@ public class Container {
             data.put("envVars", envVars);
             data.put("cpuList", cpuList);
             data.put("cpuListWoW64", cpuListWoW64);
+            data.put("displayDriver", displayDriver);
             data.put("graphicsDriver", graphicsDriver);
             data.put("graphicsDriverConfig", graphicsDriverConfig);
             data.put("emulator", emulator);
             data.put("dxwrapper", dxwrapper);
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
+            if (!eglConfig.isEmpty()) data.put("eglConfig", eglConfig);
+            if (!displayxConfig.isEmpty()) data.put("displayxConfig", displayxConfig);
             data.put("audioDriver", audioDriver);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
@@ -441,6 +473,15 @@ public class Container {
                     break;
                 case "cpuListWoW64" :
                     setCPUListWoW64(data.getString(key));
+                    break;
+                case "displayDriver":
+                    setDisplayDriver(data.getString(key));
+                    break;
+                case "displayxConfig":
+                    setDisplayXConfig(data.getString(key));
+                    break;
+                case "eglConfig":
+                    setEGLConfig(data.getString(key));
                     break;
                 case "graphicsDriver" :
                     setGraphicsDriver(data.getString(key));

@@ -35,6 +35,11 @@ class EGLRenderer {
             CHANGE_SURFACE
         };
         
+        enum class TextureFilter {
+            Nearest = 0,
+            Linear = 1
+        };
+        
         struct RenderLock {
            std::condition_variable cv;
            std::mutex mutex;
@@ -69,6 +74,7 @@ class EGLRenderer {
         bool viewportNeedsUpdate = true;
         float tmpXForm1[6] = {1, 0, 0, 1, 0, 0};
         float tmpXForm2[6] = {1, 0, 0, 1, 0, 0};
+        TextureFilter textureFilter;
         
         RenderLock renderLock;
         State state = State::NONE;
@@ -84,7 +90,7 @@ class EGLRenderer {
         void destroyEGLSurface();
         void destroyEGLContext();
         void renderCursor();
-        void renderDrawable(GLTexture *texture, int length, float xform[], bool isFromWindow);
+        void renderDrawable(GLTexture *texture, int length, float xform[], bool isFromWindow, bool swapColors);
         void updateTextureDrawable(GLTexture *texture, int width, int height, void *data);
         std::unique_ptr<GLTexture> allocateTexture(int width, int height);
         std::unique_ptr<GLTexture> allocateTextureDirect(AHardwareBuffer* hardwareBuffer);
@@ -120,4 +126,5 @@ class EGLRenderer {
         void destroySurface();
         void createSurface(ANativeWindow *window);
         void changeSurface(int width, int height);
+        void setTextureFilter(int textureFilter);
 };

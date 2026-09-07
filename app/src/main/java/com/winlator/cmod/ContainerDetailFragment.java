@@ -40,6 +40,8 @@ import com.winlator.cmod.container.ContainerManager;
 import com.winlator.cmod.contentdialog.AddEnvVarDialog;
 import com.winlator.cmod.contentdialog.ContentDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
+import com.winlator.cmod.contentdialog.DisplayXConfigDialog;
+import com.winlator.cmod.contentdialog.EGLConfigDialog;
 import com.winlator.cmod.contentdialog.GraphicsDriverConfigDialog;
 import com.winlator.cmod.contentdialog.ShortcutSettingsDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
@@ -152,6 +154,9 @@ public class ContainerDetailFragment extends Fragment {
 
         Spinner sWineVersion = view.findViewById(R.id.SWineVersion);
         sWineVersion.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
+        
+        Spinner sDisplayDriver = view.findViewById(R.id.SDisplayDriver);
+        sDisplayDriver.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
 
         Spinner sGraphicsDriver = view.findViewById(R.id.SGraphicsDriver);
         sGraphicsDriver.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark : R.drawable.content_dialog_background);
@@ -322,6 +327,45 @@ public class ContainerDetailFragment extends Fragment {
         loadWineVersionSpinner(view, sWineVersion, sBox64Version);
 
         loadScreenSizeSpinner(view, isEditMode() ? container.getScreenSize() : Container.DEFAULT_SCREEN_SIZE);
+        
+        final Spinner sDisplayDriver = view.findViewById(R.id.SDisplayDriver);
+        String displayDriver = isEditMode() ? container.getDisplayDriver() : Container.DEFAULT_DISPLAY_DRIVER;
+        AppUtils.setSpinnerSelectionFromIdentifier(sDisplayDriver, displayDriver);
+        
+        final View vDisplayDriverConfig = view.findViewById(R.id.BTDisplayDriverConfig);
+        if (displayDriver.toLowerCase().equals("displayx")) {
+            vDisplayDriverConfig.setVisibility(View.VISIBLE);
+            vDisplayDriverConfig.setOnClickListener((v) -> (new DisplayXConfigDialog(vDisplayDriverConfig)).show());
+            vDisplayDriverConfig.setTag(isEditMode() ? container.getDisplayXConfig() : DisplayXConfigDialog.DEFAULT_CONFIG);
+        }
+        else {
+            vDisplayDriverConfig.setVisibility(View.VISIBLE);
+            vDisplayDriverConfig.setOnClickListener((v) -> (new EGLConfigDialog(vDisplayDriverConfig)).show());
+            vDisplayDriverConfig.setTag(isEditMode() ? container.getEGLConfig() : EGLConfigDialog.DEFAULT_CONFIG);
+        }
+        
+         
+        sDisplayDriver.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
+            @Override
+            public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
+                String selectedItem = parent.getItemAtPosition(position).toString();
+                String identifier = StringUtils.parseIdentifier(selectedItem);
+                if (identifier.equals("displayx")) {
+                    vDisplayDriverConfig.setVisibility(View.VISIBLE);
+                    vDisplayDriverConfig.setOnClickListener((v) -> (new DisplayXConfigDialog(vDisplayDriverConfig)).show());
+                    vDisplayDriverConfig.setTag(isEditMode() ? container.getDisplayXConfig() : DisplayXConfigDialog.DEFAULT_CONFIG);
+                }
+                else {
+                    vDisplayDriverConfig.setVisibility(View.VISIBLE);
+                    vDisplayDriverConfig.setOnClickListener((v) -> (new EGLConfigDialog(vDisplayDriverConfig)).show());
+                    vDisplayDriverConfig.setTag(isEditMode() ? container.getEGLConfig() : EGLConfigDialog.DEFAULT_CONFIG);
+                }
+            }
+
+            @Override
+            public void onNothingSelected(AdapterView<?> parent) {
+            }
+        });
 
         final Spinner sGraphicsDriver = view.findViewById(R.id.SGraphicsDriver);
         
@@ -468,6 +512,8 @@ public class ContainerDetailFragment extends Fragment {
                 String name = etName.getText().toString();
                 String screenSize = getScreenSize(view);
                 String envVars = envVarsView.getEnvVars();
+                String dispDriver = StringUtils.parseIdentifier(sDisplayDriver.getSelectedItem());
+                String displayConfig = vDisplayDriverConfig.getTag().toString();
                 String graphicsDriver = StringUtils.parseIdentifier(sGraphicsDriver.getSelectedItem());
                 String graphicsDriverConfig = vGraphicsDriverConfig.getTag().toString();
                 HashMap<String, String> config = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(graphicsDriverConfig);
@@ -527,6 +573,13 @@ public class ContainerDetailFragment extends Fragment {
                     container.setEnvVars(envVars);
                     container.setCPUList(cpuList);
                     container.setCPUListWoW64(cpuListWoW64);
+                    
+                    container.setDisplayDriver(dispDriver);
+                    if (dispDriver.equals("displayx")) 
+                        container.setDisplayXConfig(displayConfig);
+                    else
+                        container.setEGLConfig(displayConfig);
+                                 
                     container.setGraphicsDriver(graphicsDriver);
                     container.setGraphicsDriverConfig(graphicsDriverConfig);
                     container.setDXWrapper(dxwrapper);
@@ -559,6 +612,13 @@ public class ContainerDetailFragment extends Fragment {
                     data.put("envVars", envVars);
                     data.put("cpuList", cpuList);
                     data.put("cpuListWoW64", cpuListWoW64);
+                    
+                    data.put("displayDriver", dispDriver);
+                    if (dispDriver.equals("displayx")) 
+                        data.put("displayxConfig", displayConfig);
+                    else
+                        data.put("eglConfig", displayConfig);
+                        
                     data.put("graphicsDriver", graphicsDriver);
                     data.put("graphicsDriverConfig", graphicsDriverConfig);
                     data.put("dxwrapper", dxwrapper);
