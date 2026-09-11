@@ -527,20 +527,6 @@ VkResult EffectComposer::createComposerTexture(Drawable *drawable) {
         return result;
     }
 
-    auto descriptorPool = poolsBuffer.findFreePool(device);
-
-    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
-    descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
-    descriptorSetAllocateInfo.descriptorPool = descriptorPool->handle;
-    descriptorSetAllocateInfo.descriptorSetCount = 1;
-    descriptorSetAllocateInfo.pSetLayouts = &descriptorSetLayout;
-
-    result = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &drawable->composerTexture->vkDescriptorSet);
-    if (result != VK_SUCCESS) {
-        printf("Failed to allocate descriptor sets, result %d\n", result);
-        return result;
-    }
-    
     VkSamplerCreateInfo srcSamplerCreateInfo{};
     srcSamplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
     srcSamplerCreateInfo.pNext = nullptr;
@@ -559,7 +545,26 @@ VkResult EffectComposer::createComposerTexture(Drawable *drawable) {
     srcSamplerCreateInfo.borderColor = VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK;
     srcSamplerCreateInfo.unnormalizedCoordinates = VK_TRUE;
     
-    vkCreateSampler(device, &srcSamplerCreateInfo, nullptr, &drawable->composerTexture->srcSampler);
+    result = vkCreateSampler(device, &srcSamplerCreateInfo, nullptr, &drawable->composerTexture->srcSampler);
+    if (result != VK_SUCCESS) {
+        printf("Failed to create srcImage sampler, result %d\n", result);
+        return result;
+    }
+    
+    auto descriptorPool = poolsBuffer.findFreePool(device);
+
+    VkDescriptorSetAllocateInfo descriptorSetAllocateInfo{};
+    descriptorSetAllocateInfo.sType = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO;
+    descriptorSetAllocateInfo.descriptorPool = descriptorPool->handle;
+    descriptorSetAllocateInfo.descriptorSetCount = 1;
+    descriptorSetAllocateInfo.pSetLayouts = &descriptorSetLayout;
+
+    result = vkAllocateDescriptorSets(device, &descriptorSetAllocateInfo, &drawable->composerTexture->vkDescriptorSet);
+    if (result != VK_SUCCESS) {
+        printf("Failed to allocate descriptor sets, result %d\n", result);
+        return result;
+    }
+    
     VkDescriptorImageInfo srcImageInfo{};
     srcImageInfo.sampler = drawable->composerTexture->srcSampler;
     srcImageInfo.imageView = drawable->composerTexture->srcImageView;
@@ -587,9 +592,9 @@ VkResult EffectComposer::createComposerTexture(Drawable *drawable) {
 
     vkUpdateDescriptorSets(device, 2, descWrites, 0, nullptr);
 
-    poolsBuffer.addImageBinding(drawable->composerTexture->srcImage, descriptorPool);
-
-    poolsBuffer.addImageBinding(drawable->composerTexture->dstImage, descriptorPool);
+    descriptorPool->addBindedImage(drawable->composerTexture->srcImage);
+    descriptorPool->addBindedImage(drawable->composerTexture->dstImage);
+    poolsBuffer.addDescriptorBinding(drawable->composerTexture->vkDescriptorSet, descriptorPool);
 
     drawable->composerTexture->srcImageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
     drawable->composerTexture->srcPipelineStage = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
@@ -605,30 +610,37 @@ VkResult EffectComposer::createComposerTexture(Drawable *drawable) {
 void EffectComposer::destroyComposerTexture(Drawable *drawable) {
     vkDeviceWaitIdle(device);
     
-    auto descriptorPool = poolsBuffer.getPoolForImage(drawable->composerTexture->srcImage);
-    if (!descriptorPool) {
-        printf("Found no descriptor pool associated to image");
-        return;
+    if (!drawable->composerTexture) return;
+    
+    auto descriptorPool = poolsBuffer.getPoolForSet(drawable->composerTexture->vkDescriptorSet);
+    if (descriptorPool) {
+        descriptorPool->removeBindedImage(drawable->composerTexture->srcImage);
+        descriptorPool->removeBindedImage(drawable->composerTexture->dstImage);
+        poolsBuffer.removeDescriptorBinding(drawable->composerTexture->vkDescriptorSet);
+        vkFreeDescriptorSets(device, descriptorPool->handle, 1, &drawable->composerTexture->vkDescriptorSet);
     }
     
-    vkFreeDescriptorSets(device, descriptorPool->handle, 1, &drawable->composerTexture->vkDescriptorSet);
+    if (drawable->composerTexture->srcSampler != VK_NULL_HANDLE)
+        vkDestroySampler(device, drawable->composerTexture->srcSampler, nullptr);
+    if (drawable->composerTexture->srcMemory != VK_NULL_HANDLE) 
+        vkFreeMemory(device, drawable->composerTexture->srcMemory, nullptr);
+    if (drawable->composerTexture->srcImageView != VK_NULL_HANDLE)
+        vkDestroyImageView(device, drawable->composerTexture->srcImageView, nullptr);
+    if (drawable->composerTexture->srcImage != VK_NULL_HANDLE)    
+        vkDestroyImage(device, drawable->composerTexture->srcImage, nullptr);
     
-    poolsBuffer.removeImageBinding(drawable->composerTexture->srcImage);
-    vkDestroySampler(device, drawable->composerTexture->srcSampler, nullptr);
-    vkFreeMemory(device, drawable->composerTexture->srcMemory, nullptr);
-    vkDestroyImageView(device, drawable->composerTexture->srcImageView, nullptr);
-    vkDestroyImage(device, drawable->composerTexture->srcImage, nullptr);
+    if (drawable->composerTexture->dstMemory != VK_NULL_HANDLE) 
+        vkFreeMemory(device, drawable->composerTexture->dstMemory, nullptr);
+    if (drawable->composerTexture->dstImageView != VK_NULL_HANDLE)    
+        vkDestroyImageView(device, drawable->composerTexture->dstImageView, nullptr);
+    if (drawable->composerTexture->dstImage != VK_NULL_HANDLE)     
+        vkDestroyImage(device, drawable->composerTexture->dstImage, nullptr);
     
-    descriptorPool = poolsBuffer.getPoolForImage(drawable->composerTexture->dstImage);
-    if (!descriptorPool) {
-        printf("Found no descriptor pool associated to image");
-        return;
-    }
-    
-    poolsBuffer.removeImageBinding(drawable->composerTexture->dstImage);
-    vkFreeMemory(device, drawable->composerTexture->dstMemory, nullptr);
-    vkDestroyImageView(device, drawable->composerTexture->dstImageView, nullptr);
-    vkDestroyImage(device, drawable->composerTexture->dstImage, nullptr);
+    if (drawable->composerTexture->dstBuffer)
+        AHardwareBuffer_release(drawable->composerTexture->dstBuffer);
+        
+    if (drawable->composerTexture)
+        drawable->composerTexture.reset();
 }    
 
 void EffectComposer::swapColors(Drawable *drawable) {
@@ -707,6 +719,8 @@ void EffectComposer::apply(Drawable *drawable) {
         VkResult result = createComposerTexture(drawable);
         if (result != VK_SUCCESS) {
             printf("Failed to create composer texture, result %d", result);
+            destroyComposerTexture(drawable);
+            isOperationPending = false;
             return;
         }
         drawable->composerTexture->sizeChanged = false;
@@ -716,6 +730,8 @@ void EffectComposer::apply(Drawable *drawable) {
         VkResult result = createComposerTexture(drawable);
         if (result != VK_SUCCESS) {
             printf("Failed to resize composer texture, result %d", result);
+            destroyComposerTexture(drawable);
+            isOperationPending = false;
             return;
         }
         drawable->composerTexture->sizeChanged = false;

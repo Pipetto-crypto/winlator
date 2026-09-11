@@ -2,6 +2,7 @@
 
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "drawable.hpp"
 #include "renderer_jni.hpp"
@@ -17,31 +18,30 @@ class EffectComposer {
         struct DescriptorPool {
             VkDescriptorPool handle;
             uint32_t maxSize;
-            uint32_t bindedResources;
+            std::unordered_set<VkImage> bindedImages;
             
             bool isFull() {
-                return bindedResources >= maxSize;
+                return bindedImages.size() >= maxSize;
             }
             
-            void addBindedResource() {
-                bindedResources++;
+            void addBindedImage(VkImage image) {
+                bindedImages.insert(image);
             }
             
-            void removeBindedResource() {
-                bindedResources--;
+            void removeBindedImage(VkImage image) {
+                bindedImages.erase(image);
             }
         };
         
         class DescriptorPoolBuffer {
             private: 
                 std::vector<std::shared_ptr<DescriptorPool>> pools;
-                std::unordered_map<VkImage, DescriptorPool *> imageBindings;
+                std::unordered_map<VkDescriptorSet, DescriptorPool *> bindedSets;
             
             public:
                 void addNew(VkDevice device) {
                     auto descriptorPool = std::make_shared<DescriptorPool>();
                     descriptorPool->maxSize = 1024;
-                    descriptorPool->bindedResources = 0;
                 
                     VkDescriptorPoolSize descSizes[2];
                     descSizes[0].type = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER;
@@ -72,27 +72,20 @@ class EffectComposer {
                     return pools.back().get();
                 }
                 
-                DescriptorPool *getPoolForImage(VkImage image) {
-                    auto it = imageBindings.find(image);
-                    if (it == imageBindings.end())
+                DescriptorPool *getPoolForSet(VkDescriptorSet descriptorSet) {
+                    auto it = bindedSets.find(descriptorSet);
+                    if (it == bindedSets.end())
                         return nullptr;
                         
                     return it->second;
                 }
-            
-                void addImageBinding(VkImage image, DescriptorPool *pool) {
-                    imageBindings[image] = pool;
-                    pool->addBindedResource();
+                
+                void addDescriptorBinding(VkDescriptorSet descriptorSet, DescriptorPool *pool) {
+                    bindedSets[descriptorSet] = pool;
                 }
-            
-                void removeImageBinding(VkImage image) {
-                    auto it = imageBindings.find(image);
-                    if (it == imageBindings.end())
-                        return;
-                    
-                    auto descriptorPool = it->second;
-                    descriptorPool->removeBindedResource();
-                    imageBindings.erase(image);
+                
+                void removeDescriptorBinding(VkDescriptorSet descriptorSet) {
+                    bindedSets.erase(descriptorSet);
                 }
             
                 void removeCurrent(VkDevice device) {

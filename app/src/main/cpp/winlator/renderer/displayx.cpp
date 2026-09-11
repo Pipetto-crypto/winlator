@@ -353,7 +353,7 @@ void DisplayX::eventThreadLoop() {
         
         auto lock = eventLock.lock();
         eventLock.wait(lock, [&]{ 
-            return stopped || ((state != State::NONE || !eventQueue.empty() || cursorUpdate) && !effectComposer->isPending());
+            return stopped || state != State::NONE || !eventQueue.empty() || cursorUpdate;
         });
         
         if (stopped) {
@@ -516,16 +516,13 @@ void DisplayX::presentThreadLoop() {
             if (!window || !window->control) continue;
         
             auto drawable = presentRequest->drawable;
-            if (!drawable) {
-                continue;
-            }
+            if (!drawable) continue;
         
             if (!window->enabled) {
                 pfnASurfaceTransactionSetBuffer(presentTransaction, window->control, nullptr, presentRequest->sync_fence);
             }
             else {
                 if (effectComposer->isSuitableForColorSwap(drawable)) {
-                    effectComposer->apply(drawable);
                     pfnASurfaceTransactionSetBuffer(presentTransaction, window->control, drawable->composerTexture->dstBuffer, presentRequest->sync_fence);
                 }
                 else {
@@ -662,6 +659,9 @@ void DisplayX::queueEvent(std::function<void()> func) {
 void DisplayX::requestWindowUpdate(Window *window) {
     auto lock = presentLock.lock();
     
+    if (effectComposer->isSuitableForColorSwap(window->drawable.get()))
+        effectComposer->apply(window->drawable.get());
+    
     auto presentRequest = std::make_unique<PresentRequest>();
     presentRequest->drawable = window->hasDirectContents() ? window->currentDirectContent : window->drawable.get();
     presentRequest->sync_fence = -1;
@@ -707,7 +707,7 @@ void DisplayX::createWindowControl(Window *window) {
 void DisplayX::destroyWindowControl(Window *window) {
     if (!window) return;
     if (!window->control) return;
- 
+    
     pfnASurfaceControlRelease(window->control);
     window->control = nullptr;
 }
