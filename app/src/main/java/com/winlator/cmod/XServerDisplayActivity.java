@@ -212,7 +212,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     public boolean backPressure;
     public boolean precisePresentation;
     public int textureFilter;
-
+     
     @Override
     public void onConfigurationChanged(@NonNull Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
@@ -473,14 +473,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             LogView.setFilename(getExecutable());
             ProcessHelper.addDebugCallback(debugDialog = new DebugDialog(this));
         }
-
+        
         displayDriver = container.getDisplayDriver();
         String displayConfig;
-        if (displayDriver.toLowerCase().contains("displayx"))
+        if (displayDriver.toLowerCase().contains("displayx")) 
             displayConfig = container.getDisplayXConfig();
         else
             displayConfig = container.getEGLConfig();
-
+            
         graphicsDriver = container.getGraphicsDriver();
         String graphicsDriverConfig = container.getGraphicsDriverConfig();
         audioDriver = container.getAudioDriver();
@@ -502,7 +502,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 displayConfig = shortcut.getExtra("displayxConfig", container.getDisplayXConfig());
             else
                 displayConfig = shortcut.getExtra("eglConfig", container.getEGLConfig());
-
+                
             graphicsDriver = shortcut.getExtra("graphicsDriver", container.getGraphicsDriver());
             graphicsDriverConfig = shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig());
             audioDriver = shortcut.getExtra("audioDriver", container.getAudioDriver());
@@ -525,7 +525,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
             Log.d("XServerDisplayActivity", "XInput Disabled from Shortcut: " + xinputDisabledFromShortcut);
         }
-
+        
         if (displayDriver.toLowerCase().contains("displayx")) {
             this.displayConfig = DisplayXConfigDialog.parseConfig(displayConfig);
             this.performanceMode = this.displayConfig.get("performanceMode").equals("1") ? true : false;
@@ -1650,6 +1650,14 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             envVars.put("ENABLE_VKBASALT", "1");
             envVars.put("VKBASALT_CONFIG", vkbasaltConfig);
         }
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        // Avoid processing touch events when processes are paused and drawer is closed.
+        if (isPaused && (drawerLayout == null || !drawerLayout.isDrawerOpen(GravityCompat.START))) return true;
+
+        return super.dispatchTouchEvent(event);
     }
 
     @Override
