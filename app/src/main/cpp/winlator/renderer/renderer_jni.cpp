@@ -151,6 +151,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeInit(JNIEnv *env, jobject thiz, 
     xserver.refreshRate = env->CallFloatMethod(context, cache.getRefreshRate);
     xserver.xserver = env->NewGlobalRef(xServer);
     xserver.xserverDisplayActivity = env->NewGlobalRef(context);
+    xserver.isShowFPS = env->CallBooleanMethod(context, cache.isShowFPS);
     
     env->DeleteLocalRef(windowManagerObj);
     env->DeleteLocalRef(inputDeviceManagerObj);

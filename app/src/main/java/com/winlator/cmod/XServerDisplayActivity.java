@@ -1267,8 +1267,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             startTouchscreenTimeout();
         }
 
-        if (container != null && container.isShowFPS()) {
-            frameRating = new FrameRating(this, graphicsDriverConfig, displayDriver);
+        if (isShowFPS()) {
+            frameRating = new FrameRating(this, graphicsDriverConfig, displayDriver, displayConfig);
             frameRating.setVisibility(View.GONE);
             rootView.addView(frameRating);
         }
@@ -2034,6 +2034,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     public void updateFrameRating(Window window) {
         if (frameRatingWindowId != window.id) return;
         frameRating.update();
+    }
+    
+    public boolean isShowFPS() {
+        return (container != null) && container.isShowFPS();
     }
 
 }

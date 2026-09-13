@@ -33,6 +33,7 @@ class JNIXServer {
         jobject xserverDisplayActivity;
         std::string displayDriver;
         float refreshRate;
+        bool isShowFPS;
         
         JNIXServer() {}
         
@@ -93,6 +94,7 @@ class JNICache {
         
         jclass xserverDisplayActivityClass;
         jmethodID updateFrameRating;
+        jmethodID isShowFPS;
         jfieldID performanceMode;
         jfieldID backPressure;
         jfieldID presentRR;
@@ -165,6 +167,7 @@ class JNICache {
             LOAD_FIELD_ID(gpuImageFormat, env, gpuImageClass, "format", "I");
             
             LOAD_METHOD_ID(updateFrameRating, env, xserverDisplayActivityClass, "updateFrameRating", "(Lcom/winlator/cmod/xserver/Window;)V");
+            LOAD_METHOD_ID(isShowFPS, env, xserverDisplayActivityClass, "isShowFPS", "()Z");
             LOAD_METHOD_ID(getRefreshRate, env, xserverDisplayActivityClass, "getRefreshRate", "()F");
             LOAD_FIELD_ID(performanceMode, env, xserverDisplayActivityClass, "performanceMode", "Z");
             LOAD_FIELD_ID(presentRR, env, xserverDisplayActivityClass, "presentRR", "Z");

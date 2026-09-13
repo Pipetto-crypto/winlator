@@ -605,8 +605,10 @@ public class ControlElement {
             if (type == Type.BUTTON) {
                 if (isKeepButtonPressedAfterMinTime()) touchTime = System.currentTimeMillis();
                 if (!toggleSwitch || !selected) {
-                    inputControlsView.handleInputEvent(getBindingAt(0), true);
-                    inputControlsView.handleInputEvent(getBindingAt(1), true);
+                    Binding primaryBinding = getBindingAt(0);
+                    Binding secondaryBinding = getBindingAt(1);
+                    if (primaryBinding != Binding.NONE) inputControlsView.handleInputEvent(primaryBinding, true);
+                    if (secondaryBinding != Binding.NONE) inputControlsView.handleInputEvent(secondaryBinding, true);
                 }
                 return true;
             }
@@ -747,15 +749,19 @@ public class ControlElement {
                 if (isKeepButtonPressedAfterMinTime() && touchTime != null) {
                     selected = (System.currentTimeMillis() - (long)touchTime) > BUTTON_MIN_TIME_TO_KEEP_PRESSED;
                     if (!selected) {
-                        inputControlsView.handleInputEvent(getBindingAt(0), false);
-                        inputControlsView.handleInputEvent(getBindingAt(1), false);
+                        Binding primaryBinding = getBindingAt(0);
+                        Binding secondaryBinding = getBindingAt(1);
+                        if (primaryBinding != Binding.NONE) inputControlsView.handleInputEvent(primaryBinding, false);
+                        if (secondaryBinding != Binding.NONE) inputControlsView.handleInputEvent(secondaryBinding, false);
                     }
                     touchTime = null;
                     inputControlsView.invalidate();
                 }
                 else if (!toggleSwitch || selected) {
-                    inputControlsView.handleInputEvent(getBindingAt(0), false);
-                    inputControlsView.handleInputEvent(getBindingAt(1), false);
+                    Binding primaryBinding = getBindingAt(0);
+                    Binding secondaryBinding = getBindingAt(1);
+                    if (primaryBinding != Binding.NONE) inputControlsView.handleInputEvent(primaryBinding, false);
+                    if (secondaryBinding != Binding.NONE) inputControlsView.handleInputEvent(secondaryBinding, false);
                 }
 
                 if (toggleSwitch) {

@@ -208,7 +208,9 @@ void DisplayX::networkThreadLoop() {
     event.events = EPOLLIN;
             
     epoll_ctl(efd, EPOLL_CTL_ADD, server_fd, &event);
-           
+     
+    JNIEnv *env = cache->getEnv();
+       
     while ((n = epoll_wait(efd, events.data(), 2, -1))) {
         if (stopped) {
             printf("Stopping networkThread");
@@ -320,6 +322,7 @@ void DisplayX::networkThreadLoop() {
                             presentRequest->swapchainId = id;
                             
                             presentRequests.push(std::move(presentRequest));
+                            if (xServer->isShowFPS) env->CallVoidMethod(xServer->xserverDisplayActivity, cache->updateFrameRating, swapchain->window->windowObj);
                             if (!presentRR) presentLock.notify();
                             break;
                         }    
@@ -468,7 +471,6 @@ void DisplayX::onCompleteCallback(void *context, ASurfaceTransactionStats *stats
 
 void DisplayX::presentThreadLoop() {
     ASurfaceTransaction *presentTransaction = pfnASurfaceTransactionCreate();
-    JNIEnv *env = cache->getEnv();
     
     if (isPerformanceHintAPIAvailable() && perfMode) {
         performanceHintManager = pfnAPerformanceHintGetManager();
@@ -533,7 +535,6 @@ void DisplayX::presentThreadLoop() {
                 
                 if (drawable->isDisplayX) {
                    completeContext->requests.push_back(std::move(presentRequest));
-                   env->CallVoidMethod(xServer->xserverDisplayActivity, cache->updateFrameRating, window->windowObj);
                 }    
                 if (!window->backPressureEnabled && pfnASurfaceTransactionSetEnableBackPressure && backPressure)  {
                     pfnASurfaceTransactionSetEnableBackPressure(presentTransaction, window->control, true);
