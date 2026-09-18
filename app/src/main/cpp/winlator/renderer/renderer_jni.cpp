@@ -343,7 +343,14 @@ Java_com_winlator_cmod_widget_XServerView_nativeFreeCursor(JNIEnv *env, jobject 
     if (!xserver.isDisplayX()) {
         renderer.queueEvent([cursor] { 
             JNIEnv *env = cache.getEnv();
-            renderer.destroyTexture(cursor->image->glTexture.get()); 
+            if (cursor->image->glTexture != nullptr)
+                renderer.destroyTexture(cursor->image->glTexture.get()); 
+                
+            jobject pointWindowObj = env->CallObjectMethod(xserver.inputDeviceManager, cache.getPointWindow);
+            jint id = env->GetIntField(pointWindowObj, cache.windowID);
+            auto pointWindow = windowManager.getWindow(id);
+            if (pointWindow && pointWindow->cursor == cursor) pointWindow->cursor = nullptr;     
+                
             cursorManager.removeCursor(env, cursor);
         });
     }

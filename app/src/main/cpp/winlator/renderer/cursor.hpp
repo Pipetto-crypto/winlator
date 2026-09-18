@@ -19,6 +19,14 @@ struct Pointer {
     int posY;
 };
 
+struct CursorLock {
+    std::mutex mutex;
+   
+   std::unique_lock<std::mutex> lock() {
+       return std::unique_lock<std::mutex>(mutex);
+   }
+};
+
 class CursorManager {
     private:
         std::unordered_map<int, std::unique_ptr<struct Cursor>> cursors;
@@ -27,6 +35,7 @@ class CursorManager {
     public: 
         Pointer pointer{0, 0};
         ASurfaceControl *control;
+        CursorLock cursorLock;
         
         void setRootCursor(std::unique_ptr<struct Cursor> cursor);
         Cursor *getRootCursor();
