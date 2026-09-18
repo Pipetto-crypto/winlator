@@ -18,6 +18,7 @@ struct Window {
     std::string className;
     bool mapped;
     bool inputOutput;
+    bool compositeRedirected;
     bool hasContent;
     std::unique_ptr<struct Drawable> drawable;
     Window *parent;
@@ -32,7 +33,7 @@ struct Window {
     bool backPressureEnabled;
         
     bool hasDirectContents() {
-        return !directContents.empty();
+        return currentDirectContent != nullptr;
     }
     
     int getRootX() {
@@ -53,6 +54,36 @@ struct Window {
             window = window->parent;
         }
         return rootY;
+    }
+    
+    bool isAncestorOf(Window *w) {
+        auto window = this;
+        
+        while (window != nullptr) {
+            if (window == w)
+                return true;
+            
+            window = window->parent;    
+        }
+        
+        return false;
+    }
+    
+    bool isSibling(Window *w) {
+        return this->parent == w->parent;
+    }
+    
+    Window *getWindowSibling(Window *w) {
+        auto window = this;
+        
+        while (window != nullptr) {
+            if (window->isSibling(w))
+                return window;
+                
+            window = window->parent;     
+        }
+        
+        return window;
     }
 };
 

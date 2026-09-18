@@ -63,6 +63,8 @@ public class XComposite implements Extension {
         if (window.isCompositeRedirected() && updateType == UpdateType.MANUAL) throw new BadAccess();
         
         window.setCompositeRedirected(true);
+        window.getContent().setOffscreen(true);
+        xserver.getXServerView().nativeSetCompositeRedirected(window.id, true);
     }
     
     private void unredirectWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
@@ -76,6 +78,8 @@ public class XComposite implements Extension {
         if (!window.isCompositeRedirected()) throw new BadValue(windowId);
         
         window.setCompositeRedirected(false);
+        window.getContent().setOffscreen(false);
+        xserver.getXServerView().nativeSetCompositeRedirected(window.id, false);
     }
     
     @Override

@@ -23,6 +23,7 @@ public class Drawable extends XResource {
     private GPUImage gpuImage = null;
     private Runnable onDrawListener;
     private Callback<Drawable> onDestroyListener;
+    private boolean offscreen = false;
     public final Object renderLock = new Object();
 
     static {
@@ -163,6 +164,13 @@ public class Drawable extends XResource {
         if (onDrawListener != null) onDrawListener.run();
     }
     
+    public void setOffscreen(boolean offscreen) {
+        this.offscreen = offscreen;
+    }
+    
+    public boolean isOffscreen() {
+        return this.offscreen;
+    }
 
     private static native void drawBitmap(short width, short height, ByteBuffer srcData, short stride, long dstAHB);
 

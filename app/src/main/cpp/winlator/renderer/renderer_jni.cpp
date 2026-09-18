@@ -5,6 +5,9 @@
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+#define LOG_TAG "Renderer"
+#define printf(...) __android_log_print(ANDROID_LOG_DEBUG, LOG_TAG, __VA_ARGS__)
+
 JNICache cache;
 JNIXServer xserver;
 WindowManager windowManager;
@@ -223,6 +226,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeCreateWindow(JNIEnv *env, jobjec
     window->cursor = nullptr;
     window->mapped = false;
     window->parent = nullptr;
+    window->compositeRedirected = false;
     window->control = nullptr;
     window->currentDirectContent = nullptr;
     window->enabled = true;
@@ -397,7 +401,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeChangeWindowZOrder(JNIEnv *env, 
         renderer.requestRenderer();
     }
     else {
-        displayX.queueEvent([window, sibling, stackMode] { displayX.changeZOrder(window, sibling, stackMode);});
+        displayX.queueEvent([window] { displayX.changeZOrder(window);});
     }
 }
 
@@ -453,16 +457,25 @@ Java_com_winlator_cmod_widget_XServerView_nativeUpdateWindowContent(JNIEnv *env,
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_winlator_cmod_widget_XServerView_nativeReparentWindow(JNIEnv *env, jobject thiz, jint id, jint parentId) {
+Java_com_winlator_cmod_widget_XServerView_nativeReparentWindow(JNIEnv *env, jobject thiz, jint id, jint parentId, jshort x, jshort y) {
     auto window = windowManager.getWindow(id);
     auto parent = windowManager.getWindow(parentId);
     
     if (!window || !parent) return;
     
+    window->x = x;
+    window->y = y;
+    
     windowManager.reparentWindow(window, parent);
     
-    if (xserver.isDisplayX())
+    if (xserver.isDisplayX()) {
         displayX.queueEvent([window, parent] {  displayX.reparentWindow(window, parent); });
+    }    
+    else {
+        renderer.queueEvent([window]{ renderer.updateWindowPosition(window); });
+        renderer.queueEvent([]{ renderer.updateScene(); });
+        renderer.requestRenderer();
+    }    
 }
 
 
@@ -615,3 +628,50 @@ Java_com_winlator_cmod_widget_XServerView_nativeRemoveDirectContent(JNIEnv *env,
     window->directContents.erase(drawableId);
 }
 
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_XServerView_nativeSetCompositeRedirected(JNIEnv *env, jclass obj, jint windowId, jboolean redirected) {
+    auto window = windowManager.getWindow(windowId);
+    if (!window) return;
+    
+    window->compositeRedirected = redirected;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_winlator_cmod_widget_XServerView_nativeCompositeRedirect(JNIEnv *env, jclass obj, jint srcDrawableId, jint dstDrawableId, jshort dstX, jshort dstY) {
+    auto srcWindow = windowManager.getWindow(srcDrawableId);
+    if (!srcWindow) return;
+    
+    auto dstWindow = windowManager.getWindow(dstDrawableId);
+    if (!dstWindow) return;
+    
+    if (!srcWindow->isAncestorOf(dstWindow)) {
+        bool positionChanged = false;
+        bool zOrderChanged = false;
+        
+        auto sibling = srcWindow->getWindowSibling(dstWindow);
+        if (!sibling) return;
+        
+        int posX = dstWindow->x + dstX;
+        int posY = dstWindow->y + dstY;
+        
+        if (sibling->x != posX || sibling->y != posY) {
+            sibling->x = posX;
+            sibling->y = posY;
+            positionChanged = true;
+        }
+        
+        if (sibling->z_order <= dstWindow->z_order) {
+            windowManager.changeZOrder(1, sibling, dstWindow);
+            zOrderChanged = true;
+        }    
+        
+        if (xserver.isDisplayX()) {
+            if (positionChanged) displayX.queueEvent([sibling] { displayX.changeGeometry(sibling, false); });
+            if (zOrderChanged) displayX.queueEvent([sibling] { displayX.changeZOrder(sibling); });
+        }     
+        else {
+            if (positionChanged) renderer.queueEvent([sibling]{ renderer.updateWindowPosition(sibling); });
+            if (zOrderChanged) renderer.queueEvent([sibling]{ renderer.updateScene(); });
+        }
+    }
+}

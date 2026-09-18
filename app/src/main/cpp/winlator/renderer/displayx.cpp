@@ -310,8 +310,8 @@ void DisplayX::networkThreadLoop() {
                             auto drawable = swapchain->images.at(index).get();
                             if (!drawable)
                                 continue;
-                                
-                            auto lock = presentLock.lock();    
+                            
+                            auto lock = presentLock.lock();   
                             
                             auto presentRequest = std::make_unique<PresentRequest>();
                             presentRequest->drawable = drawable;
@@ -660,11 +660,13 @@ void DisplayX::queueEvent(std::function<void()> func) {
 void DisplayX::requestWindowUpdate(Window *window) {
     auto lock = presentLock.lock();
     
-    if (effectComposer->isSuitableForColorSwap(window->drawable.get()))
-        effectComposer->apply(window->drawable.get());
+    auto drawable = window->drawable.get();
     
+    if (effectComposer->isSuitableForColorSwap(drawable))
+        effectComposer->apply(drawable);
+        
     auto presentRequest = std::make_unique<PresentRequest>();
-    presentRequest->drawable = window->hasDirectContents() ? window->currentDirectContent : window->drawable.get();
+    presentRequest->drawable = window->hasDirectContents() ? window->currentDirectContent : drawable;
     presentRequest->sync_fence = -1;
     presentRequest->presentId = -1;
     presentRequest->clientFd = -1;
@@ -753,32 +755,8 @@ void DisplayX::changeGeometry(Window *window, bool resized) {
     pfnASurfaceTransactionApply(windowTransaction);
 }
 
-void DisplayX::changeZOrder(Window *window, Window *sibling, int stackMode) {
-    if (sibling) {
-        window->z_order = stackMode == 1 ? sibling->z_order + 1 : sibling->z_order - 1;
-        pfnASurfaceTransactionSetZOrder(windowTransaction, window->control, window->z_order);
-    }
-    else {
-        if (stackMode == 1) {
-            int max = 0;
-            for (auto& child : window->parent->children) {
-                if (child->z_order > max)
-                    max = child->z_order;
-            }
-            window->z_order = max + 1;
-            pfnASurfaceTransactionSetZOrder(windowTransaction, window->control, window->z_order);
-        }
-        else {
-            int min = 0;
-            for (auto& child : window->parent->children) {
-                if (child->z_order < min)
-                    min = child->z_order;
-            }
-            window->z_order = min - 1;
-            pfnASurfaceTransactionSetZOrder(windowTransaction, window->control, window->z_order);
-        }
-    }
-    
+void DisplayX::changeZOrder(Window *window) {
+    pfnASurfaceTransactionSetZOrder(windowTransaction, window->control, window->z_order);
     pfnASurfaceTransactionApply(windowTransaction);
 }
 
@@ -852,6 +830,20 @@ void DisplayX::reparentWindow(Window *window, Window *parent) {
     if (!window->control) return;
     
     pfnASurfaceTransactionReparent(windowTransaction, window->control, parent->control);
+    if (pfnASurfaceTransactionSetPosition) {
+        pfnASurfaceTransactionSetPosition(windowTransaction, window->control, window->x, window->y);
+    }
+    else {
+        ARect src{};
+        ARect dst = {
+            .left = window->x,
+            .top = window->y,
+            .right = window->x + window->width,
+            .bottom = window->y + window->height
+        };
+        pfnASurfaceTransactionSetGeometry(windowTransaction, window->control, src, dst, 0);
+    }
+    
     pfnASurfaceTransactionApply(windowTransaction);
 }
 

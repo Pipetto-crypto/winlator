@@ -1,5 +1,6 @@
 package com.winlator.cmod.xserver.requests;
 
+import android.util.Log;
 import static com.winlator.cmod.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
 import com.winlator.cmod.xconnector.XInputStream;
@@ -115,7 +116,11 @@ public abstract class DrawRequests {
         if (dstDrawable.backingAHB == 0) {
             throw new IllegalStateException("dstDrawable has null data!");
         }
-
+        
+        if (srcDrawable.isOffscreen()) {
+            client.xServer.getXServerView().nativeCompositeRedirect(srcDrawableId, dstDrawableId, dstX, dstY);
+            return;
+        }
 
         GraphicsContext graphicsContext =  client.xServer.graphicsContextManager.getGraphicsContext(gcId);
         if (graphicsContext == null) throw new BadGraphicsContext(gcId);
