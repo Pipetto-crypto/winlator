@@ -263,6 +263,9 @@ public class ContainerDetailFragment extends Fragment {
 
         TextView generalLabel = view.findViewById(R.id.TVGeneral);
         applyFieldSetLabelStyle(generalLabel, isDarkMode);  // Apply the dark or light mode styles
+        
+        TextView codecsLabel = view.findViewById(R.id.TVCodecs);
+        applyFieldSetLabelStyle(codecsLabel, isDarkMode); 
 
         // Advanced Tab TextViews
         TextView box64Label = view.findViewById(R.id.TVBox64);
@@ -859,14 +862,31 @@ public class ContainerDetailFragment extends Fragment {
 
     public static String getWinComponents(View view) {
         ViewGroup parent = view.findViewById(R.id.LLTabWinComponents);
-        ArrayList<View> views = new ArrayList<>();
-        AppUtils.findViewsWithClass(parent, Spinner.class, views);
-        String[] wincomponents = new String[views.size()];
-
-        for (int i = 0; i < views.size(); i++) {
-            Spinner spinner = (Spinner)views.get(i);
-            wincomponents[i] = spinner.getTag()+"="+spinner.getSelectedItemPosition();
+        ViewGroup directxSectionView = parent.findViewById(R.id.LLWinComponentsDirectX);
+        ViewGroup generalSectionView = parent.findViewById(R.id.LLWinComponentsGeneral);
+        ArrayList<String> wincomponents = new ArrayList<>();
+        
+        for (int i = 0; i < directxSectionView.getChildCount(); i++) {
+            ViewGroup layout = (ViewGroup)directxSectionView.getChildAt(i);
+            Spinner spinner = (Spinner)layout.getChildAt(1);
+            String item = spinner.getTag() + "=" + spinner.getSelectedItemPosition();
+            wincomponents.add(item);
         }
+        
+        for (int i = 0; i < generalSectionView.getChildCount(); i++) {
+            ViewGroup layout = (ViewGroup)generalSectionView.getChildAt(i);
+            Spinner spinner = (Spinner)layout.getChildAt(1);
+            String item = spinner.getTag() + "=" + spinner.getSelectedItemPosition();
+            wincomponents.add(item);
+        }
+        
+        Spinner sBuiltinDecoder = parent.findViewById(R.id.SBuiltinDecoder);
+        String builtinDecoder = StringUtils.parseIdentifier(sBuiltinDecoder.getSelectedItem().toString());
+        wincomponents.add("builtinDecoder=" + builtinDecoder);
+        
+        CheckBox cbSoftwareDecoding = parent.findViewById(R.id.CBSoftwareDecoding);
+        wincomponents.add("softwareDecoding=" + (cbSoftwareDecoding.isChecked() ? "1" : "0"));
+
         return String.join(",", wincomponents);
     }
 
@@ -876,8 +896,18 @@ public class ContainerDetailFragment extends Fragment {
         ViewGroup tabView = view.findViewById(R.id.LLTabWinComponents);
         ViewGroup directxSectionView = tabView.findViewById(R.id.LLWinComponentsDirectX);
         ViewGroup generalSectionView = tabView.findViewById(R.id.LLWinComponentsGeneral);
+        
+        KeyValueSet wincomponentsSet = new KeyValueSet(wincomponents);
+         
+        Spinner sBuiltinDecoder = tabView.findViewById(R.id.SBuiltinDecoder);
+        sBuiltinDecoder.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark: R.drawable.content_dialog_background);
+        AppUtils.setSpinnerSelectionFromIdentifier(sBuiltinDecoder, wincomponentsSet.get("builtinDecoder"));
+        
+        CheckBox cbSoftwareDecoding = tabView.findViewById(R.id.CBSoftwareDecoding);
+        cbSoftwareDecoding.setChecked(wincomponentsSet.get("softwareDecoding").equals("1") ? true : false);
 
-        for (String[] wincomponent : new KeyValueSet(wincomponents)) {
+        for (String[] wincomponent : wincomponentsSet) {
+            if (wincomponent[0].contains("builtinDecoder") || wincomponent[0].contains("softwareDecoding")) continue;
             ViewGroup parent = wincomponent[0].startsWith("direct") ? directxSectionView : generalSectionView;
             View itemView = inflater.inflate(R.layout.wincomponent_list_item, parent, false);
             ((TextView)itemView.findViewById(R.id.TextView)).setText(StringUtils.getString(context, wincomponent[0]));
@@ -899,8 +929,18 @@ public class ContainerDetailFragment extends Fragment {
         ViewGroup tabView = view.findViewById(R.id.LLTabWinComponents);
         ViewGroup directxSectionView = tabView.findViewById(R.id.LLWinComponentsDirectX);
         ViewGroup generalSectionView = tabView.findViewById(R.id.LLWinComponentsGeneral);
+        
+        KeyValueSet wincomponentsSet = new KeyValueSet(wincomponents);
+         
+        Spinner sBuiltinDecoder = tabView.findViewById(R.id.SBuiltinDecoder);
+        sBuiltinDecoder.setPopupBackgroundResource(isDarkMode ? R.drawable.content_dialog_background_dark: R.drawable.content_dialog_background);
+        AppUtils.setSpinnerSelectionFromIdentifier(sBuiltinDecoder, wincomponentsSet.get("builtinDecoder"));
+        
+        CheckBox cbSoftwareDecoding = tabView.findViewById(R.id.CBSoftwareDecoding);
+        cbSoftwareDecoding.setChecked(wincomponentsSet.get("softwareDecoding").equals("1") ? true : false);
 
-        for (String[] wincomponent : new KeyValueSet(wincomponents)) {
+        for (String[] wincomponent : wincomponentsSet) {
+            if (wincomponent[0].contains("builtinDecoder") || wincomponent[0].contains("softwareDecoding")) continue;
             ViewGroup parent = wincomponent[0].startsWith("direct") ? directxSectionView : generalSectionView;
             View itemView = inflater.inflate(R.layout.wincomponent_list_item, parent, false);
             ((TextView) itemView.findViewById(R.id.TextView)).setText(StringUtils.getString(context, wincomponent[0]));

@@ -1835,8 +1835,11 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             String wincomponents = shortcut != null ? shortcut.getExtra("wincomponents", container.getWinComponents()) : container.getWinComponents();
 
             Iterator<String[]> oldWinComponentsIter = new KeyValueSet(container.getExtra("wincomponents", Container.FALLBACK_WINCOMPONENTS)).iterator();
+            
+            KeyValueSet wincomponentsSet = new KeyValueSet(wincomponents);
 
-            for (String[] wincomponent : new KeyValueSet(wincomponents)) {
+            for (String[] wincomponent : wincomponentsSet) {
+                if (wincomponent[0].contains("builtinDecoder") || wincomponent[0].contains("softwareDecoding")) continue;
                 if (wincomponent[1].equals(oldWinComponentsIter.next()[1]) && !firstTimeBoot) continue;
                 String identifier = wincomponent[0];
                 boolean useNative = wincomponent[1].equals("1");
@@ -1855,6 +1858,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 WineUtils.overrideWinComponentDlls(this, container, identifier, useNative);
                 WineUtils.setWinComponentRegistryKeys(systemRegFile, identifier, useNative, this);
             }
+            
+            String builtinDecoder = wincomponentsSet.get("builtinDecoder");
+            if (builtinDecoder.contains("ffmpeg")) envVars.put("WINE_USE_DMO", "1");
+            
+            String softwareDecoding = wincomponentsSet.get("softwareDecoding");
+            if (softwareDecoding.contains("1")) envVars.put("WINE_DO_NOT_CREATE_DXGI_DEVICE_MANAGER", "1");
 
             if (!dlls.isEmpty()) restoreOriginalDllFiles(dlls.toArray(new String[0]));
         }

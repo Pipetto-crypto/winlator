@@ -465,6 +465,44 @@
                         style="@style/FieldSetLabel"
                         android:text="@string/general" />
                 </FrameLayout>
+                
+                <FrameLayout
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp">
+
+                    <LinearLayout
+                        style="@style/FieldSet"
+                        android:orientation="vertical"
+                        android:padding="8dp"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/builtin_decoder" />
+
+                        <Spinner
+                            android:id="@+id/SBuiltinDecoder"
+                            style="@style/ComboBox"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:entries="@array/builtin_decoder_entries" />
+
+                        <CheckBox
+                            android:id="@+id/CBSoftwareDecoding"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="@string/software_decoding" />
+                    </LinearLayout>
+
+                    <TextView
+                        android:id="@+id/TVCodecs"
+                        style="@style/FieldSetLabel"
+                        android:text="@string/codecs" />
+
+                </FrameLayout>
             </LinearLayout>
 
             <LinearLayout

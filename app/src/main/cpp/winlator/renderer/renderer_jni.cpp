@@ -69,7 +69,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeInit(JNIEnv *env, jobject thiz, 
     rootWindow->control = nullptr;
     rootWindow->enabled = true;
     rootWindow->inputOutput = true;
-    rootWindow->currentDirectContent = nullptr;
+    rootWindow->externalContent = nullptr;
     
     jobject attributes = env->GetObjectField(rootWindowObj, cache.windowAttributes);
     rootWindow->attributes = env->NewGlobalRef(attributes);
@@ -228,7 +228,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeCreateWindow(JNIEnv *env, jobjec
     window->parent = nullptr;
     window->compositeRedirected = false;
     window->control = nullptr;
-    window->currentDirectContent = nullptr;
+    window->externalContent = nullptr;
     window->enabled = true;
     
     jobject attributes = env->GetObjectField(windowObj, cache.windowAttributes);
@@ -594,6 +594,8 @@ Java_com_winlator_cmod_widget_XServerView_nativeAddDirectContent(JNIEnv *env, jo
     auto window = windowManager.getWindow(windowId);
     if (!window) return;
     
+    window->parent->surface = window;
+    
     auto drawable = std::make_unique<struct Drawable>();
     drawable->id = env->GetIntField(drawableObj, cache.drawableID);
     drawable->glTexture = nullptr;
@@ -607,7 +609,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeAddDirectContent(JNIEnv *env, jo
     drawable->isDisplayX = false;
     drawable->drawableObj = env->NewGlobalRef(drawableObj);
     
-    window->currentDirectContent = nullptr;
+    window->externalContent = nullptr;
     window->directContents[drawable->id] = std::move(drawable);
 }
 
@@ -619,7 +621,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeUpdateDirectContent(JNIEnv *env,
     auto directContent = window->directContents[drawableId].get();
     if (!directContent) return;
     
-    window->currentDirectContent = directContent;
+    window->externalContent = directContent;
     
     if (xserver.isDisplayX())
         displayX.requestWindowUpdate(window);
@@ -677,8 +679,10 @@ Java_com_winlator_cmod_widget_XServerView_nativeCompositeRedirect(JNIEnv *env, j
             if (zOrderChanged) displayX.queueEvent([sibling] { displayX.changeZOrder(sibling); });
         }     
         else {
-            if (positionChanged) renderer.queueEvent([sibling]{ renderer.updateWindowPosition(sibling); });
-            if (zOrderChanged) renderer.queueEvent([sibling]{ renderer.updateScene(); });
+            if (positionChanged || zOrderChanged)  {
+                renderer.queueEvent([sibling]{ renderer.updateWindowPosition(sibling); });
+                renderer.queueEvent([sibling]{ renderer.updateScene(); });
+            }    
         }
     }
 }

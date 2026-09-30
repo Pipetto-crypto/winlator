@@ -1,5 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="builtin_decoder_entries">
+        <item>GStreamer</item>
+        <item>FFMpeg</item>
+    </string-array>    
     <string-array name="screen_size_entries">
         <item>Custom</item>
         <item>640x360 (16:9)</item>
@@ -140,7 +144,7 @@
         <item>Native (Windows)</item>
     </string-array>
     <string-array name="box64_version_entries">
-        <item>0.3.7</item>
+        <item>0.4.5</item>
     </string-array>
     <string-array name="wowbox64_version_entries">
         <item>0.3.7</item>

@@ -235,7 +235,6 @@ void DisplayX::networkThreadLoop() {
                     printf("Client has disconnected");
                     epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
                     close(events[i].data.fd);
-                    clientSwapchains.erase(clientSwapchains.begin(), clientSwapchains.end());
                     continue;
                 }
                 
@@ -285,7 +284,9 @@ void DisplayX::networkThreadLoop() {
                                 
                                 swapchain->images[j] = std::move(drawable);
                             }
-                             
+                            
+                            window->parent->surface = window;
+                            
                             clientSwapchains[id] = std::move(swapchain);
                             break;
                         }    
@@ -313,6 +314,8 @@ void DisplayX::networkThreadLoop() {
                             
                             auto lock = presentLock.lock();   
                             
+                            swapchain->window->externalContent = drawable;
+                            
                             auto presentRequest = std::make_unique<PresentRequest>();
                             presentRequest->drawable = drawable;
                             presentRequest->sync_fence = fence;
@@ -334,7 +337,7 @@ void DisplayX::networkThreadLoop() {
                             if (!swapchain)
                                 continue;
                             
-                            swapchain->window->currentDirectContent = nullptr;
+                            swapchain->window->externalContent = nullptr;
                             clientSwapchains.erase(id);
                             break;
                         }
@@ -548,7 +551,7 @@ void DisplayX::presentThreadLoop() {
         pfnASurfaceTransactionApply(presentTransaction);
     }
     
-    if (isPerformanceHintAPIAvailable()) {
+    if (isPerformanceHintAPIAvailable() && performanceHintSession) {
         pfnAPerformanceHintCloseSession(performanceHintSession);
     }
 }
@@ -660,13 +663,15 @@ void DisplayX::queueEvent(std::function<void()> func) {
 void DisplayX::requestWindowUpdate(Window *window) {
     auto lock = presentLock.lock();
     
+    if (!window || window->isHidden()) return;
+    
     auto drawable = window->drawable.get();
     
     if (effectComposer->isSuitableForColorSwap(drawable))
         effectComposer->apply(drawable);
         
     auto presentRequest = std::make_unique<PresentRequest>();
-    presentRequest->drawable = window->hasDirectContents() ? window->currentDirectContent : drawable;
+    presentRequest->drawable = window->hasExternalContents() ? window->externalContent : drawable;
     presentRequest->sync_fence = -1;
     presentRequest->presentId = -1;
     presentRequest->clientFd = -1;
