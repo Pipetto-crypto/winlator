@@ -2,7 +2,6 @@
 
 void WindowManager::changeZOrder(int stackMode, Window *window, Window *sibling) {
     auto parent = window->parent;
-    
     if (!parent)
         return;
         
@@ -51,8 +50,10 @@ void WindowManager::addWindow(int id, std::unique_ptr<struct Window> window) {
 
 Window* WindowManager::getWindow(int id) {
     auto lock = windowLock.lock();
+    
     auto it = windows.find(id);
-    if (it == windows.end()) return nullptr;
+    if (it == windows.end())
+        return nullptr;
     
     return it->second.get();
 }

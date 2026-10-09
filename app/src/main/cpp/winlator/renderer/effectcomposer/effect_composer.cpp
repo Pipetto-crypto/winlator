@@ -21,11 +21,13 @@ static bool areLayersPresent() {
     VkResult result;
     
     result = vkEnumerateInstanceLayerProperties(&layerCount, nullptr);
-    if (result != VK_SUCCESS) return false;
+    if (result != VK_SUCCESS) 
+        return false;
     
     layerProps.resize(layerCount);
     result = vkEnumerateInstanceLayerProperties(&layerCount, layerProps.data());
-    if (result != VK_SUCCESS) return false;
+    if (result != VK_SUCCESS) 
+        return false;
     
     for (const auto& name : layerNames) {
         bool layerFound = false;
@@ -610,7 +612,8 @@ VkResult EffectComposer::createComposerTexture(Drawable *drawable) {
 void EffectComposer::destroyComposerTexture(Drawable *drawable) {
     vkDeviceWaitIdle(device);
     
-    if (!drawable->composerTexture) return;
+    if (!drawable->composerTexture) 
+        return;
     
     auto descriptorPool = poolsBuffer.getPoolForSet(drawable->composerTexture->vkDescriptorSet);
     if (descriptorPool) {

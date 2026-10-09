@@ -18,6 +18,9 @@
 #include "effect_composer.hpp"
 #include "cursor.hpp"
 
+#define VK_PRESENT_MODE_MAILBOX_KHR 1
+#define VK_PRESENT_MODE_FIFO_KHR 2
+
 class DisplayX {
     private:
         enum class State {
@@ -58,44 +61,113 @@ class DisplayX {
         
         class PresentQueue {
             private:
-                std::queue<std::unique_ptr<PresentRequest>> mQueue;
-                std::unordered_set<Window *> mSet;
+                std::unordered_map<Window *, std::deque<std::unique_ptr<PresentRequest>>> mUpdatableWindows;
+                std::vector<Window *> mUpdatedWindows;
+                //Window *lastUpdatedWindow = nullptr;
 
             public:
-                void push(std::unique_ptr<PresentRequest> request) {
+                void push(std::unique_ptr<PresentRequest> request, bool singleElement) {
                     if (!request || !request->window)
                         return;
                         
-                    if (mSet.count(request->window)) {
+                    auto &queue = mUpdatableWindows[request->window];    
+                    mUpdatedWindows.push_back(request->window);
+                    //lastUpdatedWindow = request->window;
+                    
+                    if (queue.empty()) {
+                        queue.push_back(std::move(request));
+                        return;
+                    }
+                    
+                    if (singleElement) {
+                        auto &item = queue.front();
+                        if (item->sync_fence >= 0) 
+                            close(item->sync_fence);
+                            
+                        queue.pop_front();
+                        queue.push_back(std::move(request));
+                        return;
+                    }
+                    
+                    queue.push_back(std::move(request));
+                }
+                
+                void removeWindow(Window *window) {
+                    if (!window)
+                        return;
+                        
+                    auto it = mUpdatableWindows.find(window);
+                    if (it == mUpdatableWindows.end())
+                        return;
+                        
+                    for (auto& request : it->second) {
                         if (request->sync_fence >= 0)
                             close(request->sync_fence);
-                            
-                        return;
-                    }        
+                    }
                     
-                    mSet.insert(request->window);     
-                    mQueue.push(std::move(request));
+                    it->second.clear();
+                    
+                    auto itv = std::find(mUpdatedWindows.begin(), mUpdatedWindows.end(), window);
+                    if (itv != mUpdatedWindows.end()) 
+                        mUpdatedWindows.erase(itv);
+                        
+                    /*
+                    if (lastUpdatedWindow == window)
+                        lastUpdatedWindow = nullptr;
+                    */    
+                        
+                    mUpdatableWindows.erase(it);    
                 }
 
-                std::unique_ptr<PresentRequest> pop() {
-                    if (mQueue.empty())
-                        return nullptr;
+                std::deque<std::unique_ptr<PresentRequest>> getLast() {
+                    if (mUpdatedWindows.empty())
+                        return {};
+                        
+                    Window *lastUpdatedWindow = mUpdatedWindows.back();
+                    mUpdatedWindows.pop_back();
+                        
+                    auto it = mUpdatableWindows.find(lastUpdatedWindow);
+                    if (it == mUpdatableWindows.end() || it->second.empty())
+                        return {};
                     
-                    auto val = std::move(mQueue.front());
-                    mQueue.pop();
+                    return std::exchange(it->second, {});
+                }
+                
+                std::deque<std::unique_ptr<PresentRequest>> buildWindowTree() {
+                    std::deque<std::unique_ptr<PresentRequest>> out;
                     
-                    mSet.erase(val->window);
-                    return val;
+                    for (auto *window : mUpdatedWindows) {
+                        auto it = mUpdatableWindows.find(window);
+                        if (it == mUpdatableWindows.end() || it->second.empty())
+                            continue;
+                            
+                        auto &queue = it->second;
+                        if (out.empty()) {
+                            out.swap(queue);
+                        }
+                        else {
+                            out.insert(out.end(), std::make_move_iterator(queue.begin()), std::make_move_iterator(queue.end()));
+                            queue.clear();
+                        }
+                    }
+                    
+                    mUpdatedWindows.clear();
+                    return out;
                 }
 
                 bool empty() const {
-                    return mQueue.empty();
+                    return mUpdatedWindows.empty();
                 }
         };
         
         struct DisplayXSwapchain {
             uint8_t id;
             Window *window;
+            uint32_t imageCount;
+            uint32_t presentMode;
+            uint32_t format;
+            uint32_t width;
+            uint32_t height;
             std::vector<std::unique_ptr<Drawable>> images;
         };
         
