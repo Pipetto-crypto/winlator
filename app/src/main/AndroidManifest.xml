@@ -58,6 +58,10 @@
         	android:name="com.winlator.cmod.services.NotificationService"
         	android:foregroundServiceType="specialUse"
         	android:exported="false">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_TYPE"
+                android:value="Winlator uses a foreground service to maintain the XServer and Wine environment active
+                while the container is running, preventing the system from killing the background processes." />
         </service>
 
         <!-- Main activity -->

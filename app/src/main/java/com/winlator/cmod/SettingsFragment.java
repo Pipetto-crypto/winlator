@@ -1,10 +1,13 @@
 package com.winlator.cmod;
 
+import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.hardware.Sensor;
@@ -12,8 +15,11 @@ import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
+import android.os.Looper;
 import android.telecom.Call;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -35,6 +41,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.collection.ArrayMap;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.preference.PreferenceManager;
@@ -303,6 +310,9 @@ public class SettingsFragment extends Fragment {
         
         final CheckBox cbPauseWine = view.findViewById(R.id.CBPauseResumeWine);
         cbPauseWine.setChecked(preferences.getBoolean("pause_resume_wine", true));
+
+        final CheckBox cbEnableBackgroundWakelock = view.findViewById(R.id.CBEnableBackgroundWakelock);
+        cbEnableBackgroundWakelock.setChecked(preferences.getBoolean("enable_background_wakelock", false));
         
         final CheckBox cbHighRefreshRate = view.findViewById(R.id.CBHighRefreshRate);
         cbHighRefreshRate.setChecked(preferences.getBoolean("high_refresh_rate_mode", false));
@@ -332,6 +342,7 @@ public class SettingsFragment extends Fragment {
             editor.putBoolean("open_with_android_browser", cbOpenInBrowser.isChecked());
             editor.putBoolean("share_android_clipboard", cbShareClipboard.isChecked());
             editor.putBoolean("pause_resume_wine", cbPauseWine.isChecked());
+            editor.putBoolean("enable_background_wakelock", cbEnableBackgroundWakelock.isChecked());
             editor.putBoolean("high_refresh_rate_mode", cbHighRefreshRate.isChecked());
 
             editor.putString("downloadable_contents_url", etDownloadableContentsURL.getText().toString());

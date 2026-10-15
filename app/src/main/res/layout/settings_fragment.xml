@@ -518,6 +518,14 @@
                             android:text="@string/pause_resume_wine" />
 
                         <CheckBox
+                            android:id="@+id/CBEnableBackgroundWakelock"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_gravity="left|center"
+                            android:text="@string/enable_background_wakelock"
+                            android:tooltipText="@string/enable_background_wakelock_tooltip" />
+
+                        <CheckBox
                             android:id="@+id/CBHighRefreshRate"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
