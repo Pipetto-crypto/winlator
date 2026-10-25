@@ -270,7 +270,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         AppUtils.keepScreenOn(this);
 
         setContentView(R.layout.xserver_display_activity);
-        
+        NotificationService.setContainerActive(true);
+
         preloaderDialog = new PreloaderDialog(this);
         preferences = PreferenceManager.getDefaultSharedPreferences(this);
         
@@ -801,18 +802,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
 
         if (!isInPictureInPictureMode() && isSuspendEnabled)
-        	ProcessHelper.resumeAllWineProcesses();
-            
-        if (NotificationService.isRunning())  
-            NotificationService.releaseLock();
+            new Thread(ProcessHelper::resumeAllWineProcesses, "WineProcessResumer").start();
     }
 
     @Override
     public void onPause() {
         super.onPause();
-        
-        if (NotificationService.isRunning())
-            NotificationService.acquireLock();
             
         boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
 
@@ -827,14 +822,20 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             if (environment != null) {
                 environment.onPause();
             }
-            
-            xServerView.onPause();    
-            
-            if (isSuspendEnabled)
-                ProcessHelper.pauseAllWineProcesses();
+
+            xServerView.onPause();
+
+            if (isSuspendEnabled) {
+                // Priority: save data first, then suspend
+                new Thread(() -> {
+                    savePlaytimeData();
+                    ProcessHelper.pauseAllWineProcesses();
+                }, "WineProcessPauser").start();
+            } else {
+                new Thread(this::savePlaytimeData, "SavePlayTime").start();
+            }
         }
 
-        savePlaytimeData();
         handler.removeCallbacks(savePlaytimeRunnable);
     }
 
@@ -904,10 +905,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 AppUtils.restartApplication(getApplicationContext());
             }
         }, 1000);
+        NotificationService.setContainerActive(false);
     }
 
     @Override
     protected void onDestroy() {
+        NotificationService.setContainerActive(false);
         super.onDestroy();
     }
 
