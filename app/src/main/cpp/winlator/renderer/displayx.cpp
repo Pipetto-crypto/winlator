@@ -27,6 +27,9 @@ using PFNASURFACETRANSACTIONSETZORDER = void (*)(ASurfaceTransaction*, ASurfaceC
 using PFNASURFACETRANSACTIONSETVISIBILITY = void (*)(ASurfaceTransaction*, ASurfaceControl*, enum ASurfaceTransactionVisibility);
 using PFNASURFACETRANSACTIONSETBUFFERTRANSPARENCY = void (*)(ASurfaceTransaction*, ASurfaceControl*, enum ASurfaceTransactionTransparency);
 using PFNASURFACETRANSACTIONSETBUFFERALPHA = void (*)(ASurfaceTransaction*, ASurfaceControl*, float);
+using PFNASURFACETRANSACTIONSETBUFFERDATASPACE = void (*)(ASurfaceTransaction*, ASurfaceControl*, enum ADataSpace data_space);
+using PFNASURFACETRANSACTIONSETHDRMETADATA_SMPTE2086 = void (*)(ASurfaceTransaction*, ASurfaceControl*, struct AHdrMetadata_smpte2086*);
+using PFNASURFACETRANSACTIONSETHDRMETADATA_CTA861_3 = void (*)(ASurfaceTransaction*, ASurfaceControl*, struct AHdrMetadata_cta861_3*);
 using PFNASURFACETRANSACTIONSTATSGETPRESENTFENCEFD = int (*)(ASurfaceTransactionStats*);
 using PFNASURFACETRANSACTIONREPARENT = void (*)(ASurfaceTransaction*, ASurfaceControl*, ASurfaceControl*);
 using PFNASURFACETRANSACTIONSETONCOMPLETE = void (*)(ASurfaceTransaction*, void*, ASurfaceTransaction_OnComplete);
@@ -61,6 +64,9 @@ static PFNASURFACETRANSACTIONSETGEOMETRY pfnASurfaceTransactionSetGeometry = nul
 static PFNASURFACETRANSACTIONSETZORDER pfnASurfaceTransactionSetZOrder = nullptr;
 static PFNASURFACETRANSACTIONSETVISIBILITY pfnASurfaceTransactionSetVisibility = nullptr;
 static PFNASURFACETRANSACTIONSETBUFFERALPHA pfnASurfaceTransactionSetBufferAlpha = nullptr;
+static PFNASURFACETRANSACTIONSETBUFFERDATASPACE pfnASurfaceTransactionSetBufferDataSpace = nullptr;
+static PFNASURFACETRANSACTIONSETHDRMETADATA_SMPTE2086 pfnASurfaceTransactionSetHdrMetadataSmpte2086 = nullptr;
+static PFNASURFACETRANSACTIONSETHDRMETADATA_CTA861_3 pfnASurfaceTransactionSetHdrMetadataCta8613 = nullptr;
 static PFNASURFACETRANSACTIONSETBUFFERTRANSPARENCY pfnASurfaceTransactionSetBufferTransparency = nullptr;
 static PFNASURFACETRANSACTIONREPARENT pfnASurfaceTransactionReparent = nullptr;
 static PFNASURFACETRANSACTIONSETONCOMPLETE pfnASurfaceTransactionSetOnComplete = nullptr;
@@ -182,35 +188,11 @@ void DisplayX::onVsyncCallback(const AChoreographerFrameCallbackData* callbackDa
     pfnAChoreographerPostVsyncCallback(self->choreographer, DisplayX::onVsyncCallback, self);
 }
 
-static void sendFD(int& socket, int fd) {
-    std::vector<char> control_buffer(CMSG_SPACE(sizeof(int)));
-
-    char dummy = 0;
+static int readAncillaryMessage(int socket, void *data, size_t len, int *fd) {
+    char *buf = static_cast<char *>(data);
     struct iovec iov{};
-    iov.iov_len = 1;
-    iov.iov_base = &dummy;
-
-    struct msghdr msg{};
-    msg.msg_iov = &iov;
-    msg.msg_iovlen = 1;
-    msg.msg_control = control_buffer.data();
-    msg.msg_controllen = control_buffer.size();
-                                                                                                             
-    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(int));
-    
-    *reinterpret_cast<int*>(CMSG_DATA(cmsg)) = fd;
-
-    sendmsg(socket, &msg, 0);
-}
-
-static int readFD(int& socket) {
-    std::vector<char> msg_contents(1);
-    struct iovec iov{};
-    iov.iov_base = msg_contents.data();
-    iov.iov_len = msg_contents.size();
+    iov.iov_base = buf;
+    iov.iov_len = len;
             
     std::vector<char> control_buf(CMSG_SPACE(sizeof(int)));
     struct msghdr msg{};
@@ -219,131 +201,154 @@ static int readFD(int& socket) {
     msg.msg_control = control_buf.data();
     msg.msg_controllen = control_buf.size();
             
-    recvmsg(socket, &msg, MSG_WAITALL);
+    ssize_t size = recvmsg(socket, &msg, 0);
+    if (size < 0)
+        return -1;
+        
+    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);    
+    
+    if (static_cast<size_t>(size) < len || (msg.msg_flags & (MSG_CTRUNC | MSG_TRUNC))) {
+        if (cmsg != nullptr) {
+            *fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+            close(*fd);
+        }
+    
+        return -1;    
+    }
             
-    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-    int fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+    if (cmsg == nullptr) {
+        *fd = -1;
+    }     
+    else {
+        *fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+    }
             
-    return fd;
+    return 0;
 }
 
 void DisplayX::networkThreadLoop() {
-    static constexpr int CONNECT = 0;
-    static constexpr int ADD_CLIENT_SWAPCHAIN = 1;
-    static constexpr int PRESENT_IMAGE = 2;
-    static constexpr int DESTROY_CLIENT_SWAPCHAIN = 3;
-    
-    std::array<struct epoll_event, 2> events;
+    std::array<struct epoll_event, 1024> events;
     int n;
-    int res;
-    int efd;
-    int server_fd;
-    std::unordered_map<uint8_t, std::unique_ptr<DisplayXSwapchain>> clientSwapchains;
     
-    server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (server_fd < 0) 
-        printf("Failed to create native rendering socket");
-                
-    struct sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
-    memcpy(addr.sun_path + 1, "displayx", strlen("displayx"));
-    addr.sun_path[0] = '\0';
-    socklen_t len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen("displayx");
-    res = bind(server_fd, (struct sockaddr *)&addr, len);
-    if (res < 0)
-        printf("Failed to bind native rendering socket");
-               
-    res = listen(server_fd, 1);
-    if (res < 0)
-        printf("Failed to listent to native rendering socket");
-                
-    efd = epoll_create1(0);
-    struct epoll_event event{};
-    event.data.fd = server_fd;
-    event.events = EPOLLIN;
-            
-    epoll_ctl(efd, EPOLL_CTL_ADD, server_fd, &event);
-     
     JNIEnv *env = cache->getEnv();
        
-    while ((n = epoll_wait(efd, events.data(), 2, -1))) {
+    while ((n = epoll_wait(epollFd, events.data(), events.size(), -1))) {
         if (stopped) {
             printf("Stopping networkThread");
-            close(server_fd);
-            clientSwapchains.erase(clientSwapchains.begin(), clientSwapchains.end());
             return;
         }
         
         for (int i = 0; i < n; i++) {
-            if (events[i].data.fd == server_fd) {
+            if (events[i].data.fd == serverFd) {
                 if (events[i].events & EPOLLIN) {
                     printf("Received new client connection");
-                    int client_fd = accept(server_fd, nullptr, nullptr);
+                    int client_fd = accept(serverFd, nullptr, nullptr);
                     struct epoll_event event{};
                     event.data.fd = client_fd;
                     event.events = EPOLLIN;
-                    epoll_ctl(efd, EPOLL_CTL_ADD, client_fd, &event);
+                    epoll_ctl(epollFd, EPOLL_CTL_ADD, client_fd, &event);
                 }
             } 
             else {
                 if (events[i].events & (EPOLLERR | EPOLLHUP)) {
                     printf("Client has disconnected");
-                    epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+                    epoll_ctl(epollFd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
                     close(events[i].data.fd);
                     continue;
                 }
                 
                 if (events[i].events & EPOLLIN) {
-                    int request_code;
-                    int size = read(events[i].data.fd, &request_code, 4);
-                    if (size <= 0)
+                    uint32_t requestCode;
+                    char buf[32];
+                    
+                    struct iovec iov{};
+                    iov.iov_base = buf;
+                    iov.iov_len = 32;
+            
+                    std::vector<char> control_buf(CMSG_SPACE(sizeof(int)));
+                    
+                    struct msghdr msg{};
+                    msg.msg_iov = &iov;
+                    msg.msg_iovlen = 1;
+                    msg.msg_control = control_buf.data();
+                    msg.msg_controllen = control_buf.size();
+            
+                    ssize_t size = recvmsg(events[i].data.fd, &msg, 0);
+                    
+                    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); 
+                    
+                    if (size < 0) {
+                        if (errno == EAGAIN || errno == EINTR)
+                            continue;
+
+                        epoll_ctl(epollFd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+                        close(events[i].data.fd);
                         continue;
-                            
-                    switch (request_code) {
-                        case CONNECT:
-                        {
-                            printf("Received new connection from client Vulkan");
-                            break;
+                    }
+                    
+                    if (size == 0 || static_cast<size_t>(size) < 4 || (msg.msg_flags & (MSG_CTRUNC | MSG_TRUNC))) {
+                        if (cmsg != nullptr) {
+                            int fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+                            close(fd);
                         }
-                        case ADD_CLIENT_SWAPCHAIN:
+                        
+                        epoll_ctl(epollFd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+                        close(events[i].data.fd);
+                        continue;
+                    }
+        
+                    memcpy(&requestCode, buf, 4);
+                    
+                    switch (requestCode) {
+                        case DisplayXCodes::CREATE_SWAPCHAIN:
                         {
                             uint8_t id;
                             uint32_t imageCount;
                             uint32_t windowId;
                             uint32_t presentMode;
                             uint32_t format;
-                            uint32_t width;
-                            uint32_t height;
-                                    
-                            read(events[i].data.fd, &id, 1);
-                            read(events[i].data.fd, &imageCount, 4);
-                            read(events[i].data.fd, &windowId, 4);
-                            read(events[i].data.fd, &presentMode, 4);
-                            read(events[i].data.fd, &format, 4);
-                            read(events[i].data.fd, &width, 4);
-                            read(events[i].data.fd, &height, 4);
+                            uint32_t colorSpace;
+                            
+                            if (static_cast<size_t>(size) < 25)
+                                continue;
+                            
+                            memcpy(&id, buf + 4, 1);
+                            memcpy(&imageCount, buf + 5, 4);
+                            memcpy(&windowId, buf + 9, 4);
+                            memcpy(&presentMode, buf + 13, 4);
+                            memcpy(&format, buf + 17, 4);
+                            memcpy(&colorSpace, buf + 21, 4);
                             
                             auto window = windowManager->getWindow(windowId);
                             if (!window) 
                                 continue;
-                                    
-                            printf("Received new swapchain from client, id %d, images %d, presentMode %d, format %d, width %d, height %d", id, imageCount, presentMode, format, width, height);
+                            
+                            if (presentMode == VK_PRESENT_MODE_FIFO_KHR) {  
+                                eventLock.lock();
+                                pfnASurfaceTransactionSetEnableBackPressure(windowTransaction, window->control, true);
+                                presentRR = false;
+                                pfnASurfaceTransactionApply(windowTransaction);
+                            }
+                            
+                            printf("Creating client swapchain: id %d, images %d, presentMode %d, format %d, colorSpace %d", id, imageCount, presentMode, format, colorSpace);
                             
                             auto swapchain = std::make_unique<DisplayXSwapchain>();
                             swapchain->id = id;
                             swapchain->window = window;
-                            swapchain->width = width;
-                            swapchain->height = height;
+                            swapchain->width = window->width;
+                            swapchain->height = window->height;
                             swapchain->imageCount = imageCount;
                             swapchain->presentMode = presentMode;
                             swapchain->format = format;
+                            swapchain->colorSpace = colorSpace;
+                            swapchain->fd = events[i].data.fd;
                             
                             swapchain->images.resize(imageCount);
                             for (uint32_t j = 0; j < imageCount; j++) {
                                 auto drawable = std::make_unique<Drawable>();
                                 drawable->id = -1;
-                                drawable->width = width;
-                                drawable->height = height;
+                                drawable->width = window->width;
+                                drawable->height = window->height;
                                 drawable->data = nullptr;
                                 AHardwareBuffer_recvHandleFromUnixSocket(events[i].data.fd, &drawable->ahb);
                                 AHardwareBuffer_Desc outDesc{};
@@ -360,42 +365,54 @@ void DisplayX::networkThreadLoop() {
                             window->parent->surface = window;
                             
                             clientSwapchains[id] = std::move(swapchain);
+                            
                             break;
-                        }    
-                        case PRESENT_IMAGE:
+                        }
+                        case DisplayXCodes::PRESENT:
                         {
                             uint8_t id;
                             uint32_t index;
-                            int fence;
-                            uint64_t present_id;
-                                    
-                            read(events[i].data.fd, &id, 1);
-                            read(events[i].data.fd, &index, 4);
+                            uint64_t presentId;
+                            int sync_fence = -1;
                             
-                            fence = readFD(events[i].data.fd);
+                            if (cmsg != nullptr)
+                                sync_fence = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
                             
-                            read(events[i].data.fd, &present_id, 8);
+                            if (static_cast<size_t>(size) < 17) {
+                                if (sync_fence > -1)
+                                    close(sync_fence);
+                                
+                                continue;
+                            }    
+                                
+                            memcpy(&id, buf + 4, 1);
+                            memcpy(&index, buf + 5, 4);
+                            memcpy(&presentId, buf + 9, 8);
                             
                             auto swapchain = clientSwapchains[id].get();
                             if (!swapchain)
                                 continue;
-                            
+
                             auto drawable = swapchain->images.at(index).get();
                             if (!drawable)
                                 continue;
-                                
-                            auto lock = presentLock.lock();       
+                            
+                            //printf("Presenting image %d, swapchain %d, presentId %d, fence %d", index, id, presentId, sync_fence);         
+                            
+                            auto lock = presentLock.lock();      
                             
                             swapchain->window->externalContent = drawable;
+                            swapchain->fd = events[i].data.fd;
                             
                             auto presentRequest = std::make_unique<PresentRequest>();
                             presentRequest->drawable = drawable;
-                            presentRequest->sync_fence = fence;
-                            presentRequest->presentId = present_id;
+                            presentRequest->sync_fence = sync_fence;
+                            presentRequest->presentId = presentId;
                             presentRequest->index = index;
                             presentRequest->clientFd = events[i].data.fd;
                             presentRequest->window = swapchain->window;
-                            presentRequest->swapchain = swapchain;
+                            presentRequest->swapchainId = swapchain->id;
+                            presentRequest->presentMode = swapchain->presentMode;
                             
                             presentRequests.push(std::move(presentRequest), swapchain->presentMode == VK_PRESENT_MODE_MAILBOX_KHR ? true : false);
                             if (xServer->isShowFPS) 
@@ -406,18 +423,25 @@ void DisplayX::networkThreadLoop() {
                                 
                             break;
                         }    
-                        case DESTROY_CLIENT_SWAPCHAIN: {
+                        case DisplayXCodes::DESTROY_SWAPCHAIN: {
                             uint8_t id;
-                            read(events[i].data.fd, &id, 1);
+                            
+                            if (static_cast<size_t>(size) < 5)
+                                continue;
+                                
+                            memcpy(&id, buf + 4, 1);
                             
                             auto swapchain = clientSwapchains[id].get();
                             if (!swapchain)
                                 continue;
                             
-                            swapchain->images.clear();
+                            printf("Destroying client swapchain: id %d", id);
                             
+                            swapchain->images.clear();
                             swapchain->window->externalContent = nullptr;
+                            
                             clientSwapchains.erase(id);
+                            
                             break;
                         }
                         default:
@@ -518,23 +542,35 @@ void DisplayX::eventThreadLoop() {
 void DisplayX::onCompleteCallback(void *context, ASurfaceTransactionStats *stats) {
     std::unique_ptr<OnCompleteContext> completeContext(static_cast<OnCompleteContext *>(context));
     
-    for (auto &request : completeContext->requests) {
-        if (request->presentId >= 0 || request->swapchain->presentMode == VK_PRESENT_MODE_FIFO_KHR) {
-            int requestCode = 4;
-            write(request->clientFd, &requestCode, 4);
-            write(request->clientFd, &request->swapchain->id, 1);
+    uint32_t requestCode = DisplayXCodes::PRESENT_COMPLETE;
+    char buf[1024];
+    
+    memcpy(buf, &requestCode, 4);
+    
+    uint32_t count = static_cast<uint32_t>(completeContext->requests.size());
+    memcpy(buf + 4, &count, 4);
             
-            uint64_t presentId = request->presentId >= 0 ? request->presentId : -1;
-            write(request->clientFd, &presentId, 8);
-            
-            write(request->clientFd, &request->index, 4);
-        }
+    uint32_t start = 8;      
+      
+    for (auto it = completeContext->requests.begin(); it != completeContext->requests.end(); it++) {
+        memcpy(buf + start, &it->first, 1);
+        start = start + 1;
+        
+        memcpy(buf + start, &it->second->presentId, 8);
+        start = start + 8;
+        
+        auto count = static_cast<uint32_t>(it->second->indexes.size());
+        memcpy(buf + start, &count, 4);
+        start = start + 4;
+        
+        memcpy(buf + start, it->second->indexes.data(), count * sizeof(uint32_t));
+        start = start + count * sizeof(uint32_t);
     }
+    
+    send(completeContext->clientFd, buf, start, 0);
 }
 
 void DisplayX::presentThreadLoop() {
-    ASurfaceTransaction *presentTransaction = pfnASurfaceTransactionCreate();
-    
     while(true) {
         auto lock = presentLock.lock();
         
@@ -544,7 +580,6 @@ void DisplayX::presentThreadLoop() {
         
         if (stopped) {
             printf("Stopping presentThread");
-            cache->detachEnv(env);
             break;
         }
         
@@ -591,12 +626,32 @@ void DisplayX::presentThreadLoop() {
                 pfnASurfaceTransactionSetBufferTransparency(presentTransaction, window->control, ASURFACE_TRANSACTION_TRANSPARENCY_OPAQUE);
                 
                 if (drawable->isDisplayX) {
-                   completeContext->requests.push_back(std::move(presentRequest));
+                    if (presentRequest->presentId == UINT64_MAX && presentRequest->presentMode != VK_PRESENT_MODE_FIFO_KHR)
+                        continue;
+                        
+                    auto it = completeContext->requests.find(presentRequest->swapchainId);
+                    if (it != completeContext->requests.end()) {
+                        auto& param = *it->second;
+                        
+                        if (presentRequest->presentId > param.presentId) {
+                            param.presentId = presentRequest->presentId;
+                        }
+                        param.indexes.push_back(presentRequest->index);
+                    }
+                    else {
+                        completeContext->clientFd = presentRequest->clientFd;
+                        
+                        auto param = std::make_unique<OnCompleteParams>();
+                        param->presentId = presentRequest->presentId;
+                        param->indexes.push_back(presentRequest->index);
+                        param->clientFd = presentRequest->clientFd;
+                        completeContext->requests[presentRequest->swapchainId] = std::move(param);
+                    }
                 }    
             }
         }
         
-        if (!completeContext->requests.empty()) 
+        if (!completeContext->isEmpty())
             pfnASurfaceTransactionSetOnComplete(presentTransaction, completeContext.release(), DisplayX::onCompleteCallback);
             
         pfnASurfaceTransactionApply(presentTransaction);
@@ -605,6 +660,8 @@ void DisplayX::presentThreadLoop() {
 
 void DisplayX::start() {
     void* handle = dlopen("libandroid.so", RTLD_NOW);
+    int res;
+    
     pfnASurfaceTransactionSetPosition = reinterpret_cast<PFNASURFACETRANSACTIONSETPOSITION>(dlsym(handle,"ASurfaceTransaction_setPosition"));
     pfnASurfaceTransactionSetBuffer = reinterpret_cast<PFNASURFACETRANSACTIONSETBUFFER>(dlsym(handle,"ASurfaceTransaction_setBuffer"));
     pfnASurfaceTransactionSetGeometry = reinterpret_cast<PFNASURFACETRANSACTIONSETGEOMETRY>(dlsym(handle,"ASurfaceTransaction_setGeometry"));
@@ -615,6 +672,9 @@ void DisplayX::start() {
     pfnASurfaceTransactionSetOnCommit = reinterpret_cast<PFNASURFACETRANSACTIONSETONCOMMIT>(dlsym(handle,"ASurfaceTransaction_setOnCommit"));
     pfnASurfaceTransactionSetEnableBackPressure = reinterpret_cast<PFNASURFACETRANSACTIONSETENABLEBACKPRESSURE>(dlsym(handle,"ASurfaceTransaction_setEnableBackPressure"));
     pfnASurfaceTransactionSetBufferAlpha = reinterpret_cast<PFNASURFACETRANSACTIONSETBUFFERALPHA>(dlsym(handle, "ASurfaceTransaction_setBufferAlpha"));
+    pfnASurfaceTransactionSetBufferDataSpace = reinterpret_cast<PFNASURFACETRANSACTIONSETBUFFERDATASPACE>(dlsym(handle, "ASurfaceTransaction_setBufferDataSpace"));
+    pfnASurfaceTransactionSetHdrMetadataSmpte2086 = reinterpret_cast<PFNASURFACETRANSACTIONSETHDRMETADATA_SMPTE2086>(dlsym(handle, "ASurfaceTransaction_setHdrMetadata_smpte2086"));
+    pfnASurfaceTransactionSetHdrMetadataCta8613 = reinterpret_cast<PFNASURFACETRANSACTIONSETHDRMETADATA_CTA861_3>(dlsym(handle, "ASurfaceTransaction_setHdrMetadata_cta861_3"));
     pfnASurfaceTransactionSetBufferTransparency = reinterpret_cast<PFNASURFACETRANSACTIONSETBUFFERTRANSPARENCY>(dlsym(handle, "ASurfaceTransaction_setBufferTransparency"));
     pfnASurfaceTransactionStatsGetPresentFenceFd = reinterpret_cast<PFNASURFACETRANSACTIONSTATSGETPRESENTFENCEFD>(dlsym(handle, "ASurfaceTransactionStats_getPresentFenceFd"));
     pfnASurfaceTransactionSetFrameTimeline = reinterpret_cast<PFNASURFACETRANSACTIONSETFRAMETIMELINE>(dlsym(handle, "ASurfaceTransaction_setFrameTimeline"));
@@ -639,6 +699,48 @@ void DisplayX::start() {
     pfnAPerformanceHintReportActualWorkDuration = reinterpret_cast<PFNAPERFORMANCEHINTREPORTACTUALWORKDURATION>(dlsym(handle, "APerformanceHint_reportActualWorkDuration"));
     pfnAPerformanceHintUpdateTargetWorkDuration = reinterpret_cast<PFNAPERFORMANCEHINTUPDATETARGETWORKDURATION>(dlsym(handle, "APerformanceHint_updateTargetWorkDuration"));
     pfnAPerformanceHintCloseSession = reinterpret_cast<PFNAPERFORMANCEHINTCLOSESESSION>(dlsym(handle, "APerformanceHint_closeSession"));
+    
+    serverFd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    if (serverFd < 0) {
+        printf("Failed to create native rendering socket");
+        return;
+    }    
+                
+    struct sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    memcpy(addr.sun_path + 1, "displayx", strlen("displayx"));
+    addr.sun_path[0] = '\0';
+    socklen_t len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen("displayx");
+    res = bind(serverFd, (struct sockaddr *)&addr, len);
+    if (res < 0) {
+        printf("Failed to bind native rendering socket");
+        close(serverFd);
+        return;
+    }    
+               
+    res = listen(serverFd, 1);
+    if (res < 0) {
+        printf("Failed to listent to native rendering socket");
+        close(serverFd);
+        return;
+    }    
+                
+    epollFd = epoll_create1(0);
+    stopFd = eventfd(0, EFD_NONBLOCK);
+    
+    struct epoll_event event{};
+    
+    event.data.fd = serverFd;
+    event.events = EPOLLIN;
+    epoll_ctl(epollFd, EPOLL_CTL_ADD, serverFd, &event);
+     
+    event.data.fd = stopFd;
+    event.events = EPOLLIN;
+    epoll_ctl(epollFd, EPOLL_CTL_ADD, stopFd, &event);
+    
+    presentTransaction = pfnASurfaceTransactionCreate();
+    windowTransaction = pfnASurfaceTransactionCreate();
+    cursorTransaction = pfnASurfaceTransactionCreate();
         
     eventThread = std::thread(&DisplayX::eventThreadLoop, this);
     networkThread = std::thread(&DisplayX::networkThreadLoop, this);
@@ -658,8 +760,24 @@ void DisplayX::stop() {
     }
     
     stopped = true;
+    int val = 1;
+    write(stopFd, &val, 4);
+    
     eventLock.notify();
     presentLock.notify();
+    
+    if (networkThread.joinable()) 
+        networkThread.join();
+    
+    if (eventThread.joinable())    
+        eventThread.join();
+    
+    if (presentThread.joinable())    
+        presentThread.join();
+    
+    close(stopFd);   
+    close(epollFd);
+    close(serverFd);
 }
 
 void DisplayX::pause() {
@@ -725,12 +843,16 @@ void DisplayX::requestWindowUpdate(Window *window) {
     auto presentRequest = std::make_unique<PresentRequest>();
     presentRequest->drawable = window->hasExternalContents() ? window->externalContent : drawable;
     presentRequest->sync_fence = -1;
-    presentRequest->presentId = -1;
+    presentRequest->presentId = UINT64_MAX;
     presentRequest->clientFd = -1;
     presentRequest->window = window;
+    presentRequest->swapchainId = -1;
+    presentRequest->presentMode = -1;
+    presentRequest->index = -1;
     
     presentRequests.push(std::move(presentRequest), true);
-    if (!presentRR) presentLock.notify();
+    if (!presentRR)
+        presentLock.notify();
 }
 
 void DisplayX::requestCursorUpdate() {
@@ -874,8 +996,6 @@ void DisplayX::createRootCursorControl() {
     cursorManager->control = pfnASurfaceControlCreate(rootWindow->control, "displayx");
     if (pfnASurfaceControlAcquire)
         pfnASurfaceControlAcquire(cursorManager->control);
-    
-    cursorTransaction = pfnASurfaceTransactionCreate();
 }
 
 void DisplayX::showCursor() {
@@ -931,25 +1051,19 @@ void DisplayX::createRootWindowControl() {
     rootWindow->control = pfnASurfaceControlCreateFromWindow(this->native_window, "displayx");
     if (pfnASurfaceControlAcquire)      
         pfnASurfaceControlAcquire(rootWindow->control);
- 
-    windowTransaction = pfnASurfaceTransactionCreate();
 }
 
 void DisplayX::destroyRootWindowControl() {
-    this->native_window = nullptr;
-    pfnASurfaceTransactionDelete(windowTransaction);
-    
     auto rootWindow = windowManager->getRootWindow();
     if (!rootWindow || !rootWindow->control)
         return;
 
     pfnASurfaceControlRelease(rootWindow->control);
     rootWindow->control = nullptr;
+    this->native_window = nullptr;
 }
 
 void DisplayX::destroyRootCursorControl() {
-    pfnASurfaceTransactionDelete(cursorTransaction);
-    
     auto rootCursor = cursorManager->getRootCursor();
     if (!rootCursor || !cursorManager->control)
         return;
@@ -1017,6 +1131,16 @@ void DisplayX::restoreControlState() {
     if (cursorManager->control && rootWindow->control) {
         pfnASurfaceTransactionReparent(cursorTransaction, cursorManager->control, rootWindow->control);
         pfnASurfaceTransactionApply(cursorTransaction);
+    }
+    
+    for (auto it = clientSwapchains.begin(); it != clientSwapchains.end(); it++) {
+        char buf[32];
+        
+        uint32_t requestCode = DisplayXCodes::RESET_STATE;
+        memcpy(buf, &requestCode, 4);
+        
+        memcpy(buf + 4, &it->second->id, 1);
+        send(it->second->fd, buf, 5, 0);
     }
 }
 

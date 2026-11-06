@@ -9,8 +9,13 @@
 #include <dlfcn.h>
 #include <unordered_set>
 #include <condition_variable>
+
 #include <android/choreographer.h>
 #include <android/performance_hint.h>
+#include <android/hdr_metadata.h>
+#include <android/data_space.h>
+
+#include <sys/eventfd.h>
 
 #include "renderer_jni.hpp"
 #include "view_transformation.hpp"
@@ -20,6 +25,14 @@
 
 #define VK_PRESENT_MODE_MAILBOX_KHR 1
 #define VK_PRESENT_MODE_FIFO_KHR 2
+
+namespace DisplayXCodes {
+    static constexpr int CREATE_SWAPCHAIN = 1;
+    static constexpr int DESTROY_SWAPCHAIN = 2;
+    static constexpr int PRESENT = 3;
+    static constexpr int PRESENT_COMPLETE = 4;
+    static constexpr int RESET_STATE = 5;
+}
 
 class DisplayX {
     private:
@@ -56,8 +69,10 @@ class DisplayX {
             uint32_t imageCount;
             uint32_t presentMode;
             uint32_t format;
+            uint32_t colorSpace;
             uint32_t width;
             uint32_t height;
+            int fd;
             std::vector<std::unique_ptr<Drawable>> images;
         };
         
@@ -65,7 +80,8 @@ class DisplayX {
             Drawable *drawable;
             int sync_fence;
             uint64_t presentId;
-            DisplayXSwapchain *swapchain;
+            uint8_t swapchainId;
+            uint32_t presentMode;
             uint32_t index;
             int clientFd;
             Window *window;
@@ -165,8 +181,19 @@ class DisplayX {
                 }
         };
         
+        struct OnCompleteParams {
+            uint64_t presentId;
+            std::vector<uint32_t> indexes;
+            int clientFd;
+        };
+        
         struct OnCompleteContext {
-            std::vector<std::unique_ptr<PresentRequest>> requests;
+            std::unordered_map<uint8_t, std::unique_ptr<OnCompleteParams>> requests;
+            uint32_t clientFd;
+            
+            bool isEmpty() {
+                return requests.empty();
+            }
         };
         
         JNIEnv *env;
@@ -175,20 +202,24 @@ class DisplayX {
         AChoreographer *choreographer;
         ViewTransformation viewTransformation;
         ANativeWindow *native_window;
-        
         APerformanceHintManager *performanceHintManager = nullptr;
         APerformanceHintSession *performanceHintSession = nullptr;
-        
-        DisplayXLock eventLock;
-        DisplayXLock presentLock;
-        
         ASurfaceTransaction *windowTransaction;
         ASurfaceTransaction *cursorTransaction;
-        PresentQueue presentRequests;
-        std::queue<std::function<void()>> eventQueue;
+        ASurfaceTransaction *presentTransaction;
         
+        DisplayXLock eventLock;
+        std::queue<std::function<void()>> eventQueue;
         std::thread eventThread;
+        
+        int stopFd;
+        int serverFd;
+        int epollFd;
+        std::unordered_map<uint8_t, std::unique_ptr<DisplayXSwapchain>> clientSwapchains;
         std::thread networkThread;
+        
+        DisplayXLock presentLock;
+        PresentQueue presentRequests;
         std::thread presentThread;
         
         State state = State::NONE;
