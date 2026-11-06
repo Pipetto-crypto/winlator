@@ -783,28 +783,30 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     public void onResume() {
         super.onResume();
+        
+        if (NotificationService.isRunning())  
+            NotificationService.releaseLock();
+            
         boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
 
         if (gyroEnabled) {
             // Re-register the sensor listener when the activity is resumed
             sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
         }
-        
-        if (!isInPictureInPictureMode())
-            xServerView.onResume();
 
-        if (environment != null) {
-            environment.onResume();
+        if (!isInPictureInPictureMode()) {
+            if (isSuspendEnabled)
+                ProcessHelper.resumeAllWineProcesses();
+         
+            if (environment != null)
+                environment.onResume();    
+         
+            if (!isInPictureInPictureMode())
+                xServerView.onResume();
         }
         
         startTime = System.currentTimeMillis();
-        handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
-
-        if (!isInPictureInPictureMode() && isSuspendEnabled)
-        	ProcessHelper.resumeAllWineProcesses();
-            
-        if (NotificationService.isRunning())  
-            NotificationService.releaseLock();
+        handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);        
     }
 
     @Override
@@ -823,12 +825,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Check if we are entering Picture-in-Picture mode
         if (!isInPictureInPictureMode()) {
+            xServerView.onPause();    
+            
             // Only pause environment and xServerView if not in PiP mode
             if (environment != null) {
                 environment.onPause();
             }
-            
-            xServerView.onPause();    
             
             if (isSuspendEnabled)
                 ProcessHelper.pauseAllWineProcesses();
@@ -954,8 +956,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 break;
             case R.id.main_menu_pause:
                 if (isPaused) {
-                    xServerView.onResume();
                     ProcessHelper.resumeAllWineProcesses();
+                    xServerView.onResume();
                     item.setIcon(R.drawable.icon_pause);
                 }
                 else {
