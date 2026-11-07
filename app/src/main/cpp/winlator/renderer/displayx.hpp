@@ -206,10 +206,10 @@ class DisplayX {
         APerformanceHintSession *performanceHintSession = nullptr;
         ASurfaceTransaction *windowTransaction;
         ASurfaceTransaction *cursorTransaction;
-        ASurfaceTransaction *presentTransaction;
         
         DisplayXLock eventLock;
         std::queue<std::function<void()>> eventQueue;
+        PresentQueue presentRequests;
         std::thread eventThread;
         
         int stopFd;
@@ -218,9 +218,8 @@ class DisplayX {
         std::unordered_map<uint8_t, std::unique_ptr<DisplayXSwapchain>> clientSwapchains;
         std::thread networkThread;
         
-        DisplayXLock presentLock;
-        PresentQueue presentRequests;
-        std::thread presentThread;
+        DisplayXLock cursorLock;
+        std::thread cursorThread;
         
         State state = State::NONE;
         std::atomic_bool paused{false};
@@ -235,13 +234,12 @@ class DisplayX {
         bool requestUpdate = false;
         
         bool fullscreen = false;
-        int eventsPending = 0;
         int64_t previousReportedWorkTime = 0;
         AVsyncId vsyncId = -1;
         
         void eventThreadLoop();
         void networkThreadLoop();
-        void presentThreadLoop();
+        void cursorThreadLoop();
         static void onFrameCallback64(int64_t frameTimeNanos, void *data);
         static void onVsyncCallback(const AChoreographerFrameCallbackData* callbackData, void* data);
         static void onCompleteCallback(void *context, ASurfaceTransactionStats *stats);
@@ -275,7 +273,6 @@ class DisplayX {
         void queueEvent(std::function<void()> func);
         void requestWindowUpdate(Window *window);
         void requestCursorUpdate();
-        void updateCursorPosition();
         
         void createWindowControl(Window *window);
         void destroyWindowControl(Window *window);
