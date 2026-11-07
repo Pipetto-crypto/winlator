@@ -329,6 +329,12 @@ void DisplayX::networkThreadLoop() {
                                 presentRR = false;
                                 pfnASurfaceTransactionApply(windowTransaction);
                             }
+                            else {
+                                eventLock.lock();
+                                pfnASurfaceTransactionSetEnableBackPressure(windowTransaction, window->control, false);
+                                presentRR.store(defaultRR.load());
+                                pfnASurfaceTransactionApply(windowTransaction);
+                            }
                             
                             printf("Creating client swapchain: id %d, images %d, presentMode %d, format %d, colorSpace %d", id, imageCount, presentMode, format, colorSpace);
                             
@@ -1166,7 +1172,8 @@ void DisplayX::setPerformanceMode(bool perfMode) {
 }
 
 void DisplayX::setPresentRR(bool presentRR) {
-    this->presentRR = presentRR;
+    this->defaultRR = presentRR;
+    this->presentRR.store(this->defaultRR.load());
 }
 
 void DisplayX::setPrecisePresentation(bool precisePresentation) {

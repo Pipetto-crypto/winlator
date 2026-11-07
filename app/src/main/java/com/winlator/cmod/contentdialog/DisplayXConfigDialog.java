@@ -11,7 +11,7 @@ import com.winlator.cmod.core.AppUtils;
 import com.winlator.cmod.core.KeyValueSet;
 
 public class DisplayXConfigDialog extends ContentDialog {
-    public static String DEFAULT_CONFIG = "trueDisplayX=0" + ",performanceMode=1" + ",surfaceFormat=rgba8" + ",presentRR=0" + ",precisePresentation=0" + ",presentMode=mailbox";
+    public static String DEFAULT_CONFIG = "trueDisplayX=0" + ",performanceMode=1" + ",surfaceFormat=rgba8" + ",presentRR=0" + ",precisePresentation=0" + ",presentMode=auto";
     private Context context;
     
     public DisplayXConfigDialog(View anchor) {

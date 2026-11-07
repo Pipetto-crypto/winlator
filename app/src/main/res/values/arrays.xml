@@ -91,6 +91,7 @@
         <item>relaxed</item>
     </string-array>
     <string-array name="displayx_present_mode_entries">
+        <item>auto</item>
         <item>mailbox</item>
         <item>fifo</item>
     </string-array>

@@ -228,7 +228,8 @@ class DisplayX {
         std::atomic_bool cursorUpdate{false};
         std::atomic_bool surfaceChanged{false};
         std::atomic_bool perfMode{true};
-        std::atomic_bool presentRR{true};
+        std::atomic_bool presentRR{false};
+        std::atomic_bool defaultRR{false};
         std::atomic_bool precisePresentation{false};
         
         bool requestUpdate = false;

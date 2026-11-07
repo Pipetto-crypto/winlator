@@ -364,12 +364,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
         
         String presentMode = displayConfig.get("presentMode");
-        if (presentMode.equals("mailbox")) {
-            envVars.put("DISPLAYX_PRESENT_MODE", "mailbox");
-        }
-        else {
-            envVars.put("DISPLAYX_PRESENT_MODE", "fifo");
-        }
+        envVars.put("DISPLAYX_PRESENT_MODE", presentMode);
         
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {
