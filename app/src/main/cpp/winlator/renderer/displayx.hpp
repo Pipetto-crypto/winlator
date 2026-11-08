@@ -231,13 +231,11 @@ class DisplayX {
         std::atomic_bool perfMode{true};
         std::atomic_bool presentRR{false};
         std::atomic_bool defaultRR{false};
-        std::atomic_bool precisePresentation{false};
         
         bool requestUpdate = false;
         
         bool fullscreen = false;
         int64_t previousReportedWorkTime = 0;
-        AVsyncId vsyncId = -1;
         
         void windowThreadLoop();
         void networkThreadLoop();
@@ -291,5 +289,4 @@ class DisplayX {
         void toggleFullscreen();
         void setPerformanceMode(bool perfMode);
         void setPresentRR(bool presentRR);
-        void setPrecisePresentation(bool precisePresentation);
 };

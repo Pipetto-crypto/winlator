@@ -175,7 +175,6 @@ Java_com_winlator_cmod_widget_XServerView_nativeInit(JNIEnv *env, jobject thiz, 
     if (xserver.isDisplayX()) {
         displayX.setPerformanceMode(env->GetBooleanField(context, cache.performanceMode));
         displayX.setPresentRR(env->GetBooleanField(context, cache.presentRR));
-        displayX.setPrecisePresentation(env->GetBooleanField(context, cache.precisePresentation));
     }
     else {
         renderer.setTextureFilter(env->GetIntField(context, cache.textureFilter));

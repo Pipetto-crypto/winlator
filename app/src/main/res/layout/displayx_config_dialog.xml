@@ -56,13 +56,6 @@
 			android:layout_height="wrap_content"
 			android:id="@+id/CBPresentRR"
 			android:text="Present at refresh rate" />
-        
-        <CheckBox 
-            android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:id="@+id/CBPrecisePresentation"
-			android:text="Increment presentation precision" />
-
 	</LinearLayout>
 
 </ScrollView>

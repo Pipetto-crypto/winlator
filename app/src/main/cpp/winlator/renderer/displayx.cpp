@@ -152,10 +152,10 @@ void DisplayX::onVsyncCallback(const AChoreographerFrameCallbackData* callbackDa
     
     size_t index = pfnAChoreographerGetPreferredTimelineIndex(callbackData);
     AVsyncId id = pfnAChoreographerGetFrameTimelineVsyncId(callbackData, index);
+    pfnASurfaceTransactionSetFrameTimeline(self->windowTransaction, id);
     
     {
         auto lock = self->windowLock.lock();
-        self->vsyncId = id;
         if (!self->presentRequests.empty() && self->presentRR) {
             self->requestUpdate = true;
             self->windowLock.notify();
@@ -529,9 +529,6 @@ void DisplayX::windowThreadLoop() {
                 requests = presentRequests.buildWindowTree();
                 requestUpdate = false;
             }
-        
-            if (vsyncId > -1) 
-                pfnASurfaceTransactionSetFrameTimeline(windowTransaction, vsyncId);
         }
         
         lock.unlock();
@@ -790,7 +787,7 @@ void DisplayX::start() {
    
     this->choreographer = pfnAChoreographerGetInstance();
     
-    if (precisePresentation && pfnAChoreographerPostVsyncCallback)
+    if (pfnAChoreographerPostVsyncCallback)
         pfnAChoreographerPostVsyncCallback(this->choreographer, DisplayX::onVsyncCallback, this);
     else     
         pfnAChoreographerPostFrameCallback64(this->choreographer, DisplayX::onFrameCallback64, this);
@@ -1180,8 +1177,4 @@ void DisplayX::setPerformanceMode(bool perfMode) {
 void DisplayX::setPresentRR(bool presentRR) {
     this->defaultRR = presentRR;
     this->presentRR.store(this->defaultRR.load());
-}
-
-void DisplayX::setPrecisePresentation(bool precisePresentation) {
-    this->precisePresentation = precisePresentation;
 }
