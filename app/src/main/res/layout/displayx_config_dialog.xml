@@ -23,7 +23,7 @@
 			android:entries="@array/surface_format_entries"
 			android:id="@+id/SSurfaceFormat"
 			android:spinnerMode="dialog" />
-
+        
         <TextView
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
@@ -49,7 +49,7 @@
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:id="@+id/CBEnablePerfMode"
-			android:text="Enable Performance Mode" />
+			android:text="Boost CPU when presenting" />
 
 		<CheckBox
 			android:layout_width="wrap_content"
