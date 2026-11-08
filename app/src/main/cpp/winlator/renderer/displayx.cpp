@@ -110,10 +110,10 @@ void DisplayX::onFrameCallback64(int64_t frameTimeNanos, void* data) {
     }
     
     {
-        auto lock = self->eventLock.lock();
+        auto lock = self->windowLock.lock();
         if (!self->presentRequests.empty() && self->presentRR) {
             self->requestUpdate = true;
-            self->eventLock.notify();
+            self->windowLock.notify();
         }
     }
     
@@ -154,11 +154,11 @@ void DisplayX::onVsyncCallback(const AChoreographerFrameCallbackData* callbackDa
     AVsyncId id = pfnAChoreographerGetFrameTimelineVsyncId(callbackData, index);
     
     {
-        auto lock = self->eventLock.lock();
+        auto lock = self->windowLock.lock();
         self->vsyncId = id;
         if (!self->presentRequests.empty() && self->presentRR) {
             self->requestUpdate = true;
-            self->eventLock.notify();
+            self->windowLock.notify();
         }
     }
     
@@ -324,16 +324,12 @@ void DisplayX::networkThreadLoop() {
                                 continue;
                             
                             if (presentMode == VK_PRESENT_MODE_FIFO_KHR) {  
-                                eventLock.lock();
                                 pfnASurfaceTransactionSetEnableBackPressure(windowTransaction, window->control, true);
                                 presentRR = false;
-                                pfnASurfaceTransactionApply(windowTransaction);
                             }
                             else {
-                                eventLock.lock();
                                 pfnASurfaceTransactionSetEnableBackPressure(windowTransaction, window->control, false);
                                 presentRR.store(defaultRR.load());
-                                pfnASurfaceTransactionApply(windowTransaction);
                             }
                             
                             printf("Creating client swapchain: id %d, images %d, presentMode %d, format %d, colorSpace %d", id, imageCount, presentMode, format, colorSpace);
@@ -405,7 +401,7 @@ void DisplayX::networkThreadLoop() {
                             
                             //printf("Presenting image %d, swapchain %d, presentId %d, fence %d", index, id, presentId, sync_fence);         
                             
-                            auto lock = eventLock.lock();      
+                            auto lock = windowLock.lock();      
                             
                             swapchain->window->externalContent = drawable;
                             swapchain->fd = events[i].data.fd;
@@ -425,7 +421,7 @@ void DisplayX::networkThreadLoop() {
                                 env->CallVoidMethod(xServer->xserverDisplayActivity, cache->updateFrameRating, swapchain->window->id);
                            
                             if (!presentRR) 
-                                eventLock.notify();
+                                windowLock.notify();
                                 
                             break;
                         }    
@@ -459,20 +455,20 @@ void DisplayX::networkThreadLoop() {
     }
 }
 
-void DisplayX::eventThreadLoop() {
+void DisplayX::windowThreadLoop() {
     bool restoreState = false;
     
     while (true) {
         std::function<void()> func = nullptr;
         std::deque<std::unique_ptr<PresentRequest>> requests;
         
-        auto lock = eventLock.lock();
-        eventLock.wait(lock, [&]{ 
-            return stopped || state != State::NONE || !eventQueue.empty() || ((requestUpdate && presentRR) || (!presentRequests.empty() && !presentRR));
+        auto lock = windowLock.lock();
+        windowLock.wait(lock, [&]{ 
+            return stopped || state != State::NONE || !windowQueue.empty() || ((requestUpdate && presentRR) || (!presentRequests.empty() && !presentRR));
         });
         
         if (stopped) {
-            printf("Stopping eventThread");
+            printf("Stopping windowThread");
             return;
         }
         
@@ -482,28 +478,28 @@ void DisplayX::eventThreadLoop() {
         if (currState == State::PAUSE) {
             printf("Received state PAUSE");
             paused = true;
-            eventLock.notify();
+            windowLock.notify();
         }
             
         if (currState == State::RESUME) {
             printf("Received state RESUME");
             paused = false;
             restoreState = true;
-            eventLock.notify();
+            windowLock.notify();
         }
         
         if (currState == State::CREATE_SURFACE) {
             printf("Received state CREATE_SURFACE");
             createRootWindowControl();
             hasSurface = true;
-            eventLock.notify();
+            windowLock.notify();
         }
             
         if (currState == State::CHANGE_SURFACE) {
             printf("Received state CHANGE_SURFACE");
             resizeRootWindow();
             surfaceChanged = true;
-            eventLock.notify();
+            windowLock.notify();
         }
             
         if (hasSurface && restoreState) {
@@ -517,15 +513,15 @@ void DisplayX::eventThreadLoop() {
             hasSurface = false;
             surfaceChanged = false;
             destroyRootWindowControl();
-            eventLock.notify();
+            windowLock.notify();
         }
         
-        if (!eventQueue.empty() && hasSurface && surfaceChanged && !paused) {
-            func = eventQueue.front();
-            eventQueue.pop();
+        if (!windowQueue.empty() && hasSurface && surfaceChanged && !paused) {
+            func = windowQueue.front();
+            windowQueue.pop();
         }
         
-        if (hasSurface && surfaceChanged && !paused && !func) {
+        if (hasSurface && surfaceChanged && !paused) {
             if (!presentRR) {
                 requests = presentRequests.getLast();
             }
@@ -540,10 +536,8 @@ void DisplayX::eventThreadLoop() {
         
         lock.unlock();
         
-        if (func) {
+        if (func)
             func();
-            continue;
-        }    
         
         auto completeContext = std::make_unique<OnCompleteContext>();
         
@@ -640,10 +634,13 @@ void DisplayX::cursorThreadLoop() {
     this->env = cache->getEnv();
     
     while(true) {
+        std::function<void()> func = nullptr;
+        bool updateCursor = false;
+        
         auto lock = cursorLock.lock();
         
         cursorLock.wait(lock, [&]{ 
-            return stopped || (cursorUpdate && hasSurface && surfaceChanged && !paused);
+            return stopped || ((cursorUpdate || !cursorQueue.empty()) && hasSurface && surfaceChanged && !paused);
         });
         
         if (stopped) {
@@ -652,43 +649,55 @@ void DisplayX::cursorThreadLoop() {
             break;
         }
         
-        cursorUpdate = false;
+        if (!cursorManager->control) 
+            createRootCursorControl();
+        
+        if (!cursorQueue.empty()) {
+            func = cursorQueue.front();
+            cursorQueue.pop();
+        }
+        
+        if (cursorUpdate) {
+            updateCursor = true;
+            cursorUpdate = false;
+        }
         
         lock.unlock();
         
-        if (!cursorManager->control) 
-            return;
+        if (func)
+            func();
+        
+        if (updateCursor) {
+            jobject pointWindowObj = env->CallObjectMethod(xServer->inputDeviceManager, cache->getPointWindow);
+            jint id = env->GetIntField(pointWindowObj, cache->windowID);
+            auto pointWindow = windowManager->getWindow(id);
+            auto cursor = (pointWindow != nullptr) ? pointWindow->cursor : nullptr;
+            auto rootCursor = cursorManager->getRootCursor();
+            int x = std::clamp(cursorManager->pointer.posX, 0, windowManager->getRootWindow()->width - 1);
+            int y = std::clamp(cursorManager->pointer.posY, 0, windowManager->getRootWindow()->height - 1);
     
-        jobject pointWindowObj = env->CallObjectMethod(xServer->inputDeviceManager, cache->getPointWindow);
-        jint id = env->GetIntField(pointWindowObj, cache->windowID);
-        auto pointWindow = windowManager->getWindow(id);
-        auto cursor = (pointWindow != nullptr) ? pointWindow->cursor : nullptr;
-        auto rootCursor = cursorManager->getRootCursor();
-        int x = std::clamp(cursorManager->pointer.posX, 0, windowManager->getRootWindow()->width - 1);
-        int y = std::clamp(cursorManager->pointer.posY, 0, windowManager->getRootWindow()->height - 1);
-    
-        if (cursorVisible || (cursor && cursor->visible)) {
-            if (pfnASurfaceTransactionSetPosition) {
-                pfnASurfaceTransactionSetPosition(cursorTransaction, cursorManager->control, x, y);
+            if (cursorVisible || (cursor && cursor->visible)) {
+                if (pfnASurfaceTransactionSetPosition) {
+                    pfnASurfaceTransactionSetPosition(cursorTransaction, cursorManager->control, x, y);
+                }
+                else {
+                    auto& cursorImage = (cursor != nullptr) ? cursor->image : rootCursor->image;
+                    ARect src{};
+                    ARect dst = {
+                        .left = x,
+                        .top = y,
+                        .right = x + cursorImage->width,
+                        .bottom = y + cursorImage->height
+                    };
+                    pfnASurfaceTransactionSetGeometry(cursorTransaction, cursorManager->control, src, dst, 0);
+                }
             }
             else {
-                auto& cursorImage = (cursor != nullptr) ? cursor->image : rootCursor->image;
-                ARect src{};
-                ARect dst = {
-                    .left = x,
-                    .top = y,
-                    .right = x + cursorImage->width,
-                    .bottom = y + cursorImage->height
-                };
-                pfnASurfaceTransactionSetGeometry(cursorTransaction, cursorManager->control, src, dst, 0);
+                pfnASurfaceTransactionSetVisibility(cursorTransaction, cursorManager->control, ASURFACE_TRANSACTION_VISIBILITY_HIDE);
             }
+        }
         
-            pfnASurfaceTransactionApply(cursorTransaction);
-        }
-        else {
-            pfnASurfaceTransactionSetVisibility(cursorTransaction, cursorManager->control, ASURFACE_TRANSACTION_VISIBILITY_HIDE);
-            pfnASurfaceTransactionApply(cursorTransaction);
-        }
+        pfnASurfaceTransactionApply(cursorTransaction);
     }
 }
 
@@ -775,7 +784,7 @@ void DisplayX::start() {
     windowTransaction = pfnASurfaceTransactionCreate();
     cursorTransaction = pfnASurfaceTransactionCreate();
         
-    eventThread = std::thread(&DisplayX::eventThreadLoop, this);
+    windowThread = std::thread(&DisplayX::windowThreadLoop, this);
     networkThread = std::thread(&DisplayX::networkThreadLoop, this);
     cursorThread = std::thread(&DisplayX::cursorThreadLoop, this);
    
@@ -796,7 +805,7 @@ void DisplayX::stop() {
     int val = 1;
     write(stopFd, &val, 4);
     
-    eventLock.notify();
+    windowLock.notify();
     cursorLock.notify();
     
     close(stopFd);   
@@ -808,52 +817,52 @@ void DisplayX::stop() {
 }
 
 void DisplayX::pause() {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     state = State::PAUSE;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
 void DisplayX::resume() {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     state = State::RESUME;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
 void DisplayX::createSurface(ANativeWindow *window) {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     this->native_window = window;
     state = State::CREATE_SURFACE;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
 void DisplayX::changeSurface(int width, int height) {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     this->surfaceWidth = width;
     this->surfaceHeight = height;
     state = State::CHANGE_SURFACE;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
 void DisplayX::destroySurface() {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     this->native_window = nullptr;
     state = State::DESTROY_SURFACE;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
-void DisplayX::queueEvent(std::function<void()> func) {
-    auto lock = eventLock.lock();
-    eventQueue.push(func);
-    eventLock.notify();
+void DisplayX::queueWindowEvent(std::function<void()> func) {
+    auto lock = windowLock.lock();
+    windowQueue.push(func);
+    windowLock.notify();
 }
 
 void DisplayX::requestWindowUpdate(Window *window) {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     
     if (!window || window->isHidden()) 
         return;
@@ -875,7 +884,13 @@ void DisplayX::requestWindowUpdate(Window *window) {
     
     presentRequests.push(std::move(presentRequest), true);
     if (!presentRR)
-        eventLock.notify();
+        windowLock.notify();
+}
+
+void DisplayX::queueCursorEvent(std::function<void()> func) {
+    auto lock = cursorLock.lock();
+    cursorQueue.push(func);
+    cursorLock.notify();
 }
 
 void DisplayX::requestCursorUpdate() {
@@ -909,7 +924,6 @@ void DisplayX::createWindowControl(Window *window) {
         };
         pfnASurfaceTransactionSetGeometry(windowTransaction, window->control, src, dst, 0);
     }  
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::destroyWindowControl(Window *window) {
@@ -926,7 +940,6 @@ void DisplayX::mapWindow(Window *window) {
         return;
     
     pfnASurfaceTransactionSetVisibility(windowTransaction, window->control, ASURFACE_TRANSACTION_VISIBILITY_SHOW);
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::unmapWindow(Window *window) {
@@ -934,7 +947,6 @@ void DisplayX::unmapWindow(Window *window) {
         return;
     
     pfnASurfaceTransactionSetVisibility(windowTransaction, window->control, ASURFACE_TRANSACTION_VISIBILITY_HIDE);
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::changeGeometry(Window *window, bool resized) {
@@ -957,18 +969,14 @@ void DisplayX::changeGeometry(Window *window, bool resized) {
         };
         pfnASurfaceTransactionSetGeometry(windowTransaction, window->control, src, dst, 0);
     }
-    
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::changeZOrder(Window *window) {
     pfnASurfaceTransactionSetZOrder(windowTransaction, window->control, window->z_order);
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::updateCursor(Cursor *cursor) {
     pfnASurfaceTransactionSetBuffer(cursorTransaction, cursorManager->control, cursor && (cursor->visible && cursorVisible) ? cursor->image->ahb : nullptr, -1);
-    pfnASurfaceTransactionApply(cursorTransaction);
 }
 
 void DisplayX::createRootCursorControl() {
@@ -985,8 +993,6 @@ void DisplayX::createRootCursorControl() {
 }
 
 void DisplayX::showCursor() {
-    if (!cursorManager->control) createRootCursorControl();
-    
     auto rootCursor = cursorManager->getRootCursor();
     if (!rootCursor) 
         return;
@@ -994,7 +1000,6 @@ void DisplayX::showCursor() {
     pfnASurfaceTransactionSetBuffer(cursorTransaction, cursorManager->control, rootCursor->image->ahb, -1);
     pfnASurfaceTransactionSetVisibility(cursorTransaction, cursorManager->control, cursorVisible ? ASURFACE_TRANSACTION_VISIBILITY_SHOW : ASURFACE_TRANSACTION_VISIBILITY_HIDE);
     pfnASurfaceTransactionSetZOrder(cursorTransaction, cursorManager->control, INT32_MAX);
-    pfnASurfaceTransactionApply(cursorTransaction);
 }
 
 void DisplayX::reparentWindow(Window *window, Window *parent) {
@@ -1015,8 +1020,6 @@ void DisplayX::reparentWindow(Window *window, Window *parent) {
         };
         pfnASurfaceTransactionSetGeometry(windowTransaction, window->control, src, dst, 0);
     }
-    
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 bool DisplayX::isPerformanceHintAPIAvailable() {
@@ -1095,7 +1098,6 @@ void DisplayX::resizeRootWindow() {
     pfnASurfaceTransactionSetGeometry(windowTransaction, rootWindow->control, src, dst, 0);
     pfnASurfaceTransactionSetBuffer(windowTransaction, rootWindow->control, rootWindow->drawable->ahb, -1);
     pfnASurfaceTransactionSetZOrder(windowTransaction, rootWindow->control, rootWindow->z_order);
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::restoreControlState() {
@@ -1111,12 +1113,13 @@ void DisplayX::restoreControlState() {
             continue;
         
         pfnASurfaceTransactionReparent(windowTransaction, window->control, window->parent->control);
-        pfnASurfaceTransactionApply(windowTransaction);
     }
     
     if (cursorManager->control && rootWindow->control) {
+        auto lock = cursorLock.lock();
         pfnASurfaceTransactionReparent(cursorTransaction, cursorManager->control, rootWindow->control);
-        pfnASurfaceTransactionApply(cursorTransaction);
+        cursorUpdate = true;
+        cursorLock.notify();
     }
     
     for (auto it = clientSwapchains.begin(); it != clientSwapchains.end(); it++) {
@@ -1131,6 +1134,8 @@ void DisplayX::restoreControlState() {
 }
 
 void DisplayX::toggleFullscreen() {
+    auto lock = windowLock.lock();
+    
     auto rootWindow = windowManager->getRootWindow();
     if (!rootWindow) 
         return;
@@ -1164,7 +1169,8 @@ void DisplayX::toggleFullscreen() {
     }
     
     pfnASurfaceTransactionSetGeometry(windowTransaction, rootWindow->control, src, dst, 0);
-    pfnASurfaceTransactionApply(windowTransaction);
+    
+    windowLock.notify();
 }
 
 void DisplayX::setPerformanceMode(bool perfMode) {

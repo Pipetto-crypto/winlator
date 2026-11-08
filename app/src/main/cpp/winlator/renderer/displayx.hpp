@@ -207,10 +207,10 @@ class DisplayX {
         ASurfaceTransaction *windowTransaction;
         ASurfaceTransaction *cursorTransaction;
         
-        DisplayXLock eventLock;
-        std::queue<std::function<void()>> eventQueue;
+        DisplayXLock windowLock;
+        std::queue<std::function<void()>> windowQueue;
         PresentQueue presentRequests;
-        std::thread eventThread;
+        std::thread windowThread;
         
         int stopFd;
         int serverFd;
@@ -219,6 +219,7 @@ class DisplayX {
         std::thread networkThread;
         
         DisplayXLock cursorLock;
+        std::queue<std::function<void()>> cursorQueue;
         std::thread cursorThread;
         
         State state = State::NONE;
@@ -238,9 +239,10 @@ class DisplayX {
         int64_t previousReportedWorkTime = 0;
         AVsyncId vsyncId = -1;
         
-        void eventThreadLoop();
+        void windowThreadLoop();
         void networkThreadLoop();
         void cursorThreadLoop();
+        
         static void onFrameCallback64(int64_t frameTimeNanos, void *data);
         static void onVsyncCallback(const AChoreographerFrameCallbackData* callbackData, void* data);
         static void onCompleteCallback(void *context, ASurfaceTransactionStats *stats);
@@ -271,8 +273,10 @@ class DisplayX {
         void pause();
         void resume();
         
-        void queueEvent(std::function<void()> func);
+        void queueWindowEvent(std::function<void()> func);
         void requestWindowUpdate(Window *window);
+        
+        void queueCursorEvent(std::function<void()> func);
         void requestCursorUpdate();
         
         void createWindowControl(Window *window);

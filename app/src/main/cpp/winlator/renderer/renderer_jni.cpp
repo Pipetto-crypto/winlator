@@ -240,7 +240,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeCreateWindow(JNIEnv *env, jobjec
     }
     
     if (xserver.isDisplayX()) {
-        displayX.queueEvent([ptr = window.get()] { displayX.createWindowControl(ptr); });
+        displayX.queueWindowEvent([ptr = window.get()] { displayX.createWindowControl(ptr); });
     }
     
     windowManager.addWindow(window->id, std::move(window));
@@ -258,7 +258,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeMapWindow(JNIEnv *env, jobject t
     window->mapped = true;
     
     if (xserver.isDisplayX()) {
-        displayX.queueEvent([window] { displayX.mapWindow(window); });
+        displayX.queueWindowEvent([window] { displayX.mapWindow(window); });
     }    
     else { 
         renderer.queueEvent([]{ renderer.updateScene(); });
@@ -275,7 +275,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeUnmapWindow(JNIEnv *env, jobject
     window->mapped = false;
     
     if (xserver.isDisplayX()) {
-        displayX.queueEvent([window] { displayX.unmapWindow(window); });
+        displayX.queueWindowEvent([window] { displayX.unmapWindow(window); });
     } else {   
         renderer.queueEvent([]{ renderer.updateScene(); });
         renderer.requestRenderer();
@@ -289,7 +289,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeDestroyWindow(JNIEnv *env, jobje
         return;
     
     if (xserver.isDisplayX()) {
-        displayX.queueEvent([window] { 
+        displayX.queueWindowEvent([window] { 
             if (window->drawable && window->drawable->composerTexture != nullptr)
                 effectComposer.destroyComposerTexture(window->drawable.get());
                 
@@ -361,7 +361,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeFreeCursor(JNIEnv *env, jobject 
         });
     }
     else {
-        displayX.queueEvent([cursor] {
+        displayX.queueCursorEvent([cursor] {
             JNIEnv *env = cache.getEnv();
             displayX.updateCursor(nullptr);
             cursorManager.removeCursor(env, cursor);
@@ -388,7 +388,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeBindCursor(JNIEnv *env, jobject 
     if (!xserver.isDisplayX())    
         renderer.requestRenderer();
     else
-        displayX.queueEvent([window] { displayX.updateCursor(window->cursor); });
+        displayX.queueCursorEvent([window] { displayX.updateCursor(window->cursor); });
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -418,7 +418,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeChangeWindowZOrder(JNIEnv *env, 
         renderer.requestRenderer();
     }
     else {
-        displayX.queueEvent([window] { displayX.changeZOrder(window);});
+        displayX.queueWindowEvent([window] { displayX.changeZOrder(window);});
     }
 }
 
@@ -453,7 +453,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeUpdateWindowGeometry(JNIEnv *env
     }
     
     if (xserver.isDisplayX()) {
-        displayX.queueEvent([window, resized] { displayX.changeGeometry(window, resized); });
+        displayX.queueWindowEvent([window, resized] { displayX.changeGeometry(window, resized); });
     } else {
         if (resized) {
             renderer.queueEvent([]{ renderer.updateScene(); });
@@ -494,7 +494,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeReparentWindow(JNIEnv *env, jobj
     windowManager.reparentWindow(window, parent);
     
     if (xserver.isDisplayX()) {
-        displayX.queueEvent([window, parent] {  displayX.reparentWindow(window, parent); });
+        displayX.queueWindowEvent([window, parent] {  displayX.reparentWindow(window, parent); });
     }    
     else {
         renderer.queueEvent([window]{ renderer.updateWindowPosition(window); });
@@ -511,7 +511,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeToggleFullscreen(JNIEnv *env, jo
     if (!xserver.isDisplayX())
         renderer.requestRenderer();
     else
-        displayX.queueEvent([] { displayX.toggleFullscreen(); });
+        displayX.queueWindowEvent([] { displayX.toggleFullscreen(); });
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -522,7 +522,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeSetCursorVisible(JNIEnv *env, jo
     if (!xserver.isDisplayX())
         renderer.requestRenderer();
     else
-        displayX.queueEvent([] { displayX.showCursor(); });
+        displayX.queueCursorEvent([] { displayX.showCursor(); });
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -714,10 +714,10 @@ Java_com_winlator_cmod_widget_XServerView_nativeCompositeRedirect(jint srcDrawab
         
         if (xserver.isDisplayX()) {
             if (positionChanged) 
-                displayX.queueEvent([sibling] { displayX.changeGeometry(sibling, false); });
+                displayX.queueWindowEvent([sibling] { displayX.changeGeometry(sibling, false); });
                 
             if (zOrderChanged) 
-                displayX.queueEvent([sibling] { displayX.changeZOrder(sibling); });
+                displayX.queueWindowEvent([sibling] { displayX.changeZOrder(sibling); });
         }     
         else {
             if (positionChanged || zOrderChanged)  {
