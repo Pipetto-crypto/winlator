@@ -23,6 +23,21 @@
 			android:entries="@array/surface_format_entries"
 			android:id="@+id/SSurfaceFormat"
 			android:spinnerMode="dialog" />
+            
+        <TextView
+			android:layout_width="wrap_content"
+			android:layout_height="wrap_content"
+			android:text="Present Backend"
+			android:textAppearance="?android:attr/textAppearanceMedium"
+			android:paddingBottom="8dp" />
+
+		<Spinner
+			style="@style/ComboBox"
+			android:layout_width="match_parent"
+			android:layout_height="wrap_content"
+			android:entries="@array/displayx_backend_entries"
+			android:id="@+id/SBackend"
+			android:spinnerMode="dialog" />    
         
         <TextView
 			android:layout_width="wrap_content"
@@ -38,12 +53,6 @@
 			android:entries="@array/displayx_present_mode_entries"
 			android:id="@+id/SPresentMode"
 			android:spinnerMode="dialog" />
-
-		<CheckBox
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:id="@+id/CBEnableTrueDisplayX"
-			android:text="Bypass X11 Protocol" />
 
 		<CheckBox
 			android:layout_width="wrap_content"

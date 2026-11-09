@@ -344,7 +344,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         
         String displayDriver = (shortcut != null) ? shortcut.getExtra("displayDriver", container.getDisplayDriver()) : container.getDisplayDriver();
         if (displayDriver.toLowerCase().equals("displayx")) {
-            boolean isTrueDisplayX = displayConfig.get("trueDisplayX").equals("1") ? true : false;
+            boolean isTrueDisplayX = displayConfig.get("backend").equals("displayx") ? true : false;
             if (isTrueDisplayX) {
                 if (this.envVars.has("VK_INSTANCE_LAYERS")) {
                     this.envVars.remove("VK_INSTANCE_LAYERS");

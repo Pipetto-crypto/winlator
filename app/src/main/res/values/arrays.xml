@@ -90,6 +90,10 @@
         <item>immediate</item>
         <item>relaxed</item>
     </string-array>
+    <string-array name="displayx_backend_entries">
+        <item>X11</item>
+        <item>DisplayX</item>
+    </string-array>    
     <string-array name="displayx_present_mode_entries">
         <item>auto</item>
         <item>mailbox</item>
