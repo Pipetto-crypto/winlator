@@ -978,7 +978,9 @@ void DisplayX::createWindowControl(Window *window) {
             .bottom = window->y + window->height
         };
         pfnASurfaceTransactionSetGeometry(windowTransaction, window->control, src, dst, 0);
-    }  
+    } 
+    
+    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::destroyWindowControl(Window *window) {

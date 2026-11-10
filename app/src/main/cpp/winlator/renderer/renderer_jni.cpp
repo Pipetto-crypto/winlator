@@ -158,6 +158,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeInit(JNIEnv *env, jobject thiz, 
     env->DeleteLocalRef(inputDeviceManagerObj);
     
     effectComposer.init();
+    
     if (xserver.isDisplayX() && windowManager.getRootWindow()->drawable->format == AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM)
         effectComposer.setColorSwapEnabled(true);
     
@@ -238,9 +239,8 @@ Java_com_winlator_cmod_widget_XServerView_nativeCreateWindow(JNIEnv *env, jobjec
         parent->children.push_back(window.get());
     }
     
-    if (xserver.isDisplayX()) {
-        displayX.queueWindowEvent([ptr = window.get()] { displayX.createWindowControl(ptr); });
-    }
+    if (xserver.isDisplayX())
+        displayX.createWindowControl(window.get());
     
     windowManager.addWindow(window->id, std::move(window));
 }
@@ -353,8 +353,10 @@ Java_com_winlator_cmod_widget_XServerView_nativeFreeCursor(JNIEnv *env, jobject 
                 
             jobject pointWindowObj = env->CallObjectMethod(xserver.inputDeviceManager, cache.getPointWindow);
             jint id = env->GetIntField(pointWindowObj, cache.windowID);
+            
             auto pointWindow = windowManager.getWindow(id);
-            if (pointWindow && pointWindow->cursor == cursor) pointWindow->cursor = nullptr;     
+            if (pointWindow && pointWindow->cursor == cursor) 
+                pointWindow->cursor = nullptr;     
                 
             cursorManager.removeCursor(env, cursor);
         });
@@ -362,6 +364,14 @@ Java_com_winlator_cmod_widget_XServerView_nativeFreeCursor(JNIEnv *env, jobject 
     else {
         displayX.queueCursorEvent([cursor] {
             JNIEnv *env = cache.getEnv();
+            
+            jobject pointWindowObj = env->CallObjectMethod(xserver.inputDeviceManager, cache.getPointWindow);
+            jint id = env->GetIntField(pointWindowObj, cache.windowID);
+            
+            auto pointWindow = windowManager.getWindow(id);
+            if (pointWindow && pointWindow->cursor == cursor) 
+                pointWindow->cursor = nullptr;     
+                
             displayX.updateCursor(nullptr);
             cursorManager.removeCursor(env, cursor);
         });
@@ -447,6 +457,7 @@ Java_com_winlator_cmod_widget_XServerView_nativeUpdateWindowGeometry(JNIEnv *env
         
         if (window->drawable->glTexture != nullptr) 
             window->drawable->glTexture->sizeChanged = true;
+            
         if (window->drawable->composerTexture != nullptr)
             window->drawable->composerTexture->sizeChanged = true;
     }
@@ -507,10 +518,11 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_cmod_widget_XServerView_nativeToggleFullscreen(JNIEnv *env, jobject thiz) {
     renderer.toggleFullscreen = true;
     
-    if (!xserver.isDisplayX())
-        renderer.requestRenderer();
-    else
+    if (xserver.isDisplayX())
         displayX.queueWindowEvent([] { displayX.toggleFullscreen(); });
+    else
+        renderer.requestRenderer();
+        
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -518,10 +530,10 @@ Java_com_winlator_cmod_widget_XServerView_nativeSetCursorVisible(JNIEnv *env, jo
     renderer.cursorVisible = visible;
     displayX.cursorVisible = visible;
     
-    if (!xserver.isDisplayX())
-        renderer.requestRenderer();
-    else
+    if (xserver.isDisplayX())
         displayX.queueCursorEvent([] { displayX.showCursor(); });
+    else
+        renderer.requestRenderer();
 }
 
 extern "C" JNIEXPORT void JNICALL
@@ -585,26 +597,26 @@ Java_com_winlator_cmod_widget_XServerView_nativeChangeSurface(JNIEnv *env, jobje
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_cmod_widget_XServerView_nativePause(JNIEnv *env, jobject thiz) {
-    if (!xserver.isDisplayX())
-        renderer.pause();
-    else
+    if (xserver.isDisplayX())
         displayX.pause();     
+    else
+        renderer.pause();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_cmod_widget_XServerView_nativeResume(JNIEnv *env, jobject thiz) {
-    if (!xserver.isDisplayX())
-        renderer.resume();
-    else
+    if (xserver.isDisplayX())
         displayX.resume();       
+    else
+        renderer.resume();
 }
 
 extern "C" JNIEXPORT void JNICALL
 Java_com_winlator_cmod_widget_XServerView_nativeStop(JNIEnv *env, jobject thiz) {
-    if (!xserver.isDisplayX())
-        renderer.stop();
-    else    
+    if (xserver.isDisplayX())
         displayX.stop();
+    else    
+        renderer.stop();
 }
 
 extern "C" JNIEXPORT void JNICALL
