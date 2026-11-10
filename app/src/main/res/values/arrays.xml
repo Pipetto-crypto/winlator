@@ -94,6 +94,10 @@
         <item>X11</item>
         <item>DisplayX</item>
     </string-array>    
+    <string-array name="displayx_dynamic_range">
+        <item>SDR</item>
+        <item>HDR</item>
+    </string-array>    
     <string-array name="displayx_present_mode_entries">
         <item>auto</item>
         <item>mailbox</item>

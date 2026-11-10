@@ -23,6 +23,10 @@
 #include "effect_composer.hpp"
 #include "cursor.hpp"
 
+#define VK_COLOR_SPACE_SRGB_NONLINEAR_KHR 0
+#define VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT 1000104002
+#define VK_COLOR_SPACE_HDR10_ST2084_EXT 1000104008
+
 #define VK_PRESENT_MODE_MAILBOX_KHR 1
 #define VK_PRESENT_MODE_FIFO_KHR 2
 
@@ -32,6 +36,7 @@ namespace DisplayXCodes {
     static constexpr int PRESENT = 3;
     static constexpr int PRESENT_COMPLETE = 4;
     static constexpr int RESET_STATE = 5;
+    static constexpr int HDR_METADATA = 6;
 }
 
 class DisplayX {
@@ -82,6 +87,7 @@ class DisplayX {
             uint64_t presentId;
             uint8_t swapchainId;
             uint32_t presentMode;
+            uint32_t colorSpace;
             uint32_t index;
             int clientFd;
             Window *window;

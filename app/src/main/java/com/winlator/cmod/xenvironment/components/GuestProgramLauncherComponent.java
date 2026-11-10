@@ -350,6 +350,10 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                     this.envVars.remove("VK_INSTANCE_LAYERS");
                 }
                 envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_DISPLAYX_display_x");
+                
+                boolean isHDR = displayConfig.get("dynamicRange").equals("hdr") ? true : false;
+                if (isHDR)
+                    envVars.put("DXVK_HDR", "1");
             }
         }   
          

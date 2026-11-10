@@ -226,6 +226,19 @@ static int readAncillaryMessage(int socket, void *data, size_t len, int *fd) {
     return 0;
 }
 
+static ADataSpace colorSpaceToADataSpace(uint32_t& colorSpace) {
+    switch (colorSpace) {
+        case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
+            return ADATASPACE_SRGB;
+        case VK_COLOR_SPACE_HDR10_ST2084_EXT:
+            return ADATASPACE_BT2020_PQ;
+        case VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
+            return ADATASPACE_SCRGB_LINEAR;
+        default:
+            return ADATASPACE_SRGB;
+    }
+}
+
 void DisplayX::networkThreadLoop() {
     std::array<struct epoll_event, 1024> events;
     int n;
@@ -259,11 +272,11 @@ void DisplayX::networkThreadLoop() {
                 
                 if (events[i].events & EPOLLIN) {
                     uint32_t requestCode;
-                    char buf[32];
+                    char buf[64];
                     
                     struct iovec iov{};
                     iov.iov_base = buf;
-                    iov.iov_len = 32;
+                    iov.iov_len = 64;
             
                     std::vector<char> control_buf(CMSG_SPACE(sizeof(int)));
                     
@@ -414,6 +427,7 @@ void DisplayX::networkThreadLoop() {
                             presentRequest->clientFd = events[i].data.fd;
                             presentRequest->window = swapchain->window;
                             presentRequest->swapchainId = swapchain->id;
+                            presentRequest->colorSpace = swapchain->colorSpace;
                             presentRequest->presentMode = swapchain->presentMode;
                             
                             presentRequests.push(std::move(presentRequest), swapchain->presentMode == VK_PRESENT_MODE_MAILBOX_KHR ? true : false);
@@ -443,6 +457,46 @@ void DisplayX::networkThreadLoop() {
                             swapchain->window->externalContent = nullptr;
                             
                             clientSwapchains.erase(id);
+                            
+                            break;
+                        }
+                        case DisplayXCodes::HDR_METADATA: {
+                            uint8_t id;
+                            AHdrMetadata_smpte2086 smpteMetadata{};
+                            AHdrMetadata_cta861_3 ctaMetadata{};
+                            
+                            if (static_cast<size_t>(size) < 53)
+                                continue;
+                                
+                            memcpy(&id, buf + 4, 1);
+                            
+                            size_t offset = 5;
+
+                            #define UNSERIALIZE_METADATA(param) \
+                                memcpy(param, buf + offset, sizeof(float)); \
+                                offset += sizeof(float);
+                            
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryRed.x);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryRed.y);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryGreen.x);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryGreen.y);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryBlue.x);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryBlue.y);
+                            UNSERIALIZE_METADATA(&smpteMetadata.whitePoint.x);
+                            UNSERIALIZE_METADATA(&smpteMetadata.whitePoint.y);
+                            UNSERIALIZE_METADATA(&smpteMetadata.maxLuminance);
+                            UNSERIALIZE_METADATA(&smpteMetadata.minLuminance);
+                            UNSERIALIZE_METADATA(&ctaMetadata.maxContentLightLevel);
+                            UNSERIALIZE_METADATA(&ctaMetadata.maxFrameAverageLightLevel);
+                            
+                            auto swapchain = clientSwapchains[id].get();
+                            if (!swapchain)
+                                continue;
+                            
+                            printf("Setting HDR metadata for swapchain: id %d", id);
+                                     
+                            pfnASurfaceTransactionSetHdrMetadataSmpte2086(windowTransaction, swapchain->window->control, &smpteMetadata);
+                            pfnASurfaceTransactionSetHdrMetadataCta8613(windowTransaction, swapchain->window->control, &ctaMetadata);
                             
                             break;
                         }
@@ -554,6 +608,9 @@ void DisplayX::windowThreadLoop() {
                 pfnASurfaceTransactionSetBuffer(windowTransaction, window->control, nullptr, presentRequest->sync_fence);
             }
             else {
+                if (presentRequest->colorSpace != UINT32_MAX)
+                    pfnASurfaceTransactionSetBufferDataSpace(windowTransaction, window->control, colorSpaceToADataSpace(presentRequest->colorSpace));
+                    
                 if (effectComposer->isSuitableForColorSwap(drawable)) {
                     pfnASurfaceTransactionSetBuffer(windowTransaction, window->control, drawable->composerTexture->dstBuffer, presentRequest->sync_fence);
                 }
@@ -877,6 +934,7 @@ void DisplayX::requestWindowUpdate(Window *window) {
     presentRequest->window = window;
     presentRequest->swapchainId = -1;
     presentRequest->presentMode = -1;
+    presentRequest->colorSpace = UINT32_MAX;
     presentRequest->index = -1;
     
     presentRequests.push(std::move(presentRequest), true);
@@ -900,7 +958,7 @@ void DisplayX::requestCursorUpdate() {
 void DisplayX::createWindowControl(Window *window) {
     if (!window->parent || !window->inputOutput) 
         return;
-        
+   
     window->control = pfnASurfaceControlCreate(window->parent->control, "displayx");
     if (pfnASurfaceControlAcquire)    
         pfnASurfaceControlAcquire(window->control);
