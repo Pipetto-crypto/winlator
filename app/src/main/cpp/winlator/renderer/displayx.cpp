@@ -699,8 +699,7 @@ void DisplayX::cursorThreadLoop() {
         
         if (stopped) {
             printf("Stopping cursorThread");
-            cache->detachEnv(env);
-            break;
+            return;
         }
         
         if (!cursorManager->control) 
