@@ -1,7 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string-array name="builtin_decoder_entries">
-        <item>GStreamer</item>
         <item>FFMpeg</item>
     </string-array>    
     <string-array name="screen_size_entries">
