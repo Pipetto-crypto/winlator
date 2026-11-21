@@ -313,9 +313,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         // Check if xinputDisabled extra is passed
         boolean xinputDisabledFromShortcut = false;
 
-
-
-
         // Initialize SensorManager
         sensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
         gyroSensor = sensorManager.getDefaultSensor(Sensor.TYPE_GYROSCOPE);
@@ -386,6 +383,17 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         });
 
         imageFs = ImageFs.find(this);
+
+        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
+        if (devInputDir.exists() || devInputDir.mkdirs()) {
+            for (int i = 0; i < 4; i++) {
+                File eventFile = new File(devInputDir, "event" + i);
+                if (eventFile.exists())
+                    eventFile.delete();
+            }
+        }
+
+        // WinHandler call, next commit
 
         String screenSize = Container.DEFAULT_SCREEN_SIZE;
         containerManager = new ContainerManager(this);
@@ -1080,7 +1088,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             containerDataChanged = true;
         }
         
-        extractInputDLLs();
+//        extractInputDLLs();   // This breaks fakeinput completely
 
         if (containerDataChanged) container.saveData();
     }
