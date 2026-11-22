@@ -95,19 +95,19 @@ public class ExternalController {
         public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
             switch (key) {
                 case PreferenceKeys.DEADZONE_LEFT:
-                    deadzoneLeft = sharedPreferences.getInt(PreferenceKeys.DEADZONE_LEFT, 10) / 100.0f;
+                    deadzoneLeft = sharedPreferences.getFloat(PreferenceKeys.DEADZONE_LEFT, 0.1f);
                     Log.d("ExternalController", "Deadzone Left updated: " + deadzoneLeft);
                     break;
                 case PreferenceKeys.DEADZONE_RIGHT:
-                    deadzoneRight = sharedPreferences.getInt(PreferenceKeys.DEADZONE_RIGHT, 10) / 100.0f;
+                    deadzoneRight = sharedPreferences.getFloat(PreferenceKeys.DEADZONE_RIGHT, 0.1f);
                     Log.d("ExternalController", "Deadzone Right updated: " + deadzoneRight);
                     break;
                 case PreferenceKeys.SENSITIVITY_LEFT:
-                    sensitivityLeft = sharedPreferences.getInt(PreferenceKeys.SENSITIVITY_LEFT, 100) / 100.0f;
+                    sensitivityLeft = sharedPreferences.getFloat(PreferenceKeys.SENSITIVITY_LEFT, 1.0f);
                     Log.d("ExternalController", "Sensitivity Left updated: " + sensitivityLeft);
                     break;
                 case PreferenceKeys.SENSITIVITY_RIGHT:
-                    sensitivityRight = sharedPreferences.getInt(PreferenceKeys.SENSITIVITY_RIGHT, 100) / 100.0f;
+                    sensitivityRight = sharedPreferences.getFloat(PreferenceKeys.SENSITIVITY_RIGHT, 1.0f);
                     Log.d("ExternalController", "Sensitivity Right updated: " + sensitivityRight);
                     break;
                 case PreferenceKeys.INVERT_LEFT_X:

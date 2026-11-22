@@ -34,11 +34,9 @@ import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayDeque;
 import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 
@@ -65,13 +63,12 @@ public class WinHandler {
     private byte inputType = DEFAULT_INPUT_TYPE;
     private final XServerDisplayActivity activity;
     private SharedPreferences preferences;
-    private byte triggerType;
 
     private static final int MAX_CONTROLLERS = 4;
     private static final int OSC_DEVICE_ID = -1;
     private FakeInputWriter[] writers = new FakeInputWriter[MAX_CONTROLLERS];
-    private Map<Integer, Integer> deviceToSlot = new HashMap<>();
-    private Set<Integer> usedSlots = new HashSet<>();
+    private Map<Integer, Integer> deviceToSlot = new ConcurrentHashMap<>();
+    private Set<Integer> usedSlots = ConcurrentHashMap.newKeySet();
     private String fakeInputBasePath;
     private LocalServerSocket vibrationServer;
     private volatile boolean vibrationRunning = false;
@@ -81,7 +78,7 @@ public class WinHandler {
     private boolean xinputDisabledInitialized = false;
 
 
-    private int fallbackSlot = -1;
+    private volatile int fallbackSlot = -1;
 
     private final InputManager inputManager;
     private final InputManager.InputDeviceListener inputDeviceListener;
@@ -163,6 +160,9 @@ public class WinHandler {
         smoothGyroX = Mathf.clamp(smoothGyroX, -0.25f, 0.25f); // Reduce clamping range for less movement
         smoothGyroY = Mathf.clamp(smoothGyroY, -0.25f, 0.25f);
 
+        gyroX = smoothGyroX;
+        gyroY = smoothGyroY;
+
         gyroOffsetX = Mathf.clamp(gyroOffsetX + gyroX, -1.0f, 1.0f);
         gyroOffsetY = Mathf.clamp(gyroOffsetY + gyroY, -1.0f, 1.0f);
 
@@ -228,12 +228,6 @@ public class WinHandler {
         FakeInputWriter writer = writers[slot];
         if (writer == null) return;
 
-        /*if ((gyroX != 0f || gyroY != 0f) && slot == getGyroSlot()) {
-            gyroScratchState.copy(state);
-            gyroScratchState.thumbRX = Mathf.clamp(state.thumbRX + gyroX, -1.0f, 1.0f);
-            gyroScratchState.thumbRY = Mathf.clamp(state.thumbRY + gyroY, -1.0f, 1.0f);
-            writer.writeGamepadState(gyroScratchState);
-        }*/
         if ((gyroOffsetX != 0f || gyroOffsetY != 0f) && slot == getGyroSlot()) {
             gyroScratchState.copy(state);
             gyroScratchState.thumbRX = Mathf.clamp(state.thumbRX + gyroOffsetX, -1.0f, 1.0f);
