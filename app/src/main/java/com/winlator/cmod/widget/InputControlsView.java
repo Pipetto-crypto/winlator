@@ -456,7 +456,7 @@ public class InputControlsView extends View {
                 int keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], sign);
                 ExternalControllerBinding controllerBinding = controller.getControllerBinding(keyCode);
                 if (controllerBinding != null) {
-                    handleInputEvent(controllerBinding.getBinding(), true, value);
+                    handleInputEvent(controller, controllerBinding.getBinding(), true, value, false);
                 }
             } else {
                 // Handle releasing the bindings when the axis returns to deadzone
@@ -464,14 +464,35 @@ public class InputControlsView extends View {
                     int keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], sign);
                     ExternalControllerBinding controllerBinding = controller.getControllerBinding(keyCode);
                     if (controllerBinding != null) {
-                        handleInputEvent(controllerBinding.getBinding(), false, value);
+                        handleInputEvent(controller, controllerBinding.getBinding(), false, value, false);
                     }
                 }
             }
         }
+
+        // Handle Analog Triggers (L2/R2)
+        // We use the binding for the digital button (e.g. KEYCODE_BUTTON_L2) to determing where to map the analog value
+        processTriggerInput(controller, controller.state.triggerL, KeyEvent.KEYCODE_BUTTON_L2, false);
+        processTriggerInput(controller, controller.state.triggerR, KeyEvent.KEYCODE_BUTTON_R2, false);
+
+        // Send the updated state once after processing all axes
+        WinHandler winHandler = xServer != null ? xServer.getWinHandler() : null;
+        if (winHandler != null) {
+            winHandler.sendGamepadState(controller);
+        }
     }
 
-
+    private void processTriggerInput(ExternalController controller, float value, int keyCode, boolean sendUpdate) {
+        ExternalControllerBinding binding = controller.getControllerBinding(keyCode);
+        if (binding != null) {
+            boolean isPressed = value > ControlElement.STICK_DEAD_ZONE; // Use deadzone or simple > 0
+            if (isPressed) {
+                handleInputEvent(controller, binding.getBinding(), true, value, sendUpdate);
+            } else {
+                handleInputEvent(controller, binding.getBinding(), false, 0, sendUpdate);
+            }
+        }
+    }
 
 //    @Override
 //    public boolean onGenericMotionEvent(MotionEvent event) {
@@ -518,13 +539,13 @@ public class InputControlsView extends View {
                 // L2 button
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_L2);
                 if (controllerBinding != null) {
-                    handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
+                    handleInputEvent(controller, controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_L2));
                 }
 
                 // R2 button
                 controllerBinding = controller.getControllerBinding(KeyEvent.KEYCODE_BUTTON_R2);
                 if (controllerBinding != null) {
-                    handleInputEvent(controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
+                    handleInputEvent(controller, controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
                 }
 
                 Log.d("InputEvent", "Event source: " + event.getSource());
@@ -672,10 +693,10 @@ public class InputControlsView extends View {
                     int action = event.getAction();
 
                     if (action == KeyEvent.ACTION_DOWN) {
-                        handleInputEvent(controllerBinding.getBinding(), true);
+                        handleInputEvent(controller, controllerBinding.getBinding(), true);
                     }
                     else if (action == KeyEvent.ACTION_UP) {
-                        handleInputEvent(controllerBinding.getBinding(), false);
+                        handleInputEvent(controller, controllerBinding.getBinding(), false);
                     }
                     return true;
                 }

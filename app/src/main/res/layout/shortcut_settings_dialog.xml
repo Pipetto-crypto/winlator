@@ -568,21 +568,20 @@
                 <LinearLayout style="@style/FieldSet">
 
                     <LinearLayout
-                        android:id="@+id/LLDinputMapperType"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:orientation="vertical">
+                        android:orientation="horizontal"
+                        android:layout_marginTop="8dp">
 
-                        <TextView
+                        <CheckBox
+                            android:id="@+id/CBExclusiveXInput"
                             android:layout_width="wrap_content"
                             android:layout_height="wrap_content"
-                            android:text="@string/directinput_mapper_type" />
-
-                        <Spinner
-                            style="@style/ComboBox"
-                            android:id="@+id/SDInputType"
-                            android:layout_width="match_parent"
-                            android:entries="@array/dinput_mapper_type_entries" />
+                            android:text="@string/exclusive_input" />
+                        <ImageView
+                            android:id="@+id/BTExclusiveXInputHelp"
+                            style="@style/HelpButton"
+                            android:layout_gravity="center" />
                     </LinearLayout>
 
                     <LinearLayout
