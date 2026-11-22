@@ -187,7 +187,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     // Inside the XServerDisplayActivity class
     private SensorManager sensorManager;
     private Sensor gyroSensor;
-    private ExternalController controller;
 
     // Playtime stats tracking
     private long startTime;
@@ -297,18 +296,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Initialize the WinHandler after context is set up
         winHandler = new WinHandler(this);
-        winHandler.initializeController();
-        controller = winHandler.getCurrentController();
 
         if (isOpenWithAndroidBrowser || isShareAndroidClipboard)
             wineRequestHandler = new WineRequestHandler(this);
-
-        if (controller != null) {
-            int triggerType = preferences.getInt("trigger_type", ExternalController.TRIGGER_IS_AXIS); // Default to TRIGGER_IS_AXIS
-            controller.setTriggerType((byte) triggerType); // Cast to byte if needed
-        }
-
-
 
         // Check if xinputDisabled extra is passed
         boolean xinputDisabledFromShortcut = false;

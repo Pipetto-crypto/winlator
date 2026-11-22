@@ -57,12 +57,10 @@ public class WinHandler {
     private boolean initReceived = false;
     private boolean running = false;
     private OnGetProcessInfoListener onGetProcessInfoListener;
-    private ExternalController currentController;
     private final Map<Integer, ExternalController> controllers = new HashMap<>();
     private InetAddress localhost;
     private byte inputType = DEFAULT_INPUT_TYPE;
     private final XServerDisplayActivity activity;
-    private final List<Integer> gamepadClients = new CopyOnWriteArrayList<>();
     private SharedPreferences preferences;
     private byte triggerType;
 
@@ -81,13 +79,6 @@ public class WinHandler {
 
     private final InputManager inputManager;
     private final InputManager.InputDeviceListener inputDeviceListener;
-
-    private boolean useLegacyInputMethod = false; // Default to using the new input method
-    // Add this field near the other field declarations at the top of the class
-    // Add these constants at the top of the class where other constants are defined
-    public static final byte DINPUT_MAPPER_TYPE_STANDARD = 0;
-    public static final byte DINPUT_MAPPER_TYPE_XINPUT = 1;
-    private byte dinputMapperType = DINPUT_MAPPER_TYPE_XINPUT; // Default value, you can set this as needed
 
 
 
@@ -136,55 +127,37 @@ public class WinHandler {
         this.gyroDeadzone = deadzone;
     }
 
-    private boolean isLeftTriggerPressed() {
-        return currentController != null && currentController.state.triggerL > 0.5f; // Assuming 0.5f is the threshold for pressed
-    }
-
 
     public void updateGyroData(float rawGyroX, float rawGyroY) {
-        // Check if gyro is enabled before processing the data
-        if (!preferences.getBoolean("gyro_enabled", false)) {
-            return; // Exit if the gyro is disabled
-        }
+        if (!isGyroActive) return;
 
-        boolean shouldProcessGyro = true;
+        // Apply deadzone
+        if (Math.abs(rawGyroX) < gyroDeadzone) rawGyroX = 0;
+        if (Math.abs(rawGyroY) < gyroDeadzone) rawGyroY = 0;
 
-        // Check if processing gyro data only when the left trigger is held
-        if (processGyroWithLeftTrigger) {
-            shouldProcessGyro = isLeftTriggerPressed();
-        }
+        // Apply inversion
+        if (invertGyroX) rawGyroX = -rawGyroX;
+        if (invertGyroY) rawGyroY = -rawGyroY;
 
+        // Further reduce sensitivity by lowering the multiplier
+        float sensitivityMultiplier = 0.25f; // Reduce the sensitivity even more
+        rawGyroX *= gyroSensitivityX * sensitivityMultiplier;
+        rawGyroY *= gyroSensitivityY * sensitivityMultiplier;
 
+        // Apply smoothing
+        smoothGyroX = smoothGyroX * smoothingFactor + rawGyroX * (1 - smoothingFactor);
+        smoothGyroY = smoothGyroY * smoothingFactor + rawGyroY * (1 - smoothingFactor);
 
-        if (isGyroActive) {
-            // Apply deadzone
-            if (Math.abs(rawGyroX) < gyroDeadzone) rawGyroX = 0;
-            if (Math.abs(rawGyroY) < gyroDeadzone) rawGyroY = 0;
+        // Clamp the result to reduce the overall range of movement
+        smoothGyroX = Mathf.clamp(smoothGyroX, -0.25f, 0.25f); // Reduce clamping range for less movement
+        smoothGyroY = Mathf.clamp(smoothGyroY, -0.25f, 0.25f);
 
-            // Apply inversion
-            if (invertGyroX) rawGyroX = -rawGyroX;
-            if (invertGyroY) rawGyroY = -rawGyroY;
+        // Update the gyro data
+        this.gyroX = smoothGyroX;
+        this.gyroY = smoothGyroY;
 
-            // Further reduce sensitivity by lowering the multiplier
-            float sensitivityMultiplier = 0.25f; // Reduce the sensitivity even more
-            rawGyroX *= gyroSensitivityX * sensitivityMultiplier;
-            rawGyroY *= gyroSensitivityY * sensitivityMultiplier;
-
-            // Apply smoothing
-            smoothGyroX = smoothGyroX * smoothingFactor + rawGyroX * (1 - smoothingFactor);
-            smoothGyroY = smoothGyroY * smoothingFactor + rawGyroY * (1 - smoothingFactor);
-
-            // Clamp the result to reduce the overall range of movement
-            smoothGyroX = Mathf.clamp(smoothGyroX, -0.25f, 0.25f); // Reduce clamping range for less movement
-            smoothGyroY = Mathf.clamp(smoothGyroY, -0.25f, 0.25f);
-
-            // Update the gyro data
-            this.gyroX = smoothGyroX;
-            this.gyroY = smoothGyroY;
-
-            // Send the updated gamepad state
-            sendGamepadState();
-        }
+        // Send the updated gamepad state
+        sendGamepadState();
     }
 
     private void writeState(int slot, GamepadState state) {
@@ -440,9 +413,6 @@ public class WinHandler {
                     xinputDisabled = preferences.getBoolean("xinput_toggle", false);
                 }
 
-                // Load the flag to use legacy input method
-                useLegacyInputMethod = preferences.getBoolean("useLegacyInputMethod", false);
-
                 // Load and apply gyro settings
                 setGyroSensitivityX(preferences.getFloat("gyro_x_sensitivity", 1.0f));
                 setGyroSensitivityY(preferences.getFloat("gyro_y_sensitivity", 1.0f));
@@ -478,83 +448,14 @@ public class WinHandler {
                 break;
             }
             case RequestCodes.GET_GAMEPAD: {
-                if (xinputDisabled) return;
-                boolean isXInput = receiveData.get() == 1;
-                boolean notify = receiveData.get() == 1;
-                final ControlsProfile profile = activity.getInputControlsView().getProfile();
-                boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
-
-                if (!useVirtualGamepad && (currentController == null || !currentController.isConnected())) {
-                    currentController = ExternalController.getController(0);
-                    if (currentController != null) {
-                        currentController.setTriggerType(triggerType);
-                    }
-                }
-
-                final boolean enabled = currentController != null || useVirtualGamepad;
-
-                if (enabled && notify) {
-                    if (!gamepadClients.contains(port)) gamepadClients.add(port);
-                } else {
-                    gamepadClients.remove(Integer.valueOf(port));
-                }
-
-                addAction(() -> {
-                    sendData.rewind();
-                    sendData.put(RequestCodes.GET_GAMEPAD);
-
-                    if (enabled) {
-                        sendData.putInt(!useVirtualGamepad ? currentController.getDeviceId() : profile.id);
-
-                        if (useLegacyInputMethod) {
-                            // Use legacy DInput mapper type
-                            sendData.put(dinputMapperType);
-                        } else {
-                            // Use new input type flags
-                            sendData.put(inputType);
-                        }
-
-                        byte[] bytes = (useVirtualGamepad ? profile.getName() : currentController.getName()).getBytes();
-                        sendData.putInt(bytes.length);
-                        sendData.put(bytes);
-                    } else {
-                        sendData.putInt(0);
-                    }
-
-                    sendPacket(port);
-                });
                 break;
             }
             case RequestCodes.GET_GAMEPAD_STATE: {
-                if (xinputDisabled) return;
-                int gamepadId = receiveData.getInt();
-                final ControlsProfile profile = activity.getInputControlsView().getProfile();
-                boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
-                final boolean enabled = currentController != null || useVirtualGamepad;
-
-                if (currentController != null && currentController.getDeviceId() != gamepadId) currentController = null;
-
-                addAction(() -> {
-                    sendData.rewind();
-                    sendData.put(RequestCodes.GET_GAMEPAD_STATE);
-                    sendData.put((byte)(enabled ? 1 : 0));
-
-                    if (enabled) {
-                        sendData.putInt(gamepadId);
-                        if (useVirtualGamepad) {
-                            profile.getGamepadState().writeTo(sendData);
-                        } else {
-                            currentController.state.writeTo(sendData);
-                        }
-                    }
-
-                    sendPacket(port);
-                });
                 break;
             }
             case RequestCodes.RELEASE_GAMEPAD: {
-                currentController = null;
-                gamepadClients.clear();
+                // Maybe clear all controllers or reset mapping?
+                // For now, doing nothing is safest as mapping is sticky.
                 break;
             }
             case RequestCodes.CURSOR_POS_FEEDBACK: {
@@ -768,12 +669,6 @@ public class WinHandler {
             } else if (event.getAction() == KeyEvent.ACTION_UP && !isToggleMode) {
                 isGyroActive = false;
 
-                // Reset the analog stick to center when the gyro activator is released
-                if (currentController != null) {
-                    currentController.state.thumbRX = 0.0f; // Reset X axis
-                    currentController.state.thumbRY = 0.0f; // Reset Y axis
-                }
-
                 // Immediately send the updated gamepad state
                 sendGamepadState();
             }
@@ -802,36 +697,12 @@ public class WinHandler {
         this.inputType = inputType;
     }
 
-    public ExternalController getCurrentController() {
-        return currentController;
-    }
-
     public void execWithDelay(String command, int delaySeconds) {
         if (command == null || command.trim().isEmpty() || delaySeconds < 0) return;
 
         // Use a scheduled executor for delay
         Executors.newSingleThreadScheduledExecutor().schedule(() -> exec(command), delaySeconds, TimeUnit.SECONDS);
     }
-
-    public void initializeController() {
-        currentController = ExternalController.getController(0);
-        if (currentController != null) {
-            currentController.setContext(activity); // Ensure context is set
-            // Enforce mappings upon initialization
-//            for (byte originalButton : ExternalController.buttonMappings.keySet()) {
-//                currentController.setButtonMapping(originalButton, ExternalController.buttonMappings.get(originalButton));
-//            }
-//
-//
-//            SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
-//            triggerType = (byte) preferences.getInt("trigger_type", TRIGGER_IS_AXIS);
-//            currentController.setTriggerType(triggerType); // Ensure triggerType is set
-
-            Log.d("WinHandler", "Force mappings applied on initialization.");
-        }
-    }
-
-
 
     // Re-applies controller preferences after the gamepad configurator dialog saves them
     public void refreshControllerMappings() {
