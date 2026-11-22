@@ -1,8 +1,10 @@
 package com.winlator.cmod.inputcontrols;
 
 import android.content.Context;
+import android.content.SharedPreferences;
 
 import androidx.annotation.NonNull;
+import androidx.preference.PreferenceManager;
 
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.widget.InputControlsView;
@@ -63,6 +65,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
     public ExternalController addController(String id) {
         ExternalController controller = getController(id);
         if (controller == null) controllers.add(controller = ExternalController.getController(id));
+        if (controller != null) applyControllerPrefs(controller);
         controllersLoaded = true;
         return controller;
     }
@@ -173,6 +176,7 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
                 ExternalController controller = new ExternalController();
                 controller.setId(id);
                 controller.setName(controllerJSONObject.getString("name"));
+                applyControllerPrefs(controller);
 
                 JSONArray controllerBindingsJSONArray = controllerJSONObject.getJSONArray("controllerBindings");
                 for (int j = 0; j < controllerBindingsJSONArray.length(); j++) {
@@ -233,5 +237,12 @@ public class ControlsProfile implements Comparable<ControlsProfile> {
         catch (JSONException e) {
             e.printStackTrace();
         }
+    }
+
+    // Gives profile controllers the same trigger type and stick prefs as WinHandler's instances
+    private void applyControllerPrefs(ExternalController controller) {
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        controller.setTriggerType((byte) prefs.getInt("trigger_type", ExternalController.TRIGGER_IS_AXIS));
+        controller.setContext(context);
     }
 }

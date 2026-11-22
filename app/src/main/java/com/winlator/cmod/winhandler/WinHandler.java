@@ -103,11 +103,16 @@ public class WinHandler {
     private float smoothGyroX = 0;
     private float smoothGyroY = 0;
 
-    private boolean processGyroWithLeftTrigger = false;
+    // Accumulated gyro displacement of the right stick (old Bionic behavior: it integrated on every update)
+    private float gyroOffsetX = 0f;
+    private float gyroOffsetY = 0f;
 
     private int gyroTriggerButton;
     private boolean isGyroActive = false;
     private boolean isToggleMode;
+
+    private final GamepadState gyroScratchState = new GamepadState();
+    private boolean gyroTriggerHeld = false;
 
     public void setGyroSensitivityX(float sensitivity) {
         this.gyroSensitivityX = sensitivity;
@@ -158,19 +163,102 @@ public class WinHandler {
         smoothGyroX = Mathf.clamp(smoothGyroX, -0.25f, 0.25f); // Reduce clamping range for less movement
         smoothGyroY = Mathf.clamp(smoothGyroY, -0.25f, 0.25f);
 
-        // Update the gyro data
-        this.gyroX = smoothGyroX;
-        this.gyroY = smoothGyroY;
+        gyroOffsetX = Mathf.clamp(gyroOffsetX + gyroX, -1.0f, 1.0f);
+        gyroOffsetY = Mathf.clamp(gyroOffsetY + gyroY, -1.0f, 1.0f);
 
-        // Send the updated gamepad state
-        sendGamepadState();
+        resendGyroTarget();
+    }
+
+    private void loadGyroSettings() {
+        gyroTriggerButton = preferences.getInt("gyro_trigger_button", KeyEvent.KEYCODE_BUTTON_L1);
+        isToggleMode = preferences.getInt("gyro_mode", 0) == 1; // 1 = toggle, 0 = hold
+        setGyroSensitivityX(preferences.getFloat("gyro_x_sensitivity", 1.0f));
+        setGyroSensitivityY(preferences.getFloat("gyro_y_sensitivity", 1.0f));
+        setSmoothingFactor(preferences.getFloat("gyro_smoothing", 0.9f));
+        setInvertGyroX(preferences.getBoolean("invert_gyro_x", false));
+        setInvertGyroY(preferences.getBoolean("invert_gyro_y", false));
+        setGyroDeadzone(preferences.getFloat("gyro_deadzone", 0.05f));
+    }
+
+    private void onGyroTriggerChanged(boolean pressed) {
+        if (pressed == gyroTriggerHeld) return; // Only react to edges (needed for toggle mode)
+        gyroTriggerHeld = pressed;
+
+        if (isToggleMode) {
+            if (pressed) setGyroActive(!isGyroActive);
+        } else {
+            setGyroActive(pressed);
+        }
+    }
+
+    private void setGyroActive(boolean active) {
+        if (isGyroActive == active) return;
+        isGyroActive = active;
+
+        if (!active) {
+            smoothGyroX = smoothGyroY = 0f;
+            gyroX = gyroY = 0f;
+            gyroOffsetX = gyroOffsetY = 0f; // The old code recentered the stick on release
+            resendGyroTarget(); // Recenter the right stick
+        }
+    }
+
+    private void updateGyroTriggerFromAxes(MotionEvent event) {
+        float value;
+        if (gyroTriggerButton == KeyEvent.KEYCODE_BUTTON_L2) {
+            value = Math.max(event.getAxisValue(MotionEvent.AXIS_LTRIGGER), event.getAxisValue(MotionEvent.AXIS_BRAKE));
+        } else if (gyroTriggerButton == KeyEvent.KEYCODE_BUTTON_R2) {
+            value = Math.max(event.getAxisValue(MotionEvent.AXIS_RTRIGGER), event.getAxisValue(MotionEvent.AXIS_GAS));
+        } else {
+            return; // Other buttons arrive as key events
+        }
+        onGyroTriggerChanged(value > 0.5f);
+    }
+
+    // Gyro drives the pad in the lowest used slot (player 1)
+    private int getGyroSlot() {
+        int result = -1;
+        for (int slot : usedSlots) {
+            if (result == -1 || slot < result) result = slot;
+        }
+        return result;
     }
 
     private void writeState(int slot, GamepadState state) {
         FakeInputWriter writer = writers[slot];
         if (writer == null) return;
-        writer.writeGamepadState(state);
+
+        /*if ((gyroX != 0f || gyroY != 0f) && slot == getGyroSlot()) {
+            gyroScratchState.copy(state);
+            gyroScratchState.thumbRX = Mathf.clamp(state.thumbRX + gyroX, -1.0f, 1.0f);
+            gyroScratchState.thumbRY = Mathf.clamp(state.thumbRY + gyroY, -1.0f, 1.0f);
+            writer.writeGamepadState(gyroScratchState);
+        }*/
+        if ((gyroOffsetX != 0f || gyroOffsetY != 0f) && slot == getGyroSlot()) {
+            gyroScratchState.copy(state);
+            gyroScratchState.thumbRX = Mathf.clamp(state.thumbRX + gyroOffsetX, -1.0f, 1.0f);
+            gyroScratchState.thumbRY = Mathf.clamp(state.thumbRY + gyroOffsetY, -1.0f, 1.0f);
+            writer.writeGamepadState(gyroScratchState);
+        } else {
+            writer.writeGamepadState(state);
+        }
     }
+
+    // Re-writes the current state of the gyro target so the new offset is applied
+    private void resendGyroTarget() {
+        int slot = getGyroSlot();
+        if (slot < 0) return;
+
+        for (Map.Entry<Integer, Integer> entry : deviceToSlot.entrySet()) {
+            if (entry.getValue() != slot) continue;
+
+            int deviceId = entry.getKey();
+            if (deviceId == OSC_DEVICE_ID) sendGamepadState();
+            else sendGamepadState(controllers.get(deviceId));
+            return; // Stop right away: sendGamepadState() may modify deviceToSlot
+        }
+    }
+
 
 
     public WinHandler(XServerDisplayActivity activity) {
@@ -193,6 +281,7 @@ public class WinHandler {
         inputManager.registerInputDeviceListener(inputDeviceListener, null);
 
         preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
+        loadGyroSettings();
 
         for (int i = 0; i < MAX_CONTROLLERS; i++) {
             vibrationEnabledSlots[i] = preferences.getBoolean("vibration_slot_" + i, true);
@@ -568,29 +657,10 @@ public class WinHandler {
 
                 preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
 
-                gyroTriggerButton = preferences.getInt("gyro_trigger_button", KeyEvent.KEYCODE_BUTTON_L1);
-                isToggleMode = preferences.getInt("gyro_mode", 0) == 1; // 1 is toggle mode, 0 is hold mode
-
-
-                // Load and apply trigger mode and xinput toggle settings
-                triggerType = (byte) preferences.getInt("trigger_type", TRIGGER_IS_AXIS);
-
-                refreshControllerMappings();
-
                 // Only set xinputDisabled if it hasn't been set explicitly by XServerDisplayActivity
                 if (!xinputDisabledInitialized) {
                     xinputDisabled = preferences.getBoolean("xinput_toggle", false);
                 }
-
-                // Load and apply gyro settings
-                setGyroSensitivityX(preferences.getFloat("gyro_x_sensitivity", 1.0f));
-                setGyroSensitivityY(preferences.getFloat("gyro_y_sensitivity", 1.0f));
-                setSmoothingFactor(preferences.getFloat("gyro_smoothing", 0.9f));
-                setInvertGyroX(preferences.getBoolean("invert_gyro_x", false));
-                setInvertGyroY(preferences.getBoolean("invert_gyro_y", false));
-                setGyroDeadzone(preferences.getFloat("gyro_deadzone", 0.05f));
-
-                processGyroWithLeftTrigger = preferences.getBoolean("process_gyro_with_left_trigger", false);
 
                 synchronized (actions) {
                     actions.notify();
@@ -828,6 +898,7 @@ public class WinHandler {
         if (controller != null) {
             handled = controller.updateStateFromMotionEvent(event);
             if (handled) {
+                updateGyroTriggerFromAxes(event);
                 sendGamepadState(controller);
             }
         }
@@ -839,18 +910,7 @@ public class WinHandler {
         ExternalController controller = getController(event.getDeviceId());
 
         if (event.getKeyCode() == gyroTriggerButton) {
-            if (event.getAction() == KeyEvent.ACTION_DOWN) {
-                if (isToggleMode) {
-                    isGyroActive = !isGyroActive;
-                } else {
-                    isGyroActive = true;
-                }
-            } else if (event.getAction() == KeyEvent.ACTION_UP && !isToggleMode) {
-                isGyroActive = false;
-
-                // Immediately send the updated gamepad state
-                sendGamepadState();
-            }
+            onGyroTriggerChanged(event.getAction() == KeyEvent.ACTION_DOWN);
         }
 
         if (controller != null && event.getRepeatCount() == 0) {
@@ -891,6 +951,7 @@ public class WinHandler {
             controller.setTriggerType(trigger);
             controller.setContext(activity); // Reloads deadzone, sensitivity and inversion prefs
         }
+        loadGyroSettings();
     }
 
 

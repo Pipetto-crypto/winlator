@@ -127,6 +127,7 @@ public class ExternalController {
                     Log.d("ExternalController", "Invert Right Y updated: " + invertRightY);
                     break;
             }
+            useSquareDeadzoneLeft = sharedPreferences.getBoolean(PreferenceKeys.SQUARE_DEADZONE_LEFT, false);
         }
     };
 
