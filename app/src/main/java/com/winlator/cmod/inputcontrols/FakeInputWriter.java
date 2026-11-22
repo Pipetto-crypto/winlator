@@ -66,6 +66,10 @@ public class FakeInputWriter {
     private int prevHatX, prevHatY;
     private boolean hasChanges = false;
 
+    private static final long SIZE_WARNING_STEP = 64L * 1024 * 1024;
+    private long bytesWritten = 0;
+    private long nextSizeWarning = SIZE_WARNING_STEP;
+
     public FakeInputWriter(String fakeInputPath, int slot) {
         this.eventFile = new File(fakeInputPath, "event" + slot);
         this.buffer = ByteBuffer.allocateDirect(BUFFER_SIZE);
@@ -191,8 +195,9 @@ public class FakeInputWriter {
         reset();
         close();
         if (eventFile != null && eventFile.exists()) {
+            long size = eventFile.length();
             boolean deleted = eventFile.delete();
-            Log.i(TAG, "Deleted fake input: " + eventFile.getAbsolutePath() + " (" + deleted + ")");
+            Log.i(TAG, "Deleted fake input: " + eventFile.getAbsolutePath() + " (" + deleted + ", " + size + " bytes written)");
         }
     }
 
@@ -286,8 +291,13 @@ public class FakeInputWriter {
         if (hasChanges) {
             writeEvent(EV_SYN, SYN_REPORT, 0);
             buffer.flip();
+            if (InputDebug.VERBOSE) Log.d(TAG, eventFile.getName() + ": " + (buffer.remaining() / EVENT_SIZE) + " events");
             try {
-                channel.write(buffer);
+                bytesWritten += channel.write(buffer);
+                if (bytesWritten >= nextSizeWarning) {
+                    Log.w(TAG, eventFile.getName() + " grew to " + (bytesWritten >> 20) + " MB this session");
+                    nextSizeWarning += SIZE_WARNING_STEP;
+                }
             } catch (IOException e) {
                 Log.e(TAG, "Write error: " + e.getMessage());
             }

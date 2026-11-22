@@ -28,6 +28,7 @@ import com.winlator.cmod.core.WineInfo;
 import com.winlator.cmod.fexcore.FEXCoreManager;
 import com.winlator.cmod.fexcore.FEXCorePreset;
 import com.winlator.cmod.fexcore.FEXCorePresetManager;
+import com.winlator.cmod.inputcontrols.InputDebug;
 import com.winlator.cmod.xconnector.UnixSocketConfig;
 import com.winlator.cmod.xenvironment.EnvironmentComponent;
 import com.winlator.cmod.xenvironment.ImageFs;
@@ -377,6 +378,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
 
         envVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
         envVars.put("FAKE_EVDEV_VIBRATION", "1");
+        if (InputDebug.VERBOSE) envVars.put("FAKE_EVDEV_LOG", "1");
 
 //        Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         envVars.put("LD_PRELOAD", ld_preload);

@@ -35,6 +35,7 @@ import com.winlator.cmod.inputcontrols.ControlsProfile;
 import com.winlator.cmod.inputcontrols.ExternalController;
 import com.winlator.cmod.inputcontrols.ExternalControllerBinding;
 import com.winlator.cmod.inputcontrols.GamepadState;
+import com.winlator.cmod.inputcontrols.InputDebug;
 import com.winlator.cmod.math.Mathf;
 import com.winlator.cmod.winhandler.MouseEventFlags;
 import com.winlator.cmod.winhandler.WinHandler;
@@ -47,6 +48,7 @@ import java.util.Timer;
 import java.util.TimerTask;
 
 public class InputControlsView extends View {
+    private static final String TAG = "InputControlsView";
     public static final float DEFAULT_OVERLAY_OPACITY = 0.4f;
     private static final byte MOUSE_WHEEL_DELTA = 120;
     private boolean editMode = false;
@@ -515,18 +517,18 @@ public class InputControlsView extends View {
 
     @Override
     public boolean dispatchGenericMotionEvent(MotionEvent event) {
-        Log.d("InputControlsView", "dispatchGenericMotionEvent called. Source: " + event.getSource());
+        if (InputDebug.VERBOSE) Log.d(TAG, "dispatchGenericMotionEvent called. Source: " + event.getSource());
         return super.dispatchGenericMotionEvent(event);
     }
 
 
     @Override
     public boolean onGenericMotionEvent(MotionEvent event) {
-
-        Log.d("InputControlsView", "Motion event received. Source: " + event.getSource());
-        Log.d("InputControlsView", "Device ID: " + event.getDeviceId());
-        Log.d("InputControlsView", "Profile is " + (profile != null ? "set" : "null"));
-
+        if (InputDebug.VERBOSE) {
+            Log.d(TAG, "Motion event received. Source: " + event.getSource());
+            Log.d(TAG, "Device ID: " + event.getDeviceId());
+            Log.d(TAG, "Profile is " + (profile != null ? "set" : "null"));
+        }
 
         if (!editMode && profile != null) {
             // Retrieve the associated controller for this event
@@ -548,9 +550,11 @@ public class InputControlsView extends View {
                     handleInputEvent(controller, controllerBinding.getBinding(), controller.state.isPressed(ExternalController.IDX_BUTTON_R2));
                 }
 
-                Log.d("InputEvent", "Event source: " + event.getSource());
-                Log.d("InputEvent", "Device ID: " + event.getDeviceId());
-                Log.d("InputEvent", "Action: " + event.getAction());
+                if (InputDebug.VERBOSE) {
+                    Log.d("InputEvent", "Event source: " + event.getSource());
+                    Log.d("InputEvent", "Device ID: " + event.getDeviceId());
+                    Log.d("InputEvent", "Action: " + event.getAction());
+                }
 
                 // Process joystick inputs for mouse movement and other bindings
                 processJoystickInput(controller);
@@ -675,7 +679,7 @@ public class InputControlsView extends View {
 
 
     private void resetTouchscreenTimeout() {
-        Log.d("InputControlsView", "Touch detected, resetting timeout.");
+        if (InputDebug.VERBOSE) Log.d(TAG, "Touch detected, resetting timeout.");
         if (timeoutHandler != null && hideControlsRunnable != null) {
             // Cancel any pending hide requests
             timeoutHandler.removeCallbacks(hideControlsRunnable);

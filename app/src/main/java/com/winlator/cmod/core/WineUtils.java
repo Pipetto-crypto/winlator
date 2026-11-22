@@ -1,6 +1,7 @@
 package com.winlator.cmod.core;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.xenvironment.ImageFs;
@@ -13,6 +14,8 @@ import java.io.File;
 import java.util.Locale;
 
 public abstract class WineUtils {
+    private static final String TAG = "WineUtils";
+
     public static void createDosdevicesSymlinks(Container container) {
         String dosdevicesPath = (new File(container.getRootDir(), ".wine/dosdevices")).getPath();
         File[] files = (new File(dosdevicesPath)).listFiles();
@@ -223,6 +226,8 @@ public abstract class WineUtils {
      * @param exclusiveXInput Whether Exclusive XInput is enabled (if false, keys are removed)
      */
     public static void setJoystickRegistryKeys(Container container, boolean dinputEnabled, boolean exclusiveXInput) {
+        Log.i(TAG, "Joystick registry keys: dinput=" + dinputEnabled + " exclusiveXInput=" + exclusiveXInput
+                + " -> " + (exclusiveXInput ? (dinputEnabled ? "override" : "disabled") : "removed"));
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
         final String joysticksKey = "Software\\Wine\\DirectInput\\Joysticks";
 
