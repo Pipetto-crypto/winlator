@@ -393,7 +393,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             }
         }
 
-        // WinHandler call, next commit
+        winHandler.setFakeInputPath(devInputDir.getAbsolutePath());
 
         String screenSize = Container.DEFAULT_SCREEN_SIZE;
         containerManager = new ContainerManager(this);
@@ -1521,17 +1521,26 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     }
 
     private void showInputControls(ControlsProfile profile) {
+        if (timeoutHandler != null && hideControlsRunnable != null) {
+            timeoutHandler.removeCallbacks(hideControlsRunnable);
+        }
+
+        inputControlsView.setProfile(profile);
         inputControlsView.setVisibility(View.VISIBLE);
         inputControlsView.requestFocus();
-        inputControlsView.setProfile(profile);
 
         touchpadView.setSensitivity(profile.getCursorSpeed() * globalCursorSpeed);
         touchpadView.setPointerButtonRightEnabled(false);
 
         inputControlsView.invalidate();
+        winHandler.sendGamepadState();
     }
 
     private void hideInputControls() {
+        if (timeoutHandler != null && hideControlsRunnable != null) {
+            timeoutHandler.removeCallbacks(hideControlsRunnable);
+        }
+
         inputControlsView.setShowTouchscreenControls(true);
         inputControlsView.setVisibility(View.GONE);
         inputControlsView.setProfile(null);
@@ -1541,6 +1550,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         touchpadView.setPointerButtonRightEnabled(true);
 
         inputControlsView.invalidate();
+        winHandler.sendGamepadState();
     }
 
     private void extractGraphicsDriverFiles() {

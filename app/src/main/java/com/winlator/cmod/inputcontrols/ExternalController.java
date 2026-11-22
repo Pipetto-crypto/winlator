@@ -41,6 +41,7 @@ public class ExternalController {
     private byte triggerType = TRIGGER_IS_AXIS;
     private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
     public final GamepadState state = new GamepadState();
+    public final GamepadState remappedState = new GamepadState();
     private XServerDisplayActivity activity;
 
     private float deadzoneLeft = 0.1f;      // Default deadzone (10%)
@@ -245,7 +246,7 @@ public class ExternalController {
 
     public ExternalControllerBinding getControllerBinding(int keyCode) {
         for (ExternalControllerBinding controllerBinding : controllerBindings) {
-            if (controllerBinding.getKeyCodeForAxis() == keyCode) return controllerBinding;
+            if (controllerBinding.getKeyCode() == keyCode) return controllerBinding;
         }
         return null;
     }
@@ -255,7 +256,7 @@ public class ExternalController {
     }
 
     public void addControllerBinding(ExternalControllerBinding controllerBinding) {
-        if (getControllerBinding(controllerBinding.getKeyCodeForAxis()) == null) controllerBindings.add(controllerBinding);
+         if (getControllerBinding(controllerBinding.getKeyCode()) == null) controllerBindings.add(controllerBinding);
     }
 
     public int getPosition(ExternalControllerBinding controllerBinding) {
@@ -623,6 +624,10 @@ public class ExternalController {
 
     public static boolean isGameController(InputDevice device) {
         if (device == null) return false;
+        if (device.getName() != null) {
+            String deviceName = device.getName().toLowerCase();
+            if (deviceName.contains("uinput-") || deviceName.contains("goodix_fp")) return false;
+        }
         int sources = device.getSources();
         // Exclude devices with SOURCE_MOUSE from being considered controllers
         return !device.isVirtual() && ((sources & InputDevice.SOURCE_GAMEPAD) == InputDevice.SOURCE_GAMEPAD ||
