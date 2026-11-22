@@ -10,6 +10,9 @@
             android:id="@+id/main_menu_input_controls"
             android:title="@string/input_controls" />
         <item
+            android:id="@+id/main_menu_vibration"
+            android:title="@string/vibration" />
+        <item
             android:id="@+id/main_menu_relative_mouse_movement"
             android:title="Toggle Relative Mouse Movement" />
         <item

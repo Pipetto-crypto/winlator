@@ -6,6 +6,9 @@ import android.content.Context;
 import android.content.SharedPreferences;
 import android.hardware.input.InputManager;
 import android.net.LocalServerSocket;
+import android.net.LocalSocket;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.util.Log;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -70,6 +73,9 @@ public class WinHandler {
     private Map<Integer, Integer> deviceToSlot = new HashMap<>();
     private Set<Integer> usedSlots = new HashSet<>();
     private String fakeInputBasePath;
+    private LocalServerSocket vibrationServer;
+    private volatile boolean vibrationRunning = false;
+    private boolean[] vibrationEnabledSlots = new boolean[MAX_CONTROLLERS];
 
     private boolean xinputDisabled; // Used for exclusive mouse controllegacy
     private boolean xinputDisabledInitialized = false;
@@ -187,6 +193,10 @@ public class WinHandler {
         inputManager.registerInputDeviceListener(inputDeviceListener, null);
 
         preferences = PreferenceManager.getDefaultSharedPreferences(activity.getBaseContext());
+
+        for (int i = 0; i < MAX_CONTROLLERS; i++) {
+            vibrationEnabledSlots[i] = preferences.getBoolean("vibration_slot_" + i, true);
+        }
     }
     private boolean sendPacket(int port) {
         try {
@@ -390,6 +400,165 @@ public class WinHandler {
         synchronized (actions) {
             actions.notify();
         }
+    }
+
+    public void startVibrationListener() {
+        if (vibrationRunning)
+            return;
+        vibrationRunning = true;
+
+        Executors.newSingleThreadExecutor().execute(() -> {
+            try {
+                vibrationServer = new LocalServerSocket("winlator_vibration");
+                Log.d("WinHandler", "Vibration listener started on abstract socket: winlator_vibration");
+
+                while (vibrationRunning) {
+                    LocalSocket client = vibrationServer.accept();
+                    try {
+                        java.io.InputStream is = client.getInputStream();
+                        byte[] buf = new byte[8];
+                        int read = is.read(buf);
+                        if (read == 8) {
+                            int strong = (buf[0] & 0xFF) | ((buf[1] & 0xFF) << 8);
+                            int weak = (buf[2] & 0xFF) | ((buf[3] & 0xFF) << 8);
+                            int durationMs = (buf[4] & 0xFF) | ((buf[5] & 0xFF) << 8);
+                            int slot = (buf[6] & 0xFF) | ((buf[7] & 0xFF) << 8);
+                            triggerVibration(strong, weak, durationMs, slot);
+                        }
+                        client.close();
+                    } catch (IOException e) {
+                        Log.e("WinHandler", "Vibration client error: " + e.getMessage());
+                    }
+                }
+            } catch (IOException e) {
+                if (vibrationRunning) {
+                    Log.e("WinHandler", "Vibration listener error: " + e.getMessage());
+                }
+            }
+        });
+    }
+
+    private void triggerVibration(int strong, int weak, int durationMs, int slot) {
+        if (!isValidSlot(slot) || !vibrationEnabledSlots[slot])
+            return;
+
+        boolean shouldCancel = (durationMs == 0 && strong == 0 && weak == 0);
+
+        Vibrator vibrator = null;
+        android.os.VibratorManager vibratorManager = null;
+        boolean hasMultiMotor = false;
+
+        Integer deviceId = null;
+        for (Map.Entry<Integer, Integer> entry : deviceToSlot.entrySet()) {
+            if (entry.getValue() == slot) {
+                deviceId = entry.getKey();
+                break;
+            }
+        }
+
+        if (deviceId != null && deviceId.equals(OSC_DEVICE_ID)) {
+            vibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+        } else if (deviceId != null) {
+            android.view.InputDevice device = android.view.InputDevice.getDevice(deviceId);
+            if (device != null) {
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                    vibratorManager = device.getVibratorManager();
+                    if (vibratorManager != null && vibratorManager.getVibratorIds().length > 1) {
+                        hasMultiMotor = true;
+                    }
+                }
+
+                if (!hasMultiMotor) {
+                    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S
+                            && vibratorManager != null) {
+                        int[] ids = vibratorManager.getVibratorIds();
+                        if (ids.length > 0) {
+                            vibrator = vibratorManager.getVibrator(ids[0]);
+                        }
+                    } else {
+                        vibrator = device.getVibrator();
+                    }
+
+                    if (vibrator == null || !vibrator.hasVibrator()) {
+                        if (!deviceToSlot.containsKey(OSC_DEVICE_ID)
+                                && (fallbackSlot == -1 || fallbackSlot == slot)) {
+                            vibrator = (Vibrator) activity.getSystemService(Context.VIBRATOR_SERVICE);
+                            fallbackSlot = slot;
+                        } else {
+                            vibrator = null;
+                        }
+                    }
+                }
+            }
+        }
+
+        if (hasMultiMotor && vibratorManager != null
+                && android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+            int[] vibratorIds = vibratorManager.getVibratorIds();
+
+            if (vibratorIds.length >= 1) {
+                Vibrator vStrong = vibratorManager.getVibrator(vibratorIds[0]);
+                if (!shouldCancel && strong > 0) {
+                    int amplitude = clampAmplitude(strong);
+                    int duration = Math.max(1, durationMs);
+                    vStrong.vibrate(VibrationEffect.createOneShot(duration, amplitude));
+                } else {
+                    vStrong.cancel();
+                }
+            }
+
+            if (vibratorIds.length >= 2) {
+                Vibrator vWeak = vibratorManager.getVibrator(vibratorIds[1]);
+                if (!shouldCancel && weak > 0) {
+                    int amplitude = clampAmplitude(weak);
+                    int duration = Math.max(1, durationMs);
+                    vWeak.vibrate(VibrationEffect.createOneShot(duration, amplitude));
+                } else {
+                    vWeak.cancel();
+                }
+            }
+            return;
+        }
+
+        if (vibrator == null || !vibrator.hasVibrator())
+            return;
+
+        if (!shouldCancel && (strong > 0 || weak > 0)) {
+            int intensity = Math.max(strong, weak);
+            int amplitude = clampAmplitude(intensity);
+            int duration = Math.max(1, durationMs);
+
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                vibrator.vibrate(VibrationEffect.createOneShot(duration, amplitude));
+            } else {
+                vibrator.vibrate(duration);
+            }
+        } else {
+            vibrator.cancel();
+        }
+    }
+
+    private int clampAmplitude(int value) {
+        return Math.min(255, Math.max(1, (int) ((value / 65535.0f) * 255)));
+    }
+
+    private boolean isValidSlot(int slot) {
+        return slot >= 0 && slot < MAX_CONTROLLERS;
+    }
+
+    public boolean isVibrationEnabledForSlot(int slot) {
+        return isValidSlot(slot) && vibrationEnabledSlots[slot];
+    }
+
+    public void setVibrationEnabledForSlot(int slot, boolean enabled) {
+        if (isValidSlot(slot)) {
+            vibrationEnabledSlots[slot] = enabled;
+            preferences.edit().putBoolean("vibration_slot_" + slot, enabled).apply();
+        }
+    }
+
+    public int getMaxControllers() {
+        return MAX_CONTROLLERS;
     }
 
     private void handleRequest(byte requestCode, final int port) {
@@ -598,6 +767,7 @@ public class WinHandler {
         if (fakeInputPath != null && !fakeInputPath.isEmpty()) {
             this.fakeInputBasePath = fakeInputPath;
             Log.d("WinHandler", "FakeInputWriter base path set: " + fakeInputPath);
+            startVibrationListener();
         }
     }
 
@@ -618,6 +788,15 @@ public class WinHandler {
         }
         controllers.clear();
         fallbackSlot = -1;
+
+        vibrationRunning = false;
+        if (vibrationServer != null) {
+            try {
+                vibrationServer.close();
+            } catch (IOException e) {
+            }
+            vibrationServer = null;
+        }
     }
 
     private ExternalController getController(int deviceId) {

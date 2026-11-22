@@ -926,6 +926,29 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
     }
 
+    private void showVibrationDialog() {
+        if (winHandler == null)
+            return;
+
+        Context context = this;
+        int maxControllers = winHandler.getMaxControllers();
+        boolean[] checkedItems = new boolean[maxControllers];
+        String[] items = new String[maxControllers];
+
+        for (int i = 0; i < maxControllers; i++) {
+            items[i] = getString(R.string.vibration_slot, i + 1);
+            checkedItems[i] = winHandler.isVibrationEnabledForSlot(i);
+        }
+
+        new androidx.appcompat.app.AlertDialog.Builder(context)
+                .setTitle(R.string.vibration)
+                .setMultiChoiceItems(items, checkedItems, (dialog, which, isChecked) -> {
+                    winHandler.setVibrationEnabledForSlot(which, isChecked);
+                })
+                .setPositiveButton(R.string.ok, null)
+                .show();
+    }
+
     @SuppressLint("SourceLockedOrientationActivity")
     @Override
     public boolean onNavigationItemSelected(@NonNull MenuItem item) {
@@ -938,6 +961,10 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 break;
             case R.id.main_menu_input_controls:
                 showInputControlsDialog();
+                drawerLayout.closeDrawers();
+                break;
+            case R.id.main_menu_vibration:
+                showVibrationDialog();
                 drawerLayout.closeDrawers();
                 break;
             case R.id.main_menu_relative_mouse_movement:
