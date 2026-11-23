@@ -111,11 +111,15 @@ public class AudioConfigDialog extends ContentDialog {
 
     public static void setEnvVars(Context context, KeyValueSet config, EnvVars envVars) {
         String api = StringUtils.parseIdentifier(config.get("api"));
-        if (api.equals("opensles"))
-           envVars.put("ALSA_USE_SLES", "1");
+        envVars.put("ALSA_USE_SLES", api.equals("opensles") ? "1" : "0");
+        envVars.put("PULSEAUDIO_API", api.equals("opensles") ? "1" : "0");
            
         String bufferSize = config.get("bufferSize");
         if (!bufferSize.equals("0"))
             envVars.put("ALSA_BUFFER_SIZE", bufferSize);
+            
+        String latency = config.get("latency");
+        if (!latency.equals("0"))
+            envVars.put("PULSE_LATENCY_MSEC", latency);
     }   
 }

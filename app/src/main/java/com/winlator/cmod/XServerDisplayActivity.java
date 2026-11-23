@@ -1176,6 +1176,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                         UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)
                 )
         );
+        
+        AudioConfigDialog.setEnvVars(this, audioConfig, envVars);
 
         // Audio driver logic
         if (audioDriver.equals("alsa")) {
@@ -1184,12 +1186,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             envVars.put("PULSE_SERVER", rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
             environment.addComponent(
                     new PulseAudioComponent(
-                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)
+                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH),
+                            this,
+                            envVars
                     )
             );
         }
-        
-        AudioConfigDialog.setEnvVars(this, audioConfig, envVars);
 
         // Pass final envVars to the launcher
         guestProgramLauncherComponent.setEnvVars(envVars);
@@ -1992,7 +1994,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private void applyGeneralPatches(Container container) {
         File rootDir = imageFs.getRootDir();
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "container_pattern_common.tzst", rootDir);
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "pulseaudio.tzst", new File(getFilesDir(), "pulseaudio"));
         WineUtils.applySystemTweaks(this, wineInfo);
         container.putExtra("graphicsDriver", null);
         container.putExtra("desktopTheme", null);
