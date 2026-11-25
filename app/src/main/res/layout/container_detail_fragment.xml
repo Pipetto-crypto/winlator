@@ -706,7 +706,7 @@
                                 android:id="@+id/CBExclusiveXInput"
                                 android:layout_width="wrap_content"
                                 android:layout_height="wrap_content"
-                                android:text="Exclusive Input" />
+                                android:text="@string/exclusive_input" />
                             <ImageView
                                 android:id="@+id/BTExclusiveXInputHelp"
                                 style="@style/HelpButton"
