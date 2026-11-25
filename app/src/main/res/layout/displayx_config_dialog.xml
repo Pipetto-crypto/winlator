@@ -23,11 +23,11 @@
 			android:entries="@array/surface_format_entries"
 			android:id="@+id/SSurfaceFormat"
 			android:spinnerMode="dialog" />
-
+            
         <TextView
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:text="Present Mode"
+			android:text="Present Backend"
 			android:textAppearance="?android:attr/textAppearanceMedium"
 			android:paddingBottom="8dp" />
 
@@ -35,34 +35,65 @@
 			style="@style/ComboBox"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			android:entries="@array/displayx_present_mode_entries"
-			android:id="@+id/SPresentMode"
-			android:spinnerMode="dialog" />
+			android:entries="@array/displayx_backend_entries"
+			android:id="@+id/SBackend"
+			android:spinnerMode="dialog" />    
+        
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:id="@+id/LLDynamicRange">
+            
+            <TextView
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Dynamic Range"
+			    android:textAppearance="?android:attr/textAppearanceMedium"
+			    android:paddingBottom="8dp" />
+        
+		    <Spinner
+			    style="@style/ComboBox"
+			    android:layout_width="match_parent"
+			    android:layout_height="wrap_content"
+			    android:entries="@array/displayx_dynamic_range"
+			    android:id="@+id/SDynamicRange"
+			    android:spinnerMode="dialog" />    
+        </LinearLayout>
+        
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:id="@+id/LLPresentMode">
+            
+            <TextView
+			    android:layout_width="wrap_content"
+			    android:layout_height="wrap_content"
+			    android:text="Present Mode"
+			    android:textAppearance="?android:attr/textAppearanceMedium"
+			    android:paddingBottom="8dp" />
 
-		<CheckBox
-			android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:id="@+id/CBEnableTrueDisplayX"
-			android:text="Bypass X11 Protocol" />
+		    <Spinner
+			    style="@style/ComboBox"
+			    android:layout_width="match_parent"
+			    android:layout_height="wrap_content"
+			    android:entries="@array/displayx_present_mode_entries"
+			    android:id="@+id/SPresentMode"
+			    android:spinnerMode="dialog" />
+        </LinearLayout>        
 
 		<CheckBox
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:id="@+id/CBEnablePerfMode"
-			android:text="Enable Performance Mode" />
+			android:text="Boost CPU when presenting" />
 
 		<CheckBox
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
 			android:id="@+id/CBPresentRR"
-			android:text="Present at refresh rate" />
-        
-        <CheckBox 
-            android:layout_width="wrap_content"
-			android:layout_height="wrap_content"
-			android:id="@+id/CBPrecisePresentation"
-			android:text="Increment presentation precision" />
-
+			android:text="Submit requests at refresh rate" />
 	</LinearLayout>
 
 </ScrollView>

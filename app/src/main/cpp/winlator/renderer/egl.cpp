@@ -94,7 +94,6 @@ void EGLRenderer::renderingThreadLoop() {
         
         if (stopped) {
             printf("Stopping renderingThread");
-            cache->detachEnv(env);
             return;
         }
         

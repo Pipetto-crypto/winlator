@@ -3,9 +3,13 @@ package com.winlator.cmod.xenvironment.components;
 import android.content.Context;
 import android.os.Process;
 
+import android.util.Log;
 import com.winlator.cmod.core.AppUtils;
+import com.winlator.cmod.core.EnvVars;
 import com.winlator.cmod.core.FileUtils;
 import com.winlator.cmod.core.ProcessHelper;
+import com.winlator.cmod.core.Sha256Util;
+import com.winlator.cmod.core.TarCompressorUtils;
 import com.winlator.cmod.xconnector.UnixSocketConfig;
 import com.winlator.cmod.xenvironment.EnvironmentComponent;
 
@@ -21,11 +25,15 @@ import java.util.ArrayList;
 
 public class PulseAudioComponent extends EnvironmentComponent {
     private final UnixSocketConfig socketConfig;
+    private final Context context;
+    private final EnvVars envVars;
     private static int pid = -1;
     private static final Object lock = new Object();
 
-    public PulseAudioComponent(UnixSocketConfig socketConfig) {
+    public PulseAudioComponent(UnixSocketConfig socketConfig, Context context, EnvVars envVars) {
         this.socketConfig = socketConfig;
+        this.context = context;
+        this.envVars = envVars;
     }
 
     @Override
@@ -46,26 +54,9 @@ public class PulseAudioComponent extends EnvironmentComponent {
         }
     }
     
-    private void copyFromLibraryDir(File dst) {
-        String[] libs = new String[] {
-            "libltdl.so", "libpulseaudio.so", "libpulse.so", "libpulsecommon-13.0.so", "libpulsecore-13.0.so", "libsndfile.so"
-        };
-        for (int i = 0; i < libs.length; i++) {
-            String path = "lib/" + "arm64-v8a" + "/" + libs[i];
-            ClassLoader loader = PulseAudioComponent.class.getClassLoader();
-            URL res = loader != null ? loader.getResource(path) : null;
-            Path dstDir = Paths.get(dst.getAbsolutePath() + "/" + libs[i]);
-            try {
-                InputStream is = res != null ? res.openStream() : null;
-                if (is != null) {
-                    Files.copy(is, dstDir, StandardCopyOption.REPLACE_EXISTING);
-                    FileUtils.chmod(dstDir.toFile(), 0771);
-                }    
-            }
-            catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-        }
+    private void extractFromAssets(File workingDir) {
+        Log.d("PulseAudioComponent", "Extracting PulseAudio assets");
+        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context, "pulseaudio.tzst", workingDir);
     }
 
     private int execPulseAudio() {
@@ -79,22 +70,34 @@ public class PulseAudioComponent extends EnvironmentComponent {
         File configFile = new File(workingDir, "default.pa");
         FileUtils.writeString(configFile, String.join("\n",
             "load-module module-native-protocol-unix auth-anonymous=1 auth-cookie-enabled=0 socket=\""+socketConfig.path+"\"",
-            "load-module module-aaudio-sink",
-            "set-default-sink AAudioSink"
+            "load-module module-oboe-sink api=" + this.envVars.get("PULSEAUDIO_API"),
+            "set-default-sink OboeSink"
         ));
 
-        String archName = AppUtils.getArchName();
-        File modulesDir = new File(workingDir, "modules/"+archName);
-        String systemLibPath = archName.equals("arm64") ? "/system/lib64" : "system/lib";
-
-        ArrayList<String> envVars = new ArrayList<>();
-        envVars.add("LD_LIBRARY_PATH="+systemLibPath+":"+modulesDir+":"+workingDir.getAbsolutePath());
-        envVars.add("HOME="+workingDir);
-        envVars.add("TMPDIR="+environment.getTmpDir());
+        File modulesDir = new File(workingDir, "modules");
         
-        copyFromLibraryDir(workingDir);
+        EnvVars envVars = new EnvVars();
+        envVars.put("LD_LIBRARY_PATH", modulesDir + ":" + workingDir.getAbsolutePath());
+        envVars.put("HOME", workingDir);
+        envVars.put("TMPDIR", environment.getImageFs().getTmpDir());
+        envVars.put("PULSE_LATENCY_MSEC", this.envVars.get("PULSE_LATENCY_MSEC"));
+        
+        File sumFile = new File(workingDir, ".pulseaudio.sha256sum");
+        byte[] sha256Sum = Sha256Util.calculate(context, "pulseaudio.tzst");
+        
+        if (!sumFile.exists()) {
+            extractFromAssets(workingDir);
+            Sha256Util.writeToFile(sumFile, sha256Sum);
+        }
+        else {
+            byte[] oldSum = Sha256Util.readFromFile(sumFile);
+            if (!Sha256Util.isEqual(oldSum, sha256Sum)) {
+                extractFromAssets(workingDir);
+                Sha256Util.writeToFile(sumFile, sha256Sum);
+            }
+        }
 
-        String command = workingDir.getAbsolutePath() + "/libpulseaudio.so";
+        String command = workingDir.getAbsolutePath() + "/pulseaudio";
         command += " --system=false";
         command += " --disable-shm=true";
         command += " --fail=false";
@@ -103,6 +106,6 @@ public class PulseAudioComponent extends EnvironmentComponent {
         command += " --use-pid-file=false";
         command += " --exit-idle-time=-1";
 
-        return ProcessHelper.exec(command, envVars.toArray(new String[0]), workingDir);
+        return ProcessHelper.exec(command, envVars.toStringArray(), workingDir);
     }
 }

@@ -3,6 +3,7 @@ package com.winlator.cmod.container;
 import android.os.Environment;
 
 import com.winlator.cmod.box64.Box64Preset;
+import com.winlator.cmod.contentdialog.AudioConfigDialog;
 import com.winlator.cmod.contentdialog.DXVKConfigDialog;
 import com.winlator.cmod.contentdialog.WineD3DConfigDialog;
 import com.winlator.cmod.core.DefaultVersion;
@@ -37,7 +38,7 @@ public class Container {
     public static final String DEFAULT_GRAPHICSDRIVERCONFIG =
             "vulkanVersion=1.3" + ";version=" + ";blacklistedExtensions=" + ";maxDeviceMemory=0" + ";presentMode=mailbox" + ";syncFrame=0" + ";disablePresentWait=0" + ";resourceType=auto" + ";bcnEmulation=auto" + ";bcnEmulationType=compute" + ";bcnEmulationCache=0" + ";gpuName=Device";
     public static final String DEFAULT_DDRAWRAPPER = "none";
-    public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=0,directmusic=0,directshow=0,directplay=0,xaudio=0,vcrun2010=1,builtinDecoder=gstreamer,softwareDecoding=0";
+    public static final String DEFAULT_WINCOMPONENTS = "direct3d=1,directsound=0,directmusic=0,directshow=0,directplay=0,xaudio=0,vcrun2010=1,builtinDecoder=ffmpeg,softwareDecoding=0";
     public static final String FALLBACK_WINCOMPONENTS = "direct3d=1,directsound=1,directmusic=1,directshow=1,directplay=1,xaudio=1,vcrun2010=1";
     public static final String DEFAULT_DRIVES = "F:"+Environment.getExternalStorageDirectory().getAbsolutePath()+"D:"+Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
     public static final byte STARTUP_SELECTION_NORMAL = 0;
@@ -54,6 +55,7 @@ public class Container {
     private String dxwrapperConfig = "";
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
+    private String audioConfig = "";
     private String drives = DEFAULT_DRIVES;
     private String wineVersion = WineInfo.MAIN_WINE_VERSION.identifier();
     private boolean showFPS;
@@ -154,6 +156,14 @@ public class Container {
 
     public void setAudioDriver(String audioDriver) {
         this.audioDriver = audioDriver;
+    }
+    
+    public String getAudioConfig() {
+        return this.audioConfig;
+    }
+    
+    public void setAudioConfig(String audioConfig) {
+        this.audioConfig = audioConfig;
     }
 
     public String getWinComponents() {
@@ -438,6 +448,7 @@ public class Container {
             if (!eglConfig.isEmpty()) data.put("eglConfig", eglConfig);
             if (!displayxConfig.isEmpty()) data.put("displayxConfig", displayxConfig);
             data.put("audioDriver", audioDriver);
+            if (!audioConfig.isEmpty()) data.put("audioConfig", audioConfig);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
             data.put("showFPS", showFPS);
@@ -548,6 +559,9 @@ public class Container {
                     break;
                 case "audioDriver" :
                     setAudioDriver(data.getString(key));
+                    break;
+                case "audioConfig":
+                    setAudioConfig(data.getString(key));
                     break;
                 case "desktopTheme" :
                     setDesktopTheme(data.getString(key));

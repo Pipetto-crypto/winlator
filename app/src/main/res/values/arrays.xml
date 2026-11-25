@@ -1,7 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string-array name="audio_api_entries">
+        <item>AAudio</item>
+        <item>OpenSLES</item>
+    </string-array>    
     <string-array name="builtin_decoder_entries">
-        <item>GStreamer</item>
         <item>FFMpeg</item>
     </string-array>    
     <string-array name="screen_size_entries">
@@ -90,7 +93,16 @@
         <item>immediate</item>
         <item>relaxed</item>
     </string-array>
+    <string-array name="displayx_backend_entries">
+        <item>X11</item>
+        <item>DisplayX</item>
+    </string-array>    
+    <string-array name="displayx_dynamic_range">
+        <item>SDR</item>
+        <item>HDR</item>
+    </string-array>    
     <string-array name="displayx_present_mode_entries">
+        <item>auto</item>
         <item>mailbox</item>
         <item>fifo</item>
     </string-array>

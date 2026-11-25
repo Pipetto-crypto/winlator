@@ -393,12 +393,16 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         
         String displayDriver = (shortcut != null) ? shortcut.getExtra("displayDriver", container.getDisplayDriver()) : container.getDisplayDriver();
         if (displayDriver.toLowerCase().equals("displayx")) {
-            boolean isTrueDisplayX = displayConfig.get("trueDisplayX").equals("1") ? true : false;
+            boolean isTrueDisplayX = displayConfig.get("backend").equals("displayx") ? true : false;
             if (isTrueDisplayX) {
                 if (this.envVars.has("VK_INSTANCE_LAYERS")) {
                     this.envVars.remove("VK_INSTANCE_LAYERS");
                 }
                 envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_DISPLAYX_display_x");
+
+                boolean isHDR = displayConfig.get("dynamicRange").equals("hdr") ? true : false;
+                if (isHDR)
+                    envVars.put("DXVK_HDR", "1");
             }
         }   
          
@@ -413,12 +417,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
         }
         
         String presentMode = displayConfig.get("presentMode");
-        if (presentMode.equals("mailbox")) {
-            envVars.put("DISPLAYX_PRESENT_MODE", "mailbox");
-        }
-        else {
-            envVars.put("DISPLAYX_PRESENT_MODE", "fifo");
-        }
+        envVars.put("DISPLAYX_PRESENT_MODE", presentMode);
         
         // Merge any additional environment variables from external sources
         if (this.envVars != null) {

@@ -3,6 +3,7 @@ package com.winlator.cmod;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
+import com.winlator.cmod.contentdialog.AudioConfigDialog;
 import com.winlator.cmod.contentdialog.DisplayXConfigDialog;
 import com.winlator.cmod.contentdialog.EGLConfigDialog;
 import static com.winlator.cmod.core.AppUtils.showToast;
@@ -154,6 +155,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private String dxwrapper = Container.DEFAULT_DXWRAPPER;
     private KeyValueSet dxwrapperConfig;
     private KeyValueSet displayConfig;
+    private KeyValueSet audioConfig;
     private String startupSelection;
     private WineInfo wineInfo;
     private Intent notificationService;
@@ -208,7 +210,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     
     public boolean performanceMode;
     public boolean presentRR;
-    public boolean precisePresentation;
+    
     public int textureFilter;
      
     @Override
@@ -480,6 +482,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         graphicsDriver = container.getGraphicsDriver();
         String graphicsDriverConfig = container.getGraphicsDriverConfig();
         audioDriver = container.getAudioDriver();
+        String audioConfig = container.getAudioConfig();
         emulator = container.getEmulator();
         midiSoundFont = container.getMIDISoundFont();
         dxwrapper = container.getDXWrapper();
@@ -502,6 +505,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             graphicsDriver = shortcut.getExtra("graphicsDriver", container.getGraphicsDriver());
             graphicsDriverConfig = shortcut.getExtra("graphicsDriverConfig", container.getGraphicsDriverConfig());
             audioDriver = shortcut.getExtra("audioDriver", container.getAudioDriver());
+            audioConfig = shortcut.getExtra("audioConfig", container.getAudioConfig());
             emulator = shortcut.getExtra("emulator", container.getEmulator());
             dxwrapper = shortcut.getExtra("dxwrapper", container.getDXWrapper());
             dxwrapperConfig = shortcut.getExtra("dxwrapperConfig", container.getDXWrapperConfig());
@@ -526,7 +530,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             this.displayConfig = DisplayXConfigDialog.parseConfig(displayConfig);
             this.performanceMode = this.displayConfig.get("performanceMode").equals("1") ? true : false;
             this.presentRR = this.displayConfig.get("presentRR").equals("1") ? true : false;
-            this.precisePresentation = this.displayConfig.get("precisePresentation").equals("1") ? true : false;
         }
         else {
             this.displayConfig = EGLConfigDialog.parseConfig(displayConfig);
@@ -534,6 +537,7 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
         }
 
         this.graphicsDriverConfig = GraphicsDriverConfigDialog.parseGraphicsDriverConfig(graphicsDriverConfig);
+        this.audioConfig = AudioConfigDialog.parseConfig(audioConfig);
         this.dxwrapperConfig = DXVKConfigDialog.parseConfig(dxwrapperConfig);
 
         if (!wineInfo.isWin64()) {
@@ -781,28 +785,30 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     @Override
     public void onResume() {
         super.onResume();
+        
+        if (NotificationService.isRunning())  
+            NotificationService.releaseLock();
+            
         boolean gyroEnabled = preferences.getBoolean("gyro_enabled", true);
 
         if (gyroEnabled) {
             // Re-register the sensor listener when the activity is resumed
             sensorManager.registerListener(gyroListener, gyroSensor, SensorManager.SENSOR_DELAY_GAME);
         }
-        
-        if (!isInPictureInPictureMode())
-            xServerView.onResume();
 
-        if (environment != null) {
-            environment.onResume();
+        if (!isInPictureInPictureMode()) {
+            if (isSuspendEnabled)
+                ProcessHelper.resumeAllWineProcesses();
+         
+            if (environment != null)
+                environment.onResume();    
+         
+            if (!isInPictureInPictureMode())
+                xServerView.onResume();
         }
         
         startTime = System.currentTimeMillis();
-        handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);
-
-        if (!isInPictureInPictureMode() && isSuspendEnabled)
-        	ProcessHelper.resumeAllWineProcesses();
-            
-        if (NotificationService.isRunning())  
-            NotificationService.releaseLock();
+        handler.postDelayed(savePlaytimeRunnable, SAVE_INTERVAL_MS);        
     }
 
     @Override
@@ -821,12 +827,12 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
 
         // Check if we are entering Picture-in-Picture mode
         if (!isInPictureInPictureMode()) {
+            xServerView.onPause();    
+            
             // Only pause environment and xServerView if not in PiP mode
             if (environment != null) {
                 environment.onPause();
             }
-            
-            xServerView.onPause();    
             
             if (isSuspendEnabled)
                 ProcessHelper.pauseAllWineProcesses();
@@ -979,8 +985,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                 break;
             case R.id.main_menu_pause:
                 if (isPaused) {
-                    xServerView.onResume();
                     ProcessHelper.resumeAllWineProcesses();
+                    xServerView.onResume();
                     item.setIcon(R.drawable.icon_pause);
                 }
                 else {
@@ -1213,6 +1219,8 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
                         UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.XSERVER_PATH)
                 )
         );
+        
+        AudioConfigDialog.setEnvVars(this, audioConfig, envVars);
 
         // Audio driver logic
         if (audioDriver.equals("alsa")) {
@@ -1221,7 +1229,9 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             envVars.put("PULSE_SERVER", rootPath + UnixSocketConfig.PULSE_SERVER_PATH);
             environment.addComponent(
                     new PulseAudioComponent(
-                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH)
+                            UnixSocketConfig.createSocket(rootPath, UnixSocketConfig.PULSE_SERVER_PATH),
+                            this,
+                            envVars
                     )
             );
         }
@@ -2037,7 +2047,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
     private void applyGeneralPatches(Container container) {
         File rootDir = imageFs.getRootDir();
         TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "container_pattern_common.tzst", rootDir);
-        TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, "pulseaudio.tzst", new File(getFilesDir(), "pulseaudio"));
         WineUtils.applySystemTweaks(this, wineInfo);
         container.putExtra("graphicsDriver", null);
         container.putExtra("desktopTheme", null);

@@ -27,6 +27,9 @@ using PFNASURFACETRANSACTIONSETZORDER = void (*)(ASurfaceTransaction*, ASurfaceC
 using PFNASURFACETRANSACTIONSETVISIBILITY = void (*)(ASurfaceTransaction*, ASurfaceControl*, enum ASurfaceTransactionVisibility);
 using PFNASURFACETRANSACTIONSETBUFFERTRANSPARENCY = void (*)(ASurfaceTransaction*, ASurfaceControl*, enum ASurfaceTransactionTransparency);
 using PFNASURFACETRANSACTIONSETBUFFERALPHA = void (*)(ASurfaceTransaction*, ASurfaceControl*, float);
+using PFNASURFACETRANSACTIONSETBUFFERDATASPACE = void (*)(ASurfaceTransaction*, ASurfaceControl*, enum ADataSpace data_space);
+using PFNASURFACETRANSACTIONSETHDRMETADATA_SMPTE2086 = void (*)(ASurfaceTransaction*, ASurfaceControl*, struct AHdrMetadata_smpte2086*);
+using PFNASURFACETRANSACTIONSETHDRMETADATA_CTA861_3 = void (*)(ASurfaceTransaction*, ASurfaceControl*, struct AHdrMetadata_cta861_3*);
 using PFNASURFACETRANSACTIONSTATSGETPRESENTFENCEFD = int (*)(ASurfaceTransactionStats*);
 using PFNASURFACETRANSACTIONREPARENT = void (*)(ASurfaceTransaction*, ASurfaceControl*, ASurfaceControl*);
 using PFNASURFACETRANSACTIONSETONCOMPLETE = void (*)(ASurfaceTransaction*, void*, ASurfaceTransaction_OnComplete);
@@ -61,6 +64,9 @@ static PFNASURFACETRANSACTIONSETGEOMETRY pfnASurfaceTransactionSetGeometry = nul
 static PFNASURFACETRANSACTIONSETZORDER pfnASurfaceTransactionSetZOrder = nullptr;
 static PFNASURFACETRANSACTIONSETVISIBILITY pfnASurfaceTransactionSetVisibility = nullptr;
 static PFNASURFACETRANSACTIONSETBUFFERALPHA pfnASurfaceTransactionSetBufferAlpha = nullptr;
+static PFNASURFACETRANSACTIONSETBUFFERDATASPACE pfnASurfaceTransactionSetBufferDataSpace = nullptr;
+static PFNASURFACETRANSACTIONSETHDRMETADATA_SMPTE2086 pfnASurfaceTransactionSetHdrMetadataSmpte2086 = nullptr;
+static PFNASURFACETRANSACTIONSETHDRMETADATA_CTA861_3 pfnASurfaceTransactionSetHdrMetadataCta8613 = nullptr;
 static PFNASURFACETRANSACTIONSETBUFFERTRANSPARENCY pfnASurfaceTransactionSetBufferTransparency = nullptr;
 static PFNASURFACETRANSACTIONREPARENT pfnASurfaceTransactionReparent = nullptr;
 static PFNASURFACETRANSACTIONSETONCOMPLETE pfnASurfaceTransactionSetOnComplete = nullptr;
@@ -100,14 +106,14 @@ void DisplayX::onFrameCallback64(int64_t frameTimeNanos, void* data) {
     auto *self = reinterpret_cast<DisplayX *>(data);
    
     if (self->cursorUpdate && self->cursorManager->control && !self->paused) {
-        self->eventLock.notify();
+        self->cursorLock.notify();
     }
     
     {
-        auto lock = self->presentLock.lock();
+        auto lock = self->windowLock.lock();
         if (!self->presentRequests.empty() && self->presentRR) {
             self->requestUpdate = true;
-            self->presentLock.notify();
+            self->windowLock.notify();
         }
     }
     
@@ -141,18 +147,18 @@ void DisplayX::onVsyncCallback(const AChoreographerFrameCallbackData* callbackDa
     auto *self = reinterpret_cast<DisplayX *>(data);
    
     if (self->cursorUpdate && self->cursorManager->control && !self->paused) {
-        self->eventLock.notify();
+        self->cursorLock.notify();
     }
     
     size_t index = pfnAChoreographerGetPreferredTimelineIndex(callbackData);
     AVsyncId id = pfnAChoreographerGetFrameTimelineVsyncId(callbackData, index);
+    pfnASurfaceTransactionSetFrameTimeline(self->windowTransaction, id);
     
     {
-        auto lock = self->presentLock.lock();
-        self->vsyncId = id;
+        auto lock = self->windowLock.lock();
         if (!self->presentRequests.empty() && self->presentRR) {
             self->requestUpdate = true;
-            self->presentLock.notify();
+            self->windowLock.notify();
         }
     }
     
@@ -182,35 +188,11 @@ void DisplayX::onVsyncCallback(const AChoreographerFrameCallbackData* callbackDa
     pfnAChoreographerPostVsyncCallback(self->choreographer, DisplayX::onVsyncCallback, self);
 }
 
-static void sendFD(int& socket, int fd) {
-    std::vector<char> control_buffer(CMSG_SPACE(sizeof(int)));
-
-    char dummy = 0;
+static int readAncillaryMessage(int socket, void *data, size_t len, int *fd) {
+    char *buf = static_cast<char *>(data);
     struct iovec iov{};
-    iov.iov_len = 1;
-    iov.iov_base = &dummy;
-
-    struct msghdr msg{};
-    msg.msg_iov = &iov;
-    msg.msg_iovlen = 1;
-    msg.msg_control = control_buffer.data();
-    msg.msg_controllen = control_buffer.size();
-                                                                                                             
-    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-    cmsg->cmsg_level = SOL_SOCKET;
-    cmsg->cmsg_type = SCM_RIGHTS;
-    cmsg->cmsg_len = CMSG_LEN(sizeof(int));
-    
-    *reinterpret_cast<int*>(CMSG_DATA(cmsg)) = fd;
-
-    sendmsg(socket, &msg, 0);
-}
-
-static int readFD(int& socket) {
-    std::vector<char> msg_contents(1);
-    struct iovec iov{};
-    iov.iov_base = msg_contents.data();
-    iov.iov_len = msg_contents.size();
+    iov.iov_base = buf;
+    iov.iov_len = len;
             
     std::vector<char> control_buf(CMSG_SPACE(sizeof(int)));
     struct msghdr msg{};
@@ -219,131 +201,169 @@ static int readFD(int& socket) {
     msg.msg_control = control_buf.data();
     msg.msg_controllen = control_buf.size();
             
-    recvmsg(socket, &msg, MSG_WAITALL);
+    ssize_t size = recvmsg(socket, &msg, 0);
+    if (size < 0)
+        return -1;
+        
+    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);    
+    
+    if (static_cast<size_t>(size) < len || (msg.msg_flags & (MSG_CTRUNC | MSG_TRUNC))) {
+        if (cmsg != nullptr) {
+            *fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+            close(*fd);
+        }
+    
+        return -1;    
+    }
             
-    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
-    int fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+    if (cmsg == nullptr) {
+        *fd = -1;
+    }     
+    else {
+        *fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+    }
             
-    return fd;
+    return 0;
+}
+
+static ADataSpace colorSpaceToADataSpace(uint32_t& colorSpace) {
+    switch (colorSpace) {
+        case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
+            return ADATASPACE_SRGB;
+        case VK_COLOR_SPACE_HDR10_ST2084_EXT:
+            return ADATASPACE_BT2020_PQ;
+        case VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
+            return ADATASPACE_SCRGB_LINEAR;
+        default:
+            return ADATASPACE_SRGB;
+    }
 }
 
 void DisplayX::networkThreadLoop() {
-    static constexpr int CONNECT = 0;
-    static constexpr int ADD_CLIENT_SWAPCHAIN = 1;
-    static constexpr int PRESENT_IMAGE = 2;
-    static constexpr int DESTROY_CLIENT_SWAPCHAIN = 3;
-    
-    std::array<struct epoll_event, 2> events;
+    std::array<struct epoll_event, 1024> events;
     int n;
-    int res;
-    int efd;
-    int server_fd;
-    std::unordered_map<uint8_t, std::unique_ptr<DisplayXSwapchain>> clientSwapchains;
     
-    server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
-    if (server_fd < 0) 
-        printf("Failed to create native rendering socket");
-                
-    struct sockaddr_un addr{};
-    addr.sun_family = AF_UNIX;
-    memcpy(addr.sun_path + 1, "displayx", strlen("displayx"));
-    addr.sun_path[0] = '\0';
-    socklen_t len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen("displayx");
-    res = bind(server_fd, (struct sockaddr *)&addr, len);
-    if (res < 0)
-        printf("Failed to bind native rendering socket");
-               
-    res = listen(server_fd, 1);
-    if (res < 0)
-        printf("Failed to listent to native rendering socket");
-                
-    efd = epoll_create1(0);
-    struct epoll_event event{};
-    event.data.fd = server_fd;
-    event.events = EPOLLIN;
-            
-    epoll_ctl(efd, EPOLL_CTL_ADD, server_fd, &event);
-     
     JNIEnv *env = cache->getEnv();
        
-    while ((n = epoll_wait(efd, events.data(), 2, -1))) {
+    while ((n = epoll_wait(epollFd, events.data(), events.size(), -1))) {
         if (stopped) {
             printf("Stopping networkThread");
-            close(server_fd);
-            clientSwapchains.erase(clientSwapchains.begin(), clientSwapchains.end());
             return;
         }
         
         for (int i = 0; i < n; i++) {
-            if (events[i].data.fd == server_fd) {
+            if (events[i].data.fd == serverFd) {
                 if (events[i].events & EPOLLIN) {
                     printf("Received new client connection");
-                    int client_fd = accept(server_fd, nullptr, nullptr);
+                    int client_fd = accept(serverFd, nullptr, nullptr);
                     struct epoll_event event{};
                     event.data.fd = client_fd;
                     event.events = EPOLLIN;
-                    epoll_ctl(efd, EPOLL_CTL_ADD, client_fd, &event);
+                    epoll_ctl(epollFd, EPOLL_CTL_ADD, client_fd, &event);
                 }
             } 
             else {
                 if (events[i].events & (EPOLLERR | EPOLLHUP)) {
                     printf("Client has disconnected");
-                    epoll_ctl(efd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+                    epoll_ctl(epollFd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
                     close(events[i].data.fd);
                     continue;
                 }
                 
                 if (events[i].events & EPOLLIN) {
-                    int request_code;
-                    int size = read(events[i].data.fd, &request_code, 4);
-                    if (size <= 0)
+                    uint32_t requestCode;
+                    char buf[64];
+                    
+                    struct iovec iov{};
+                    iov.iov_base = buf;
+                    iov.iov_len = 64;
+            
+                    std::vector<char> control_buf(CMSG_SPACE(sizeof(int)));
+                    
+                    struct msghdr msg{};
+                    msg.msg_iov = &iov;
+                    msg.msg_iovlen = 1;
+                    msg.msg_control = control_buf.data();
+                    msg.msg_controllen = control_buf.size();
+            
+                    ssize_t size = recvmsg(events[i].data.fd, &msg, 0);
+                    
+                    struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg); 
+                    
+                    if (size < 0) {
+                        if (errno == EAGAIN || errno == EINTR)
+                            continue;
+
+                        epoll_ctl(epollFd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+                        close(events[i].data.fd);
                         continue;
-                            
-                    switch (request_code) {
-                        case CONNECT:
-                        {
-                            printf("Received new connection from client Vulkan");
-                            break;
+                    }
+                    
+                    if (size == 0 || static_cast<size_t>(size) < 4 || (msg.msg_flags & (MSG_CTRUNC | MSG_TRUNC))) {
+                        if (cmsg != nullptr) {
+                            int fd = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
+                            close(fd);
                         }
-                        case ADD_CLIENT_SWAPCHAIN:
+                        
+                        epoll_ctl(epollFd, EPOLL_CTL_DEL, events[i].data.fd, nullptr);
+                        close(events[i].data.fd);
+                        continue;
+                    }
+        
+                    memcpy(&requestCode, buf, 4);
+                    
+                    switch (requestCode) {
+                        case DisplayXCodes::CREATE_SWAPCHAIN:
                         {
                             uint8_t id;
                             uint32_t imageCount;
                             uint32_t windowId;
                             uint32_t presentMode;
                             uint32_t format;
-                            uint32_t width;
-                            uint32_t height;
-                                    
-                            read(events[i].data.fd, &id, 1);
-                            read(events[i].data.fd, &imageCount, 4);
-                            read(events[i].data.fd, &windowId, 4);
-                            read(events[i].data.fd, &presentMode, 4);
-                            read(events[i].data.fd, &format, 4);
-                            read(events[i].data.fd, &width, 4);
-                            read(events[i].data.fd, &height, 4);
+                            uint32_t colorSpace;
+                            
+                            if (static_cast<size_t>(size) < 25)
+                                continue;
+                            
+                            memcpy(&id, buf + 4, 1);
+                            memcpy(&imageCount, buf + 5, 4);
+                            memcpy(&windowId, buf + 9, 4);
+                            memcpy(&presentMode, buf + 13, 4);
+                            memcpy(&format, buf + 17, 4);
+                            memcpy(&colorSpace, buf + 21, 4);
                             
                             auto window = windowManager->getWindow(windowId);
                             if (!window) 
                                 continue;
-                                    
-                            printf("Received new swapchain from client, id %d, images %d, presentMode %d, format %d, width %d, height %d", id, imageCount, presentMode, format, width, height);
+                            
+                            if (presentMode == VK_PRESENT_MODE_FIFO_KHR) {  
+                                pfnASurfaceTransactionSetEnableBackPressure(windowTransaction, window->control, true);
+                                presentRR = false;
+                            }
+                            else {
+                                pfnASurfaceTransactionSetEnableBackPressure(windowTransaction, window->control, false);
+                                presentRR.store(defaultRR.load());
+                            }
+                            
+                            printf("Creating client swapchain: id %d, images %d, presentMode %d, format %d, colorSpace %d", id, imageCount, presentMode, format, colorSpace);
                             
                             auto swapchain = std::make_unique<DisplayXSwapchain>();
                             swapchain->id = id;
                             swapchain->window = window;
-                            swapchain->width = width;
-                            swapchain->height = height;
+                            swapchain->width = window->width;
+                            swapchain->height = window->height;
                             swapchain->imageCount = imageCount;
                             swapchain->presentMode = presentMode;
                             swapchain->format = format;
+                            swapchain->colorSpace = colorSpace;
+                            swapchain->fd = events[i].data.fd;
                             
                             swapchain->images.resize(imageCount);
                             for (uint32_t j = 0; j < imageCount; j++) {
                                 auto drawable = std::make_unique<Drawable>();
                                 drawable->id = -1;
-                                drawable->width = width;
-                                drawable->height = height;
+                                drawable->width = window->width;
+                                drawable->height = window->height;
                                 drawable->data = nullptr;
                                 AHardwareBuffer_recvHandleFromUnixSocket(events[i].data.fd, &drawable->ahb);
                                 AHardwareBuffer_Desc outDesc{};
@@ -360,64 +380,124 @@ void DisplayX::networkThreadLoop() {
                             window->parent->surface = window;
                             
                             clientSwapchains[id] = std::move(swapchain);
+                            
                             break;
-                        }    
-                        case PRESENT_IMAGE:
+                        }
+                        case DisplayXCodes::PRESENT:
                         {
                             uint8_t id;
                             uint32_t index;
-                            int fence;
-                            uint64_t present_id;
-                                    
-                            read(events[i].data.fd, &id, 1);
-                            read(events[i].data.fd, &index, 4);
+                            uint64_t presentId;
+                            int sync_fence = -1;
                             
-                            fence = readFD(events[i].data.fd);
+                            if (cmsg != nullptr)
+                                sync_fence = *reinterpret_cast<int*>(CMSG_DATA(cmsg));
                             
-                            read(events[i].data.fd, &present_id, 8);
+                            if (static_cast<size_t>(size) < 17) {
+                                if (sync_fence > -1)
+                                    close(sync_fence);
+                                
+                                continue;
+                            }    
+                                
+                            memcpy(&id, buf + 4, 1);
+                            memcpy(&index, buf + 5, 4);
+                            memcpy(&presentId, buf + 9, 8);
                             
                             auto swapchain = clientSwapchains[id].get();
                             if (!swapchain)
                                 continue;
-                            
+
                             auto drawable = swapchain->images.at(index).get();
                             if (!drawable)
                                 continue;
-                                
-                            auto lock = presentLock.lock();       
+                            
+                            //printf("Presenting image %d, swapchain %d, presentId %d, fence %d", index, id, presentId, sync_fence);         
+                            
+                            auto lock = windowLock.lock();      
                             
                             swapchain->window->externalContent = drawable;
+                            swapchain->fd = events[i].data.fd;
                             
                             auto presentRequest = std::make_unique<PresentRequest>();
                             presentRequest->drawable = drawable;
-                            presentRequest->sync_fence = fence;
-                            presentRequest->presentId = present_id;
+                            presentRequest->sync_fence = sync_fence;
+                            presentRequest->presentId = presentId;
                             presentRequest->index = index;
                             presentRequest->clientFd = events[i].data.fd;
                             presentRequest->window = swapchain->window;
-                            presentRequest->swapchain = swapchain;
+                            presentRequest->swapchainId = swapchain->id;
+                            presentRequest->colorSpace = swapchain->colorSpace;
+                            presentRequest->presentMode = swapchain->presentMode;
                             
                             presentRequests.push(std::move(presentRequest), swapchain->presentMode == VK_PRESENT_MODE_MAILBOX_KHR ? true : false);
                             if (xServer->isShowFPS) 
                                 env->CallVoidMethod(xServer->xserverDisplayActivity, cache->updateFrameRating, swapchain->window->id);
                            
                             if (!presentRR) 
-                                presentLock.notify();
+                                windowLock.notify();
                                 
                             break;
                         }    
-                        case DESTROY_CLIENT_SWAPCHAIN: {
+                        case DisplayXCodes::DESTROY_SWAPCHAIN: {
                             uint8_t id;
-                            read(events[i].data.fd, &id, 1);
+                            
+                            if (static_cast<size_t>(size) < 5)
+                                continue;
+                                
+                            memcpy(&id, buf + 4, 1);
                             
                             auto swapchain = clientSwapchains[id].get();
                             if (!swapchain)
                                 continue;
                             
-                            swapchain->images.clear();
+                            printf("Destroying client swapchain: id %d", id);
                             
+                            swapchain->images.clear();
                             swapchain->window->externalContent = nullptr;
+                            
                             clientSwapchains.erase(id);
+                            
+                            break;
+                        }
+                        case DisplayXCodes::HDR_METADATA: {
+                            uint8_t id;
+                            AHdrMetadata_smpte2086 smpteMetadata{};
+                            AHdrMetadata_cta861_3 ctaMetadata{};
+                            
+                            if (static_cast<size_t>(size) < 53)
+                                continue;
+                                
+                            memcpy(&id, buf + 4, 1);
+                            
+                            size_t offset = 5;
+
+                            #define UNSERIALIZE_METADATA(param) \
+                                memcpy(param, buf + offset, sizeof(float)); \
+                                offset += sizeof(float);
+                            
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryRed.x);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryRed.y);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryGreen.x);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryGreen.y);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryBlue.x);
+                            UNSERIALIZE_METADATA(&smpteMetadata.displayPrimaryBlue.y);
+                            UNSERIALIZE_METADATA(&smpteMetadata.whitePoint.x);
+                            UNSERIALIZE_METADATA(&smpteMetadata.whitePoint.y);
+                            UNSERIALIZE_METADATA(&smpteMetadata.maxLuminance);
+                            UNSERIALIZE_METADATA(&smpteMetadata.minLuminance);
+                            UNSERIALIZE_METADATA(&ctaMetadata.maxContentLightLevel);
+                            UNSERIALIZE_METADATA(&ctaMetadata.maxFrameAverageLightLevel);
+                            
+                            auto swapchain = clientSwapchains[id].get();
+                            if (!swapchain)
+                                continue;
+                            
+                            printf("Setting HDR metadata for swapchain: id %d", id);
+                                     
+                            pfnASurfaceTransactionSetHdrMetadataSmpte2086(windowTransaction, swapchain->window->control, &smpteMetadata);
+                            pfnASurfaceTransactionSetHdrMetadataCta8613(windowTransaction, swapchain->window->control, &ctaMetadata);
+                            
                             break;
                         }
                         default:
@@ -429,21 +509,20 @@ void DisplayX::networkThreadLoop() {
     }
 }
 
-void DisplayX::eventThreadLoop() {
+void DisplayX::windowThreadLoop() {
     bool restoreState = false;
-    this->env = cache->getEnv();
     
     while (true) {
         std::function<void()> func = nullptr;
+        std::deque<std::unique_ptr<PresentRequest>> requests;
         
-        auto lock = eventLock.lock();
-        eventLock.wait(lock, [&]{ 
-            return stopped || state != State::NONE || !eventQueue.empty() || cursorUpdate;
+        auto lock = windowLock.lock();
+        windowLock.wait(lock, [&]{ 
+            return stopped || state != State::NONE || !windowQueue.empty() || ((requestUpdate && presentRR) || (!presentRequests.empty() && !presentRR));
         });
         
         if (stopped) {
-            printf("Stopping eventThread");
-            cache->detachEnv(env);
+            printf("Stopping windowThread");
             return;
         }
         
@@ -453,28 +532,28 @@ void DisplayX::eventThreadLoop() {
         if (currState == State::PAUSE) {
             printf("Received state PAUSE");
             paused = true;
-            eventLock.notify();
+            windowLock.notify();
         }
             
         if (currState == State::RESUME) {
             printf("Received state RESUME");
             paused = false;
             restoreState = true;
-            eventLock.notify();
+            windowLock.notify();
         }
         
         if (currState == State::CREATE_SURFACE) {
             printf("Received state CREATE_SURFACE");
             createRootWindowControl();
             hasSurface = true;
-            eventLock.notify();
+            windowLock.notify();
         }
             
         if (currState == State::CHANGE_SURFACE) {
             printf("Received state CHANGE_SURFACE");
             resizeRootWindow();
             surfaceChanged = true;
-            eventLock.notify();
+            windowLock.notify();
         }
             
         if (hasSurface && restoreState) {
@@ -488,80 +567,28 @@ void DisplayX::eventThreadLoop() {
             hasSurface = false;
             surfaceChanged = false;
             destroyRootWindowControl();
-            eventLock.notify();
+            windowLock.notify();
         }
         
-        if (!eventQueue.empty() && hasSurface && surfaceChanged && !paused) {
-            func = eventQueue.front();
-            eventQueue.pop();
+        if (!windowQueue.empty() && hasSurface && surfaceChanged && !paused) {
+            func = windowQueue.front();
+            windowQueue.pop();
         }
         
-        lock.unlock();
-        
-        if (func) {
-            func();
-            {
-                auto l = presentLock.lock();
-                eventsPending--;
+        if (hasSurface && surfaceChanged && !paused) {
+            if (!presentRR) {
+                requests = presentRequests.getLast();
             }
-            if (eventsPending == 0)
-                presentLock.notify();
+            else {
+                requests = presentRequests.buildWindowTree();
+                requestUpdate = false;
+            }
         }
-        
-        if (cursorUpdate) {
-            updateCursorPosition();
-            cursorUpdate = false;
-        }
-    }
-}
-
-void DisplayX::onCompleteCallback(void *context, ASurfaceTransactionStats *stats) {
-    std::unique_ptr<OnCompleteContext> completeContext(static_cast<OnCompleteContext *>(context));
-    
-    for (auto &request : completeContext->requests) {
-        if (request->presentId >= 0 || request->swapchain->presentMode == VK_PRESENT_MODE_FIFO_KHR) {
-            int requestCode = 4;
-            write(request->clientFd, &requestCode, 4);
-            write(request->clientFd, &request->swapchain->id, 1);
-            
-            uint64_t presentId = request->presentId >= 0 ? request->presentId : -1;
-            write(request->clientFd, &presentId, 8);
-            
-            write(request->clientFd, &request->index, 4);
-        }
-    }
-}
-
-void DisplayX::presentThreadLoop() {
-    ASurfaceTransaction *presentTransaction = pfnASurfaceTransactionCreate();
-    
-    while(true) {
-        auto lock = presentLock.lock();
-        
-        presentLock.wait(lock, [&]{ 
-            return stopped || (eventsPending == 0 && ((requestUpdate && presentRR) || (!presentRequests.empty() && !presentRR)) && hasSurface && surfaceChanged && !paused);
-        });
-        
-        if (stopped) {
-            printf("Stopping presentThread");
-            cache->detachEnv(env);
-            break;
-        }
-        
-        std::deque<std::unique_ptr<PresentRequest>> requests;
-        
-        if (!presentRR) {
-            requests = presentRequests.getLast();
-        }
-        else {
-            requests = presentRequests.buildWindowTree();
-            requestUpdate = false;
-        }
-        
-        if (vsyncId > -1) 
-            pfnASurfaceTransactionSetFrameTimeline(presentTransaction, vsyncId);
         
         lock.unlock();
+        
+        if (func)
+            func();
         
         auto completeContext = std::make_unique<OnCompleteContext>();
         
@@ -578,33 +605,159 @@ void DisplayX::presentThreadLoop() {
                 continue;
         
             if (!window->enabled) {
-                pfnASurfaceTransactionSetBuffer(presentTransaction, window->control, nullptr, presentRequest->sync_fence);
+                pfnASurfaceTransactionSetBuffer(windowTransaction, window->control, nullptr, presentRequest->sync_fence);
             }
             else {
+                if (presentRequest->colorSpace != UINT32_MAX)
+                    pfnASurfaceTransactionSetBufferDataSpace(windowTransaction, window->control, colorSpaceToADataSpace(presentRequest->colorSpace));
+                    
                 if (effectComposer->isSuitableForColorSwap(drawable)) {
-                    pfnASurfaceTransactionSetBuffer(presentTransaction, window->control, drawable->composerTexture->dstBuffer, presentRequest->sync_fence);
+                    pfnASurfaceTransactionSetBuffer(windowTransaction, window->control, drawable->composerTexture->dstBuffer, presentRequest->sync_fence);
                 }
                 else {
-                    pfnASurfaceTransactionSetBuffer(presentTransaction, window->control, drawable->ahb, presentRequest->sync_fence);
+                    pfnASurfaceTransactionSetBuffer(windowTransaction, window->control, drawable->ahb, presentRequest->sync_fence);
                 }
                 
-                pfnASurfaceTransactionSetBufferTransparency(presentTransaction, window->control, ASURFACE_TRANSACTION_TRANSPARENCY_OPAQUE);
+                pfnASurfaceTransactionSetBufferTransparency(windowTransaction, window->control, ASURFACE_TRANSACTION_TRANSPARENCY_OPAQUE);
                 
                 if (drawable->isDisplayX) {
-                   completeContext->requests.push_back(std::move(presentRequest));
+                    if (presentRequest->presentId == UINT64_MAX && presentRequest->presentMode != VK_PRESENT_MODE_FIFO_KHR)
+                        continue;
+                        
+                    auto it = completeContext->requests.find(presentRequest->swapchainId);
+                    if (it != completeContext->requests.end()) {
+                        auto& param = *it->second;
+                        
+                        if (presentRequest->presentId > param.presentId) {
+                            param.presentId = presentRequest->presentId;
+                        }
+                        param.indexes.push_back(presentRequest->index);
+                    }
+                    else {
+                        completeContext->clientFd = presentRequest->clientFd;
+                        
+                        auto param = std::make_unique<OnCompleteParams>();
+                        param->presentId = presentRequest->presentId;
+                        param->indexes.push_back(presentRequest->index);
+                        param->clientFd = presentRequest->clientFd;
+                        completeContext->requests[presentRequest->swapchainId] = std::move(param);
+                    }
                 }    
             }
         }
         
-        if (!completeContext->requests.empty()) 
-            pfnASurfaceTransactionSetOnComplete(presentTransaction, completeContext.release(), DisplayX::onCompleteCallback);
+        if (!completeContext->isEmpty())
+            pfnASurfaceTransactionSetOnComplete(windowTransaction, completeContext.release(), DisplayX::onCompleteCallback);
             
-        pfnASurfaceTransactionApply(presentTransaction);
+        pfnASurfaceTransactionApply(windowTransaction);
+    }
+}
+
+void DisplayX::onCompleteCallback(void *context, ASurfaceTransactionStats *stats) {
+    std::unique_ptr<OnCompleteContext> completeContext(static_cast<OnCompleteContext *>(context));
+    
+    uint32_t requestCode = DisplayXCodes::PRESENT_COMPLETE;
+    char buf[1024];
+    
+    memcpy(buf, &requestCode, 4);
+    
+    uint32_t count = static_cast<uint32_t>(completeContext->requests.size());
+    memcpy(buf + 4, &count, 4);
+            
+    uint32_t start = 8;      
+      
+    for (auto it = completeContext->requests.begin(); it != completeContext->requests.end(); it++) {
+        memcpy(buf + start, &it->first, 1);
+        start = start + 1;
+        
+        memcpy(buf + start, &it->second->presentId, 8);
+        start = start + 8;
+        
+        auto count = static_cast<uint32_t>(it->second->indexes.size());
+        memcpy(buf + start, &count, 4);
+        start = start + 4;
+        
+        memcpy(buf + start, it->second->indexes.data(), count * sizeof(uint32_t));
+        start = start + count * sizeof(uint32_t);
+    }
+    
+    send(completeContext->clientFd, buf, start, 0);
+}
+
+void DisplayX::cursorThreadLoop() {
+    this->env = cache->getEnv();
+    
+    while(true) {
+        std::function<void()> func = nullptr;
+        bool updateCursor = false;
+        
+        auto lock = cursorLock.lock();
+        
+        cursorLock.wait(lock, [&]{ 
+            return stopped || ((cursorUpdate || !cursorQueue.empty()) && hasSurface && surfaceChanged && !paused);
+        });
+        
+        if (stopped) {
+            printf("Stopping cursorThread");
+            return;
+        }
+        
+        if (!cursorManager->control) 
+            createRootCursorControl();
+        
+        if (!cursorQueue.empty()) {
+            func = cursorQueue.front();
+            cursorQueue.pop();
+        }
+        
+        if (cursorUpdate) {
+            updateCursor = true;
+            cursorUpdate = false;
+        }
+        
+        lock.unlock();
+        
+        if (func)
+            func();
+        
+        if (updateCursor) {
+            jobject pointWindowObj = env->CallObjectMethod(xServer->inputDeviceManager, cache->getPointWindow);
+            jint id = env->GetIntField(pointWindowObj, cache->windowID);
+            auto pointWindow = windowManager->getWindow(id);
+            auto cursor = (pointWindow != nullptr) ? pointWindow->cursor : nullptr;
+            auto rootCursor = cursorManager->getRootCursor();
+            int x = std::clamp(cursorManager->pointer.posX, 0, windowManager->getRootWindow()->width - 1);
+            int y = std::clamp(cursorManager->pointer.posY, 0, windowManager->getRootWindow()->height - 1);
+    
+            if (cursorVisible || (cursor && cursor->visible)) {
+                if (pfnASurfaceTransactionSetPosition) {
+                    pfnASurfaceTransactionSetPosition(cursorTransaction, cursorManager->control, x, y);
+                }
+                else {
+                    auto& cursorImage = (cursor != nullptr) ? cursor->image : rootCursor->image;
+                    ARect src{};
+                    ARect dst = {
+                        .left = x,
+                        .top = y,
+                        .right = x + cursorImage->width,
+                        .bottom = y + cursorImage->height
+                    };
+                    pfnASurfaceTransactionSetGeometry(cursorTransaction, cursorManager->control, src, dst, 0);
+                }
+            }
+            else {
+                pfnASurfaceTransactionSetVisibility(cursorTransaction, cursorManager->control, ASURFACE_TRANSACTION_VISIBILITY_HIDE);
+            }
+        }
+        
+        pfnASurfaceTransactionApply(cursorTransaction);
     }
 }
 
 void DisplayX::start() {
     void* handle = dlopen("libandroid.so", RTLD_NOW);
+    int res;
+    
     pfnASurfaceTransactionSetPosition = reinterpret_cast<PFNASURFACETRANSACTIONSETPOSITION>(dlsym(handle,"ASurfaceTransaction_setPosition"));
     pfnASurfaceTransactionSetBuffer = reinterpret_cast<PFNASURFACETRANSACTIONSETBUFFER>(dlsym(handle,"ASurfaceTransaction_setBuffer"));
     pfnASurfaceTransactionSetGeometry = reinterpret_cast<PFNASURFACETRANSACTIONSETGEOMETRY>(dlsym(handle,"ASurfaceTransaction_setGeometry"));
@@ -615,6 +768,9 @@ void DisplayX::start() {
     pfnASurfaceTransactionSetOnCommit = reinterpret_cast<PFNASURFACETRANSACTIONSETONCOMMIT>(dlsym(handle,"ASurfaceTransaction_setOnCommit"));
     pfnASurfaceTransactionSetEnableBackPressure = reinterpret_cast<PFNASURFACETRANSACTIONSETENABLEBACKPRESSURE>(dlsym(handle,"ASurfaceTransaction_setEnableBackPressure"));
     pfnASurfaceTransactionSetBufferAlpha = reinterpret_cast<PFNASURFACETRANSACTIONSETBUFFERALPHA>(dlsym(handle, "ASurfaceTransaction_setBufferAlpha"));
+    pfnASurfaceTransactionSetBufferDataSpace = reinterpret_cast<PFNASURFACETRANSACTIONSETBUFFERDATASPACE>(dlsym(handle, "ASurfaceTransaction_setBufferDataSpace"));
+    pfnASurfaceTransactionSetHdrMetadataSmpte2086 = reinterpret_cast<PFNASURFACETRANSACTIONSETHDRMETADATA_SMPTE2086>(dlsym(handle, "ASurfaceTransaction_setHdrMetadata_smpte2086"));
+    pfnASurfaceTransactionSetHdrMetadataCta8613 = reinterpret_cast<PFNASURFACETRANSACTIONSETHDRMETADATA_CTA861_3>(dlsym(handle, "ASurfaceTransaction_setHdrMetadata_cta861_3"));
     pfnASurfaceTransactionSetBufferTransparency = reinterpret_cast<PFNASURFACETRANSACTIONSETBUFFERTRANSPARENCY>(dlsym(handle, "ASurfaceTransaction_setBufferTransparency"));
     pfnASurfaceTransactionStatsGetPresentFenceFd = reinterpret_cast<PFNASURFACETRANSACTIONSTATSGETPRESENTFENCEFD>(dlsym(handle, "ASurfaceTransactionStats_getPresentFenceFd"));
     pfnASurfaceTransactionSetFrameTimeline = reinterpret_cast<PFNASURFACETRANSACTIONSETFRAMETIMELINE>(dlsym(handle, "ASurfaceTransaction_setFrameTimeline"));
@@ -639,14 +795,55 @@ void DisplayX::start() {
     pfnAPerformanceHintReportActualWorkDuration = reinterpret_cast<PFNAPERFORMANCEHINTREPORTACTUALWORKDURATION>(dlsym(handle, "APerformanceHint_reportActualWorkDuration"));
     pfnAPerformanceHintUpdateTargetWorkDuration = reinterpret_cast<PFNAPERFORMANCEHINTUPDATETARGETWORKDURATION>(dlsym(handle, "APerformanceHint_updateTargetWorkDuration"));
     pfnAPerformanceHintCloseSession = reinterpret_cast<PFNAPERFORMANCEHINTCLOSESESSION>(dlsym(handle, "APerformanceHint_closeSession"));
+    
+    serverFd = socket(AF_UNIX, SOCK_SEQPACKET, 0);
+    if (serverFd < 0) {
+        printf("Failed to create native rendering socket");
+        return;
+    }    
+                
+    struct sockaddr_un addr{};
+    addr.sun_family = AF_UNIX;
+    memcpy(addr.sun_path + 1, "displayx", strlen("displayx"));
+    addr.sun_path[0] = '\0';
+    socklen_t len = offsetof(struct sockaddr_un, sun_path) + 1 + strlen("displayx");
+    res = bind(serverFd, (struct sockaddr *)&addr, len);
+    if (res < 0) {
+        printf("Failed to bind native rendering socket");
+        close(serverFd);
+        return;
+    }    
+               
+    res = listen(serverFd, 1);
+    if (res < 0) {
+        printf("Failed to listent to native rendering socket");
+        close(serverFd);
+        return;
+    }    
+                
+    epollFd = epoll_create1(0);
+    stopFd = eventfd(0, EFD_NONBLOCK);
+    
+    struct epoll_event event{};
+    
+    event.data.fd = serverFd;
+    event.events = EPOLLIN;
+    epoll_ctl(epollFd, EPOLL_CTL_ADD, serverFd, &event);
+     
+    event.data.fd = stopFd;
+    event.events = EPOLLIN;
+    epoll_ctl(epollFd, EPOLL_CTL_ADD, stopFd, &event);
+    
+    windowTransaction = pfnASurfaceTransactionCreate();
+    cursorTransaction = pfnASurfaceTransactionCreate();
         
-    eventThread = std::thread(&DisplayX::eventThreadLoop, this);
+    windowThread = std::thread(&DisplayX::windowThreadLoop, this);
     networkThread = std::thread(&DisplayX::networkThreadLoop, this);
-    presentThread = std::thread(&DisplayX::presentThreadLoop, this);
+    cursorThread = std::thread(&DisplayX::cursorThreadLoop, this);
    
     this->choreographer = pfnAChoreographerGetInstance();
     
-    if (precisePresentation && pfnAChoreographerPostVsyncCallback)
+    if (pfnAChoreographerPostVsyncCallback)
         pfnAChoreographerPostVsyncCallback(this->choreographer, DisplayX::onVsyncCallback, this);
     else     
         pfnAChoreographerPostFrameCallback64(this->choreographer, DisplayX::onFrameCallback64, this);
@@ -658,61 +855,67 @@ void DisplayX::stop() {
     }
     
     stopped = true;
-    eventLock.notify();
-    presentLock.notify();
+    int val = 1;
+    write(stopFd, &val, 4);
+    
+    windowLock.notify();
+    cursorLock.notify();
+    
+    close(stopFd);   
+    close(epollFd);
+    close(serverFd);
+    
+    pfnASurfaceTransactionDelete(windowTransaction);
+    pfnASurfaceTransactionDelete(cursorTransaction);
 }
 
 void DisplayX::pause() {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     state = State::PAUSE;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
 void DisplayX::resume() {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     state = State::RESUME;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
 void DisplayX::createSurface(ANativeWindow *window) {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     this->native_window = window;
     state = State::CREATE_SURFACE;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
 void DisplayX::changeSurface(int width, int height) {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     this->surfaceWidth = width;
     this->surfaceHeight = height;
     state = State::CHANGE_SURFACE;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
 void DisplayX::destroySurface() {
-    auto lock = eventLock.lock();
+    auto lock = windowLock.lock();
     this->native_window = nullptr;
     state = State::DESTROY_SURFACE;
-    eventLock.notify();
-    eventLock.wait(lock, [&]{ return state == State::NONE; });
+    windowLock.notify();
+    windowLock.wait(lock, [&]{ return state == State::NONE; });
 }
 
-void DisplayX::queueEvent(std::function<void()> func) {
-    auto lock = eventLock.lock();
-    {
-        auto l = presentLock.lock();
-        eventsPending++;
-    }
-    eventQueue.push(func);
-    eventLock.notify();
+void DisplayX::queueWindowEvent(std::function<void()> func) {
+    auto lock = windowLock.lock();
+    windowQueue.push(func);
+    windowLock.notify();
 }
 
 void DisplayX::requestWindowUpdate(Window *window) {
-    auto lock = presentLock.lock();
+    auto lock = windowLock.lock();
     
     if (!window || window->isHidden()) 
         return;
@@ -725,12 +928,23 @@ void DisplayX::requestWindowUpdate(Window *window) {
     auto presentRequest = std::make_unique<PresentRequest>();
     presentRequest->drawable = window->hasExternalContents() ? window->externalContent : drawable;
     presentRequest->sync_fence = -1;
-    presentRequest->presentId = -1;
+    presentRequest->presentId = UINT64_MAX;
     presentRequest->clientFd = -1;
     presentRequest->window = window;
+    presentRequest->swapchainId = -1;
+    presentRequest->presentMode = -1;
+    presentRequest->colorSpace = UINT32_MAX;
+    presentRequest->index = -1;
     
     presentRequests.push(std::move(presentRequest), true);
-    if (!presentRR) presentLock.notify();
+    if (!presentRR)
+        windowLock.notify();
+}
+
+void DisplayX::queueCursorEvent(std::function<void()> func) {
+    auto lock = cursorLock.lock();
+    cursorQueue.push(func);
+    cursorLock.notify();
 }
 
 void DisplayX::requestCursorUpdate() {
@@ -743,7 +957,7 @@ void DisplayX::requestCursorUpdate() {
 void DisplayX::createWindowControl(Window *window) {
     if (!window->parent || !window->inputOutput) 
         return;
-        
+   
     window->control = pfnASurfaceControlCreate(window->parent->control, "displayx");
     if (pfnASurfaceControlAcquire)    
         pfnASurfaceControlAcquire(window->control);
@@ -763,7 +977,8 @@ void DisplayX::createWindowControl(Window *window) {
             .bottom = window->y + window->height
         };
         pfnASurfaceTransactionSetGeometry(windowTransaction, window->control, src, dst, 0);
-    }  
+    } 
+    
     pfnASurfaceTransactionApply(windowTransaction);
 }
 
@@ -771,7 +986,6 @@ void DisplayX::destroyWindowControl(Window *window) {
     if (!window || !window->control)
         return;
     
-    auto lock = presentLock.lock();
     presentRequests.removeWindow(window);
     pfnASurfaceControlRelease(window->control);
     window->control = nullptr;
@@ -782,7 +996,6 @@ void DisplayX::mapWindow(Window *window) {
         return;
     
     pfnASurfaceTransactionSetVisibility(windowTransaction, window->control, ASURFACE_TRANSACTION_VISIBILITY_SHOW);
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::unmapWindow(Window *window) {
@@ -790,7 +1003,6 @@ void DisplayX::unmapWindow(Window *window) {
         return;
     
     pfnASurfaceTransactionSetVisibility(windowTransaction, window->control, ASURFACE_TRANSACTION_VISIBILITY_HIDE);
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::changeGeometry(Window *window, bool resized) {
@@ -813,54 +1025,14 @@ void DisplayX::changeGeometry(Window *window, bool resized) {
         };
         pfnASurfaceTransactionSetGeometry(windowTransaction, window->control, src, dst, 0);
     }
-    
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::changeZOrder(Window *window) {
     pfnASurfaceTransactionSetZOrder(windowTransaction, window->control, window->z_order);
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::updateCursor(Cursor *cursor) {
     pfnASurfaceTransactionSetBuffer(cursorTransaction, cursorManager->control, cursor && (cursor->visible && cursorVisible) ? cursor->image->ahb : nullptr, -1);
-    pfnASurfaceTransactionApply(cursorTransaction);
-}
-
-void DisplayX::updateCursorPosition() {
-    if (!cursorManager->control) 
-        return;
-    
-    jobject pointWindowObj = env->CallObjectMethod(xServer->inputDeviceManager, cache->getPointWindow);
-    jint id = env->GetIntField(pointWindowObj, cache->windowID);
-    auto pointWindow = windowManager->getWindow(id);
-    auto cursor = (pointWindow != nullptr) ? pointWindow->cursor : nullptr;
-    auto rootCursor = cursorManager->getRootCursor();
-    int x = std::clamp(cursorManager->pointer.posX, 0, windowManager->getRootWindow()->width - 1);
-    int y = std::clamp(cursorManager->pointer.posY, 0, windowManager->getRootWindow()->height - 1);
-    
-    if (cursorVisible || (cursor && cursor->visible)) {
-        if (pfnASurfaceTransactionSetPosition) {
-            pfnASurfaceTransactionSetPosition(cursorTransaction, cursorManager->control, x, y);
-        }
-        else {
-            auto& cursorImage = (cursor != nullptr) ? cursor->image : rootCursor->image;
-            ARect src{};
-            ARect dst = {
-                .left = x,
-                .top = y,
-                .right = x + cursorImage->width,
-                .bottom = y + cursorImage->height
-            };
-            pfnASurfaceTransactionSetGeometry(cursorTransaction, cursorManager->control, src, dst, 0);
-        }
-        
-        pfnASurfaceTransactionApply(cursorTransaction);
-    }
-    else {
-        pfnASurfaceTransactionSetVisibility(cursorTransaction, cursorManager->control, ASURFACE_TRANSACTION_VISIBILITY_HIDE);
-        pfnASurfaceTransactionApply(cursorTransaction);
-    }
 }
 
 void DisplayX::createRootCursorControl() {
@@ -874,13 +1046,9 @@ void DisplayX::createRootCursorControl() {
     cursorManager->control = pfnASurfaceControlCreate(rootWindow->control, "displayx");
     if (pfnASurfaceControlAcquire)
         pfnASurfaceControlAcquire(cursorManager->control);
-    
-    cursorTransaction = pfnASurfaceTransactionCreate();
 }
 
 void DisplayX::showCursor() {
-    if (!cursorManager->control) createRootCursorControl();
-    
     auto rootCursor = cursorManager->getRootCursor();
     if (!rootCursor) 
         return;
@@ -888,7 +1056,6 @@ void DisplayX::showCursor() {
     pfnASurfaceTransactionSetBuffer(cursorTransaction, cursorManager->control, rootCursor->image->ahb, -1);
     pfnASurfaceTransactionSetVisibility(cursorTransaction, cursorManager->control, cursorVisible ? ASURFACE_TRANSACTION_VISIBILITY_SHOW : ASURFACE_TRANSACTION_VISIBILITY_HIDE);
     pfnASurfaceTransactionSetZOrder(cursorTransaction, cursorManager->control, INT32_MAX);
-    pfnASurfaceTransactionApply(cursorTransaction);
 }
 
 void DisplayX::reparentWindow(Window *window, Window *parent) {
@@ -909,8 +1076,6 @@ void DisplayX::reparentWindow(Window *window, Window *parent) {
         };
         pfnASurfaceTransactionSetGeometry(windowTransaction, window->control, src, dst, 0);
     }
-    
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 bool DisplayX::isPerformanceHintAPIAvailable() {
@@ -931,25 +1096,19 @@ void DisplayX::createRootWindowControl() {
     rootWindow->control = pfnASurfaceControlCreateFromWindow(this->native_window, "displayx");
     if (pfnASurfaceControlAcquire)      
         pfnASurfaceControlAcquire(rootWindow->control);
- 
-    windowTransaction = pfnASurfaceTransactionCreate();
 }
 
 void DisplayX::destroyRootWindowControl() {
-    this->native_window = nullptr;
-    pfnASurfaceTransactionDelete(windowTransaction);
-    
     auto rootWindow = windowManager->getRootWindow();
     if (!rootWindow || !rootWindow->control)
         return;
 
     pfnASurfaceControlRelease(rootWindow->control);
     rootWindow->control = nullptr;
+    this->native_window = nullptr;
 }
 
 void DisplayX::destroyRootCursorControl() {
-    pfnASurfaceTransactionDelete(cursorTransaction);
-    
     auto rootCursor = cursorManager->getRootCursor();
     if (!rootCursor || !cursorManager->control)
         return;
@@ -995,7 +1154,6 @@ void DisplayX::resizeRootWindow() {
     pfnASurfaceTransactionSetGeometry(windowTransaction, rootWindow->control, src, dst, 0);
     pfnASurfaceTransactionSetBuffer(windowTransaction, rootWindow->control, rootWindow->drawable->ahb, -1);
     pfnASurfaceTransactionSetZOrder(windowTransaction, rootWindow->control, rootWindow->z_order);
-    pfnASurfaceTransactionApply(windowTransaction);
 }
 
 void DisplayX::restoreControlState() {
@@ -1011,16 +1169,29 @@ void DisplayX::restoreControlState() {
             continue;
         
         pfnASurfaceTransactionReparent(windowTransaction, window->control, window->parent->control);
-        pfnASurfaceTransactionApply(windowTransaction);
     }
     
     if (cursorManager->control && rootWindow->control) {
+        auto lock = cursorLock.lock();
         pfnASurfaceTransactionReparent(cursorTransaction, cursorManager->control, rootWindow->control);
-        pfnASurfaceTransactionApply(cursorTransaction);
+        cursorUpdate = true;
+        cursorLock.notify();
+    }
+    
+    for (auto it = clientSwapchains.begin(); it != clientSwapchains.end(); it++) {
+        char buf[32];
+        
+        uint32_t requestCode = DisplayXCodes::RESET_STATE;
+        memcpy(buf, &requestCode, 4);
+        
+        memcpy(buf + 4, &it->second->id, 1);
+        send(it->second->fd, buf, 5, 0);
     }
 }
 
 void DisplayX::toggleFullscreen() {
+    auto lock = windowLock.lock();
+    
     auto rootWindow = windowManager->getRootWindow();
     if (!rootWindow) 
         return;
@@ -1054,7 +1225,8 @@ void DisplayX::toggleFullscreen() {
     }
     
     pfnASurfaceTransactionSetGeometry(windowTransaction, rootWindow->control, src, dst, 0);
-    pfnASurfaceTransactionApply(windowTransaction);
+    
+    windowLock.notify();
 }
 
 void DisplayX::setPerformanceMode(bool perfMode) {
@@ -1062,9 +1234,6 @@ void DisplayX::setPerformanceMode(bool perfMode) {
 }
 
 void DisplayX::setPresentRR(bool presentRR) {
-    this->presentRR = presentRR;
-}
-
-void DisplayX::setPrecisePresentation(bool precisePresentation) {
-    this->precisePresentation = precisePresentation;
+    this->defaultRR = presentRR;
+    this->presentRR.store(this->defaultRR.load());
 }
