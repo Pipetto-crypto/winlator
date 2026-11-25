@@ -1,6 +1,7 @@
 package com.winlator.cmod.core;
 
 import android.content.Context;
+import android.util.Log;
 
 import com.winlator.cmod.container.Container;
 import com.winlator.cmod.xenvironment.ImageFs;
@@ -13,6 +14,8 @@ import java.io.File;
 import java.util.Locale;
 
 public abstract class WineUtils {
+    private static final String TAG = "WineUtils";
+
     public static void createDosdevicesSymlinks(Container container) {
         String dosdevicesPath = (new File(container.getRootDir(), ".wine/dosdevices")).getPath();
         File[] files = (new File(dosdevicesPath)).listFiles();
@@ -209,6 +212,39 @@ public abstract class WineUtils {
                 String name = service.substring(0, service.indexOf(":"));
                 int value = onlyEssential ? 4 : Character.getNumericValue(service.charAt(service.length()-1));
                 registryEditor.setDwordValue("System\\CurrentControlSet\\Services\\"+name, "Start", value);
+            }
+        }
+    }
+
+    /**
+     * Configure Wine DirectInput joystick registry keys for all gamepads.
+     * By default, disables all joysticks in Wine's DirectInput.
+     * When DInput is enabled, sets joysticks to "override" mode to make them visible.
+     *
+     * @param container The container to configure
+     * @param dinputEnabled Whether DInput is enabled for this container
+     * @param exclusiveXInput Whether Exclusive XInput is enabled (if false, keys are removed)
+     */
+    public static void setJoystickRegistryKeys(Container container, boolean dinputEnabled, boolean exclusiveXInput) {
+        Log.i(TAG, "Joystick registry keys: dinput=" + dinputEnabled + " exclusiveXInput=" + exclusiveXInput
+                + " -> " + (exclusiveXInput ? (dinputEnabled ? "override" : "disabled") : "removed"));
+        File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
+        final String joysticksKey = "Software\\Wine\\DirectInput\\Joysticks";
+
+        // The value to set: "disabled" hides from DInput, "override" makes visible
+        final String value = dinputEnabled ? "override" : "disabled";
+
+        try (WineRegistryEditor registryEditor = new WineRegistryEditor(userRegFile)) {
+            // Configure all 4 possible gamepad slots
+            for (int i = 0; i < 4; i++) {
+                if (exclusiveXInput) {
+                    registryEditor.setStringValue(joysticksKey, "Generic HID Gamepad " + i, value);
+                    registryEditor.setStringValue(joysticksKey, "ric HID Gamepad " + i, value);
+                }
+                else {
+                    registryEditor.removeValue(joysticksKey, "Generic HID Gamepad " + i);
+                    registryEditor.removeValue(joysticksKey, "ric HID Gamepad " + i);
+                }
             }
         }
     }

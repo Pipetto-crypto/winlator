@@ -28,6 +28,7 @@ import com.winlator.cmod.core.WineInfo;
 import com.winlator.cmod.fexcore.FEXCoreManager;
 import com.winlator.cmod.fexcore.FEXCorePreset;
 import com.winlator.cmod.fexcore.FEXCorePresetManager;
+import com.winlator.cmod.inputcontrols.InputDebug;
 import com.winlator.cmod.xconnector.UnixSocketConfig;
 import com.winlator.cmod.xenvironment.EnvironmentComponent;
 import com.winlator.cmod.xenvironment.ImageFs;
@@ -332,6 +333,54 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
             ld_preload = imageFs.getLibDir() + "/libandroid-sysvshm.so";
         }
 
+        File fakeinputDest = new File(imageFs.getLibDir(), "libfakeinput.so");
+        String nativeLibDir = environment.getContext().getApplicationInfo().nativeLibraryDir;
+        File fakeinputSrc = new File(nativeLibDir, "libfakeinput.so");
+
+        // Wine's winebus loads SDL by its versioned soname, but the imagefs only ships libSDL2-2.0.so
+        File sdlLib = new File(imageFs.getLibDir(), "libSDL2-2.0.so");
+        File sdlLink = new File(imageFs.getLibDir(), "libSDL2-2.0.so.0");
+        if (!sdlLib.exists()) {
+            Log.w("GuestLauncher", "libSDL2-2.0.so not found in imagefs: winebus will not detect gamepads");
+        } else if (!sdlLink.exists()) {
+            FileUtils.symlink("libSDL2-2.0.so", sdlLink.getAbsolutePath());
+            Log.i("GuestLauncher", "Created libSDL2-2.0.so.0 symlink");
+        }
+
+        Log.d("GuestLauncher", "nativeLibDir: " + nativeLibDir);
+        Log.d("GuestLauncher", "fakeinputSrc exists: " + fakeinputSrc.exists());
+        Log.d("GuestLauncher", "fakeinputDest: " + fakeinputDest.getAbsolutePath());
+
+        try {
+            if (fakeinputSrc.exists()) {
+                FileUtils.copy(fakeinputSrc, fakeinputDest);
+                Log.d("GuestLauncher", "Copied libfakeinput.so to imagefs");
+            } else {
+                Log.e("GuestLauncher", "libfakeinput.so NOT FOUND in APK: " + fakeinputSrc.getAbsolutePath());
+            }
+        } catch (Exception e) {
+            Log.e("GuestLauncher", "Failed to copy libfakeinput.so: " + e.getMessage());
+            e.printStackTrace();
+        }
+
+        Log.d("GuestLauncher", "fakeinputDest exists after copy: " + fakeinputDest.exists());
+        if (fakeinputDest.exists()) {
+            if (!ld_preload.isEmpty()) ld_preload += ":";
+            ld_preload += fakeinputDest.getAbsolutePath();
+        }
+
+        File devInputDir = new File(imageFs.getRootDir(), "dev/input");
+        devInputDir.mkdirs();
+        File event0 = new File(devInputDir, "event0");
+        if (!event0.exists()) {
+            try { event0.createNewFile(); } catch (Exception ignored) {}
+        }
+
+        envVars.put("FAKE_EVDEV_DIR", devInputDir.getAbsolutePath());
+        envVars.put("FAKE_EVDEV_VIBRATION", "1");
+        if (InputDebug.VERBOSE) envVars.put("FAKE_EVDEV_LOG", "1");
+
+//        Log.d("GuestLauncher", "Final LD_PRELOAD: " + ld_preload);
         envVars.put("LD_PRELOAD", ld_preload);
 
         if (this.envVars.has("MANGOHUD")) {
@@ -350,7 +399,7 @@ public class GuestProgramLauncherComponent extends EnvironmentComponent {
                     this.envVars.remove("VK_INSTANCE_LAYERS");
                 }
                 envVars.put("VK_INSTANCE_LAYERS", "VK_LAYER_DISPLAYX_display_x");
-                
+
                 boolean isHDR = displayConfig.get("dynamicRange").equals("hdr") ? true : false;
                 if (isHDR)
                     envVars.put("DXVK_HDR", "1");

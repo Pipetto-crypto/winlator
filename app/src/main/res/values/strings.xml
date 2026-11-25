@@ -287,6 +287,8 @@
     <string name="startup_selection">Startup Selection</string>
     <string name="wine_debug_channel">Wine Debug Channel</string>
     <string name="game_controller">Game Controller</string>
+    <string name="vibration">Vibration</string>
+    <string name="vibration_slot">Slot %1$d</string>
     <string name="as_button">Is Button</string>
     <string name="as_axis">Is Axis</string>
     <string name="both">Both</string>
@@ -406,6 +408,8 @@
     <string name="installing_soundfont">Installing SoundFont…</string>
     <string name="sound_font_bad_format">Bad SoundFont Format.</string>
     <string name="cannot_remove_default_sound_font">Cannot remove default soundfont</string>
+    <string name="exclusive_input">Exclusive Input</string>
+    <string name="help_exclusive_xinput">Certain games like Rayman Origins, Need for Speed: Most Wanted 2005 and Ninja Gaiden Sigma when using DInput require this to be disabled.</string>
     <string name="enable_dinput_for_wine_game">Enable DInput for Games in Wine</string>
     <string name="enable_xinput_for_wine_game">Enable XInput for Games in Wine</string>
     <string name="dinput_legacy">Legacy (Old Gamepads)</string>

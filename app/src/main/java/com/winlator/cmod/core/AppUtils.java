@@ -212,10 +212,7 @@ public abstract class AppUtils {
         textView.setPadding(padding, padding, padding, padding);
         textView.setTextSize(TypedValue.COMPLEX_UNIT_DIP, 16);
         textView.setText(Html.fromHtml(text, Html.FROM_HTML_MODE_LEGACY));
-        int widthMeasureSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        int heightMeasureSpec = View.MeasureSpec.makeMeasureSpec(0, View.MeasureSpec.UNSPECIFIED);
-        textView.measure(widthMeasureSpec, heightMeasureSpec);
-        showPopupWindow(anchor, textView, 300, textView.getMeasuredHeight());
+        showPopupWindow(anchor, textView, 300, 0);
     }
 
     public static int getVersionCode(Context context) {
