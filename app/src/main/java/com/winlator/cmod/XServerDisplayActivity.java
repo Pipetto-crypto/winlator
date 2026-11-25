@@ -1050,14 +1050,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             touchpadView.releasePointerCapture();
     }
 
-    private void extractInputDLLs() {
-        String inputAsset = "input_dlls.tzst";
-        File wineFolder = new File(imageFs.getWinePath() + "/lib/wine/");
-        boolean success = TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, this, inputAsset, wineFolder);
-        if (!success)
-            Log.d("XServerDisplayActivity", "Failed to extract input dlls");
-    }
-
     private void setupWineSystemFiles() {
         String imgVersion = String.valueOf(imageFs.getVersion());
         boolean containerDataChanged = false;
@@ -1128,8 +1120,6 @@ public class XServerDisplayActivity extends AppCompatActivity implements Navigat
             container.putExtra("startupSelection", startupSelection);
             containerDataChanged = true;
         }
-        
-//        extractInputDLLs();   // This breaks fakeinput completely
 
         if (containerDataChanged) container.saveData();
     }
